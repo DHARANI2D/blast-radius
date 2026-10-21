@@ -25,6 +25,7 @@ def respond(role: str, ctx: dict) -> dict:
     return {
         "intake": intake,
         "planner": planner,
+        "planner_explain": planner_explain,
         "verifier_extract": extract_claims,
         "verifier_judge": judge,
         "report": report,
@@ -79,9 +80,22 @@ def intake(ctx: dict) -> dict:
 
 # --------------------------------------------------------------- planner
 def planner(ctx: dict) -> dict:
-    if ctx["attempt"] == 1 and ctx.get("naive_first", True):
+    if scripted_first_attempt(ctx):
         return _naive_plan(ctx)
     return _grounded_plan(ctx)
+
+
+def naive_mistakes(ctx: dict) -> list[str]:
+    """The mistakes the scripted first draft makes for this change (rule kinds in planner memory)."""
+    return (["CLUSTER_CAPACITY", "CANARY_COVERAGE"] + (["REDUNDANT_PAIR"] if len(ctx["target_switches"]) >= 2 else [])
+            + (["fixes_cve"] if ctx["target_versions"].get("System ROM") else []))
+
+
+def scripted_first_attempt(ctx: dict) -> bool:
+    """Attempt 1 is the scripted ungrounded draft unless planner memory already warns against its mistakes."""
+    from .memory import covers
+
+    return ctx["attempt"] == 1 and ctx.get("naive_first", True) and not covers(ctx.get("memory_rules", []), *naive_mistakes(ctx))
 
 
 def _naive_plan(ctx: dict) -> dict:
@@ -111,6 +125,15 @@ def _naive_plan(ctx: dict) -> dict:
     sentences.append(f"{big_cluster} can tolerate {biggest} hosts in maintenance at once.")
     sentences.append("The plan takes about 120 minutes and fits the window.")
     return {"waves": waves, "rationale": " ".join(sentences), "self_confidence": 91}
+
+
+def planner_explain(ctx: dict) -> dict:
+    """Re-explain the optimiser's final waves (same wording a corrected model would use)."""
+    from .solver import grounded_rationale
+
+    text = grounded_rationale(ctx["waves"], ctx["facts"], ctx["components"], ctx["total_duration_min"])
+    text += " Saturday-night application traffic is expected to be low."
+    return {"waves": ctx["waves"], "rationale": text, "self_confidence": 88}
 
 
 def _grounded_plan(ctx: dict) -> dict:
@@ -238,12 +261,29 @@ def extract_claims(ctx: dict) -> dict:
     return {"claims": claims}
 
 
+ENTITY = re.compile(r"[A-Za-z0-9]+(?:[-.][A-Za-z0-9]+)+|[A-Za-z]*\d[A-Za-z0-9]*")
+
+
 def judge(ctx: dict) -> dict:
-    return {
-        "label": "Unverifiable",
-        "explanation": "No tool output or document in the evidence addresses this statement.",
-        "evidence": [],
-    }
+    """Offline stand-in for the LLM judge: a lexical grounding check against the evidence the
+    sentence cites. Every identifier, version and number in the sentence must appear in a cited
+    tool output; otherwise Unverifiable. It never answers Contradicted (that needs semantics)."""
+    cited = ctx.get("cited") or []
+    if not cited:
+        return {"label": "Unverifiable",
+                "explanation": "No tool output or document in the evidence addresses this statement.", "evidence": []}
+    text = re.sub(r"\[EV-\d{4}(?:,\s*EV-\d{4})*\]", "", ctx["claim"])
+    entities = {t for t in ENTITY.findall(text) if not re.fullmatch(r"EV-\d{4}|tier-\d", t, re.I) and len(t) > 1}
+    blob = " ".join(c["result"] for c in cited)
+    missing = sorted(t for t in entities if t.lower() not in blob.lower())
+    ids = [c["id"] for c in cited]
+    if entities and not missing:
+        return {"label": "Supported", "evidence": ids,
+                "explanation": f"lexical grounding (offline judge): every identifier and number ({', '.join(sorted(entities)[:6])}) "
+                               f"appears in the cited tool output {', '.join(ids)}."}
+    return {"label": "Unverifiable", "evidence": ids,
+            "explanation": "lexical grounding (offline judge): the cited evidence does not mention "
+                           + (", ".join(missing[:5]) if missing else "any checkable identifier in this sentence") + "."}
 
 
 # ---------------------------------------------------------------- report

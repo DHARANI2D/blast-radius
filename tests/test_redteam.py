@@ -14,7 +14,7 @@ NAMED_OPERATORS = {"swap_cve", "fake_dual_homing", "fake_single_homing", "inflat
                    "wrong_duration", "deny_known_issue"}
 # check_plan has no rule against scheduling an asset the Risk agent deferred (after a learned
 # regression); the benchmark reports these two mutations as a gap rather than hiding them.
-KNOWN_CONSTRAINT_GAPS = ["schedule_deferred_eligible", "schedule_deferred_host"]
+KNOWN_CONSTRAINT_GAPS: list[str] = []  # the DEFERRED gap this benchmark found is closed in constraints.check_plan
 
 
 @pytest.fixture(scope="module")
@@ -151,7 +151,7 @@ def test_markdown_report(res):
     for heading in ("## Headline", "## Typed claims by type", "## False claims by mutation operator",
                     "## Paraphrase robustness", "## Plan mutations", "## Live injection", "## Method"):
         assert heading in md
-    assert "schedule_deferred_host" in md and "(no such rule)" in md
+    assert "schedule_deferred_host" in md and "(no such rule)" not in md  # the DEFERRED gap is closed
 
 
 def test_wilson_interval():

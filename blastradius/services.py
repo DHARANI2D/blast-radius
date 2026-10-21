@@ -11,6 +11,7 @@ from .knowledge import KnowledgeBase
 from .ledger import Ledger
 from .llm import LLMClient, make_llm
 from .mcp_layer import ToolBus
+from .memory import PlanningMemory
 from .policy import Policy, PolicyGuard
 from .tools import ToolContext, build_registry
 from .twin import Twin
@@ -30,6 +31,7 @@ class Services:
     verifier_llm: LLMClient
     guard: PolicyGuard
     runs: dict = field(default_factory=dict)  # run_id -> in-memory context (dependency graph)
+    memory: PlanningMemory | None = None      # planning rules learned from rejected attempts
 
     @classmethod
     def create(cls, settings: Settings | None = None, ledger_path: str | None = None, **overrides) -> "Services":
@@ -48,10 +50,13 @@ class Services:
         registry = build_registry(ToolContext(twin=twin, kb=kb, authority=authority))
         bus = ToolBus(registry, evidence, transport=settings.tool_transport)
         llm, verifier_llm = make_llm(settings, policy)
-        return cls(settings, policy, twin, kb, authority, ledger, evidence, bus, llm, verifier_llm, PolicyGuard(policy))
+        sv = cls(settings, policy, twin, kb, authority, ledger, evidence, bus, llm, verifier_llm, PolicyGuard(policy))
+        sv.memory = PlanningMemory.from_services(sv)
+        return sv
 
     def reset_lab(self, forget_lessons: bool = True) -> None:
         """Restore the twin to its seeded state (and optionally forget learned incidents)."""
         self.twin.reset()
         if forget_lessons:
             self.kb.clear_learned()
+            self.memory.clear()

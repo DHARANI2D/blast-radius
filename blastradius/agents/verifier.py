@@ -14,6 +14,7 @@
 from __future__ import annotations
 
 import json
+import re
 from collections import Counter
 
 from ..cohorts import build as build_cohorts, coverage
@@ -22,6 +23,10 @@ from ..llm import load_prompt
 from ..mcp_layer import ToolCallError
 from ..models import ClaimList, Judgement
 from ..topology import Topology
+
+SAFETY_RE = re.compile(r"\b(safe(?:ly|ty)?|no (?:impact|outage|risk|downtime|customer impact)|redundan\w*|dual[- ]homed|single[- ]homed|"
+                       r"fail ?over|capacity|tolerat\w*|outage|isolat\w*|quorum|evacuat\w*|tier[- ]?0|canary|roll ?back|"
+                       r"(?:will not|won't|cannot|can't) (?:break|fail|disrupt))\b", re.I)
 
 CATEGORY = {
     "pair_safe_together": "safety", "pair_staggered": "safety", "all_dual_homed": "safety",
@@ -322,11 +327,15 @@ class VerifierAgent:
 
     def _c_freeform(self, claim, ctx):
         hits, e = self.call("knowledge.search", query=claim["text"], k=3)
-        evidence = [e]
-        user = json.dumps({"claim": claim["text"], "evidence": [self.sv.evidence.summary(x, 1200) for x in evidence]})
+        # Evidence the sentence itself cites (e.g. an Investigator answer: "... [EV-0042].") goes to the judge first.
+        cited_ids = [x for x in dict.fromkeys(re.findall(r"EV-\d{4}", claim["text"])) if self.sv.evidence.get(x)]
+        evidence = cited_ids + [e]
+        user = json.dumps({"claim": claim["text"], "evidence": [self.sv.evidence.summary(x, 3000 if x in cited_ids else 1200) for x in evidence]})
         j: Judgement = self.sv.verifier_llm.complete_json(
             "verifier_judge", load_prompt("verifier_judge"), user, Judgement,
-            context={"claim": claim["text"], "hits": hits}, temperature=0.0)
+            context={"claim": claim["text"], "hits": hits,
+                     "cited": [{"id": x, "result": json.dumps(self.sv.evidence.get(x)["result"], default=str)} for x in cited_ids]},
+            temperature=0.0)
         cited = [x for x in j.evidence if self.sv.evidence.get(x)]
         if j.label != "Unverifiable" and not cited:
             return "Unverifiable", f"judge answered {j.label} without citing evidence; downgraded.", evidence
@@ -356,6 +365,13 @@ class VerifierAgent:
         trust = max(0.0, min(100.0, 100 * share - float(pol.get("verification.contradiction_penalty", 15)) * n_contra))
         threshold = float(pol.get("verification.trust_threshold", 80))
         blocked_by = []
+        # A sentence that sounds like a safety guarantee but could not be typed or checked must not slip through
+        # just because Unverifiable only lowers the score.
+        for c in claims:
+            c["safety_language"] = c["type"] == "freeform" and bool(SAFETY_RE.search(c["text"]))
+        unchecked_safety = [c for c in claims if c["safety_language"] and c["label"] == "Unverifiable"]
+        if unchecked_safety and pol.get("verification.block_unverified_safety_claims", True):
+            blocked_by.append(f"{len(unchecked_safety)} safety claim(s) no evidence could check")
         if trust < threshold:
             blocked_by.append(f"Trust Score {trust:.0f} < {threshold:.0f}")
         if n_contra and pol.get("verification.block_on_contradiction", True):

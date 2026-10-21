@@ -19,9 +19,15 @@ def _run(tmp_path, scenario=None):
     return sv, st, sv.runs[st["run_id"]]["topo"]
 
 
-def _impact(sv, st, topo, lesson=None, policy=None, actual_exec="last"):
+def baseline_plan(st):
+    """The conventional baseline the workflow uses: the accepted plan before the risk-aware optimiser re-ordered it."""
+    accepted = next(a for a in reversed(st["attempts"]) if a.get("passed"))
+    return accepted.get("plan_before_optimization") or st["plan"]
+
+
+def _impact(sv, st, topo, lesson=None, policy=None, actual_exec="last", plan=None):
     ex = st["executions"][-1] if actual_exec == "last" else actual_exec
-    return business.counterfactual_impact(lesson or st["lesson"], st["plan"], topo, policy or sv.policy,
+    return business.counterfactual_impact(lesson or st["lesson"], plan or baseline_plan(st), topo, policy or sv.policy,
                                           st["change_request"]["components"], risk=st["risk"], actual_exec=ex)
 
 
@@ -140,3 +146,12 @@ def test_risk_ranked_canary_that_also_catches_it_avoids_nothing(tmp_path):
     cf, act = imp["counterfactual"], imp["actual"]
     assert cf["canary_would_catch"] and cf["detected_wave"] == act["detected_wave"] == 1
     assert imp["avoided"]["usd"] == 0 and not cf["cost"]["sev1"]
+
+
+def test_workflow_reports_the_same_impact_and_the_optimised_order(canon):
+    sv, st, topo, imp = canon
+    assert st["business_impact"]["headline"] == imp["headline"]
+    opt = _impact(sv, st, topo, plan=st["plan"])
+    # the optimiser moved the single-homed payments host late, so even a missed canary is caught before tier-0
+    assert opt["counterfactual"]["tier0_vms"] == [] and opt["headline"]["counterfactual_usd"] < imp["headline"]["counterfactual_usd"]
+    assert st["business_impact"]["with_optimised_order"]["counterfactual_usd"] == opt["headline"]["counterfactual_usd"]

@@ -3,7 +3,6 @@ import threading
 
 import pytest
 
-from blastradius import offline_llm
 from blastradius.memory import PlanningMemory, as_prompt, covers, uncovered
 from blastradius.workflow import Engine
 from conftest import drive, make_services
@@ -152,35 +151,25 @@ def test_stats_and_concurrent_writers(tmp_path):
     assert PlanningMemory(path).stats()["runs"] == 2 + 30
 
 
-def test_memory_conditioned_second_run_passes_on_attempt_one(tmp_path, monkeypatch):
-    """Simulates the integration: the offline planner plans like a corrected model on attempt 1
-    only when its retrieved rules already warn against the naive mistakes."""
+def test_memory_conditioned_second_run_passes_on_attempt_one(tmp_path):
+    """Integrated loop: run 1 learns rules from its rejected first draft; the next run retrieves them and the
+    planner's first attempt passes. (Offline, the stand-in switches to its corrected draft when the retrieved
+    rules cover its scripted mistakes; with a live model the rules reach it through the prompt.)"""
     sv = make_services(tmp_path)
-    mem, eng = PlanningMemory.from_services(sv), Engine(sv)
-    retrieved: list[int] = []
-    naive_planner = offline_llm.planner
-
-    def planner(ctx):
-        rules = mem.retrieve({"components": ctx["components"]},
-                             {"servers": ctx["target_servers"], "switches": ctx["target_switches"],
-                              "clusters": sorted(set(ctx["server_cluster"].values()))})
-        retrieved.append(len(rules))
-        return naive_planner(dict(ctx, naive_first=not covers(rules, *NAIVE)) if ctx["attempt"] == 1 else ctx)
-
-    monkeypatch.setattr(offline_llm, "planner", planner)
+    eng = Engine(sv)
     results = []
     for _ in range(2):
-        retrieved.clear()
         r, _ = drive(eng)
         st = eng.state(r["run_id"])
-        for a in st["attempts"]:
-            mem.learn(r["run_id"], a.get("feedback"), a, sv.runs[r["run_id"]]["topo"])
-        mem.record_run(r["run_id"], st["attempts"][0]["passed"], len(st["attempts"]), retrieved[0])
-        results.append((st["attempts"][0]["passed"], len(st["attempts"]), retrieved[0]))
-        sv.reset_lab(forget_lessons=False)  # "New run": keep the rollback lesson, restore the twin
+        a1 = st["attempts"][0]
+        results.append((a1["passed"], len(st["attempts"]), len(a1["memory_rules"]), a1["provenance"]))
+        sv.reset_lab(forget_lessons=False)  # "New run": keep the rollback lesson and the planning rules
 
-    assert results[0] == (False, 2, 0)
-    assert results[1][:2] == (True, 1) and results[1][2] > 0
-    s = mem.stats()
-    assert s["first_attempt_pass_rate"] == 0.5 and s["with_memory"]["first_attempt_pass_rate"] == 1.0
-    assert s["without_memory"]["first_attempt_pass_rate"] == 0.0 and s["rules"] >= 15
+    assert results[0][:3] == (False, 2, 0) and "scripted" in results[0][3]
+    assert results[1][:2] == (True, 1) and results[1][2] > 0 and "memory" in results[1][3]
+    s = sv.memory.stats()
+    assert s["runs"] == 2 and s["first_attempt_pass_rate"] == 0.5
+    assert s["with_memory"]["first_attempt_pass_rate"] == 1.0 and s["without_memory"]["first_attempt_pass_rate"] == 0.0
+    assert s["rules"] >= 15
+    sv.reset_lab(forget_lessons=True)  # "Reset lab" forgets them
+    assert sv.memory.stats()["rules"] == 0

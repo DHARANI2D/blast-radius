@@ -32,7 +32,13 @@ def test_full_story_with_canary_regression(engine, sv):
     # counterfactual: a risk-ranked canary of the same size would have missed it
     cf = st["counterfactual"]
     assert not cf["risk_ranked_would_catch"] and "payments-db-01" in cf["exposed_tier0_vms"]
-    assert st["avoided_cost_usd"] == 1_200_000
+    # business impact replayed on the twin against the conventional baseline (risk-ranked canary, greedy ordering)
+    biz = st["business_impact"]
+    assert st["avoided_cost_usd"] == biz["avoided"]["usd"] > 0
+    assert "payments-db-01" in biz["counterfactual"]["tier0_vms"] and biz["counterfactual"]["cost"]["sev1"]
+    assert biz["itic_reference"]["flat_usd"] == 1_200_000  # cross-check only, never the headline
+    # the risk-aware ordering alone would also have kept the regression away from tier-0
+    assert biz["with_optimised_order"]["tier0_vms"] == [] and biz["with_optimised_order"]["counterfactual_usd"] < biz["headline"]["counterfactual_usd"]
     assert sv.ledger.verify()["ok"]
 
 

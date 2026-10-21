@@ -173,9 +173,10 @@ TEMPLATES: dict[str, list[str]] = {
 }
 
 # Violation codes constraints.check_plan can emit. A mutation that expects any other code
-# (DEFERRED) probes a rule the constraint checker does not have.
+# probes a rule the constraint checker does not have. (DEFERRED was such a gap until the
+# benchmark found it; the rule now exists.)
 CHECK_PLAN_CODES = {"UNKNOWN_ASSET", "REDUNDANT_PAIR", "PLANNED_OUTAGE", "CLUSTER_CAPACITY", "WAVE_SIZE", "CANARY_FIRST",
-                    "CANARY_COVERAGE", "COVERAGE", "WINDOW"}
+                    "CANARY_COVERAGE", "COVERAGE", "WINDOW", "DEFERRED"}
 
 HALLUCINATION_KINDS = ("swap_cve", "deny_known_issue", "fake_dual_homing", "fake_single_homing", "pair_safe_together",
                        "inflate_capacity", "wrong_install_order", "wrong_duration")

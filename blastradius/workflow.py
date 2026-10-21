@@ -34,7 +34,9 @@ from .agents.executor import ExecutionHalted
 from .agents.reporter import plan_hash
 from .canary_stats import analyse_wave, changed_assets, params as stat_params, summary as stat_summary
 from .cohorts import build as build_cohorts, coverage, risk_ranked_canary
+from .business import counterfactual_impact
 from .constraints import check_plan
+from .premortem import card_view as premortem_view, compare as compare_premortem, premortem as run_premortem
 from .optimizer import describe as describe_optimization, optimize, regrounded
 from .llm import LLMError
 from .mcp_layer import ToolCallError
@@ -64,6 +66,9 @@ class RunState(TypedDict, total=False):
     rollback: dict
     lesson: dict
     counterfactual: dict
+    business_impact: dict
+    premortem: dict
+    premortem_compare: list
     avoided_cost_usd: float
     report: dict
     timeline: Annotated[list, operator.add]
@@ -138,7 +143,8 @@ def build_graph(sv):
         p = out["plan"]
         cons = check_plan(p, topo, targets["servers"] + targets["switches"], cr["components"], pol,
                           cr["window"]["duration_minutes"], [d["asset"] for d in risk["deferred"]])
-        attempts.append({"attempt": n, "plan": p, "provenance": out["provenance"], "constraints": cons, "llm": out["llm"]})
+        attempts.append({"attempt": n, "plan": p, "provenance": out["provenance"], "constraints": cons, "llm": out["llm"],
+                         "memory_rules": out.get("memory_rules", [])})
         log(state, "agent:planner", "plan_proposed", {"attempt": n, "provenance": out["provenance"], "plan_hash": plan_hash(p),
                                                        "waves": [w["assets"] for w in p["waves"]], "llm": out["llm"]})
         log(state, "code:constraints", "constraint_check", {"attempt": n, "ok": cons["ok"], "violations": cons["violations"],
@@ -149,7 +155,11 @@ def build_graph(sv):
         detail = (f"attempt {n} ({out['provenance']}{note}): {len(p['waves'])} waves, max Blast-Radius Score {cons['max_brs']:.0f}{cov_txt}; "
                   + ("all constraints satisfied" if cons["ok"] else f"{len(cons['violations'])} violation(s): "
                      + "; ".join(v["message"] for v in cons["violations"][:2])))
-        return {"attempts": attempts, "timeline": _t("planner", "proposed", detail, level)}
+        tl = _t("planner", "proposed", detail, level)
+        if out.get("memory_rules"):
+            tl = _t("memory", "retrieved", f"{len(out['memory_rules'])} planning rule(s) from earlier rejected plans given to the planner: "
+                                           + ", ".join(out["memory_rules"][:3]) + ("..." if len(out["memory_rules"]) > 3 else "")) + tl
+        return {"attempts": attempts, "timeline": tl}
 
     def optimise(state: RunState):
         """Risk-aware wave optimizer: improves a feasible plan under the same hard constraints.
@@ -169,12 +179,18 @@ def build_graph(sv):
         cur["optimization"] = summary
         if res["improved"]:
             new_plan = res["plan"]
+            new_cons = check_plan(new_plan, topo, targets["servers"] + targets["switches"], cr["components"], pol,
+                                  cr["window"]["duration_minutes"], [d["asset"] for d in risk["deferred"]])
             if cur["provenance"] == "deterministic-solver":
                 new_plan = regrounded(new_plan, topo, targets, pol, cr["components"], risk["deferred"])
+            else:
+                # The planner's sentences described the old ordering; it re-explains the waves that will run,
+                # and the Verifier checks that explanation.
+                exp = planner_a.explain(new_plan["waves"], cr, targets, risk, topo, new_cons["total_duration_min"])
+                new_plan = {**new_plan, "rationale": exp["rationale"], "self_confidence": exp["self_confidence"]}
             cur["plan_before_optimization"] = cur["plan"]
             cur["plan"] = new_plan
-            cur["constraints"] = check_plan(new_plan, topo, targets["servers"] + targets["switches"], cr["components"], pol,
-                                            cr["window"]["duration_minutes"], [d["asset"] for d in risk["deferred"]])
+            cur["constraints"] = new_cons
         attempts[-1] = cur
         log(state, "code:optimizer", "plan_optimized" if res["improved"] else "plan_not_improved",
             {"attempt": cur["attempt"], "plan_hash": plan_hash(cur["plan"]), "before": res["before"], "after": res["after"],
@@ -207,10 +223,33 @@ def build_graph(sv):
         tl = _t("verifier", "scored", detail, "success" if ver["passed"] else "error")
         for cl in [x for x in ver["claims"] if x["label"] == "Contradicted"][:3]:
             tl += _t("verifier", "contradicted", f"\"{cl['text']}\" - {cl['explanation']}", "error")
+        if not passed and pol.get("memory.enabled", True):
+            learned = sv.memory.learn(state["run_id"], cur["feedback"], cur, topo_of(state))
+            log(state, "agent:planner_memory", "rules_learned", {"attempt": cur["attempt"],
+                                                                  "rules": [{k: r[k] for k in ("key", "hits", "evidence")} for r in learned]})
+            if learned:
+                tl += _t("memory", "learned", f"{len(learned)} planning rule(s) learned or reinforced for next time: "
+                                              + "; ".join(r["key"] for r in learned[:3]) + ("..." if len(learned) > 3 else ""))
         upd: dict[str, Any] = {"attempts": attempts, "timeline": tl}
         if passed:
             upd.update(plan=cur["plan"], plan_hash=plan_hash(cur["plan"]), plan_provenance=cur["provenance"],
                        verification=ver, constraints=cons, status="awaiting_canary_approval")
+            # Pre-mortem (assumption-driven Monte Carlo) of the accepted plan, against the first draft when there was one.
+            topo, risk, comps = topo_of(state), state["risk"], state["change_request"]["components"]
+            samples, seed = int(pol.get("premortem.samples", 2000)), int(pol.get("premortem.seed", 11))
+            if len(attempts) > 1:
+                pm = compare_premortem({"attempt 1": attempts[0]["plan"], "accepted": cur["plan"]}, topo, risk, pol, comps, samples, seed)
+                acc, rows = pm["results"]["accepted"], pm["rows"]
+            else:
+                acc, rows = run_premortem(cur["plan"], topo, risk, pol, comps, samples, seed), None
+            view = premortem_view(acc)
+            upd.update(premortem=view, premortem_compare=rows)
+            log(state, "code:premortem", "premortem", {k: acc[k] for k in ("p_tier0_loss", "p_tier0_loss_ci95", "p_tier0_loss_attributable",
+                                                                          "expected_vms_lost", "p95_vms_lost", "worst_wave", "assumptions")})
+            upd["timeline"] = tl + _t("premortem", "estimated",
+                                      f"pre-mortem (assumption-driven): P(tier-0 outage) {acc['p_tier0_loss']:.2%} over the change"
+                                      + (f" vs {rows[0]['p_tier0_loss']:.0%} for attempt 1" if rows else "")
+                                      + f"; worst wave {acc['worst_wave']}")
         return upd
 
     def after_verify(state: RunState) -> str:
@@ -263,6 +302,8 @@ def build_graph(sv):
             "top_risks": [{"asset": r["asset"], "score": r["score"], "reasons": r["reasons"][:2]} for r in top],
             "rollback_plan": rollback_plan,
             "canary_coverage": cons.get("canary_coverage"),
+            "premortem": state.get("premortem"),
+            "premortem_compare": state.get("premortem_compare"),
             "risk_ranked_coverage": _risk_ranked_coverage(state),
         }
         if scope == "fleet":
@@ -419,7 +460,10 @@ def build_graph(sv):
             log(state, "agent:reporter", "lesson_recorded", {"incident": lesson, "evidence": ev})
             upd["lesson"] = lesson
             tl += _t("reporter", "learned", f"{lesson['id']}: {lesson['symptom']} {lesson['lesson']}", "warn")
-            cf = rep_a.counterfactual(lesson, state["plan"], state["risk"], topo, state["change_request"]["components"])
+            # The conventional baseline: risk-ranked canary on the greedy (un-optimised) ordering.
+            accepted = next((a for a in reversed(state["attempts"]) if a.get("passed")), {})
+            baseline = accepted.get("plan_before_optimization") or state["plan"]
+            cf = rep_a.counterfactual(lesson, baseline, state["risk"], topo, state["change_request"]["components"])
             upd["counterfactual"] = cf
             log(state, "agent:reporter", "counterfactual", cf)
             if not cf["risk_ranked_would_catch"] and cf["exposed_hosts"]:
@@ -429,13 +473,27 @@ def build_graph(sv):
                          f"has no affected host and would have passed. Wave {cf['first_exposed_wave']} would then have started flashing "
                          f"{len(cf['exposed_hosts'])} affected hosts running {cf['exposed_vms']} VMs"
                          + (f", {len(t0)} of them tier-0 ({', '.join(t0[:3])})" if t0 else "") + ".", "warn")
-        hours = float(pol.get("business.assumed_outage_hours", 4))
-        rate = float(pol.get("business.downtime_cost_per_hour_usd", 300000))
-        upd["avoided_cost_usd"] = hours * rate
+        if lesson:
+            comps = state["change_request"]["components"]
+            biz = counterfactual_impact(lesson, baseline, topo, pol, comps, risk=state["risk"], actual_exec=cur)
+            if baseline is not state["plan"]:
+                opt = counterfactual_impact(lesson, state["plan"], topo, pol, comps, risk=state["risk"], actual_exec=cur)
+                biz["with_optimised_order"] = {"counterfactual_usd": opt["headline"]["counterfactual_usd"],
+                                               "vm_hours": opt["counterfactual"]["vm_hours"],
+                                               "tier0_vms": opt["counterfactual"]["tier0_vms"],
+                                               "detected_wave": opt["counterfactual"]["detected_wave"]}
+            upd["business_impact"] = biz
+            upd["avoided_cost_usd"] = biz["avoided"]["usd"]
+            log(state, "agent:reporter", "business_impact", {k: biz.get(k) for k in ("headline", "avoided", "assumptions", "itic_reference",
+                                                                                     "with_optimised_order")})
+            tl += _t("reporter", "business_impact", biz["headline"]["text"], "warn")
         upd["timeline"] = tl
         return upd
 
     def report(state: RunState):
+        atts = state.get("attempts") or []
+        if atts:
+            sv.memory.record_run(state["run_id"], bool(atts[0].get("passed")), len(atts), len(atts[0].get("memory_rules", [])))
         rep = rep_a.run(dict(state))
         log(state, "agent:reporter", "report_signed", {"signature": rep["signature"], "outcome": rep["outcome"], "path": rep["path"]})
         return {"report": rep, "timeline": _t("reporter", "report", f"signed post-change report ({rep['outcome']}): {rep['summary']}",

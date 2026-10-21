@@ -229,6 +229,9 @@ class ReporterAgent:
             "diagnosis": (state.get("lesson") or {}).get("diagnosis"),
             "counterfactual": state.get("counterfactual"),
             "avoided_cost_usd": state.get("avoided_cost_usd"),
+            "business_impact": state.get("business_impact"),
+            "premortem": state.get("premortem"),
+            "planning_memory": sv.memory.stats() if sv.memory else None,
             "ledger": {"entries": verify["entries"], "chain_ok": verify["ok"], "head": verify.get("head")},
             "model": {"planner": sv.llm.model, "verifier": sv.verifier_llm.model},
         }
@@ -277,6 +280,30 @@ class ReporterAgent:
                       f"would have caught the regression: {cf['risk_ranked_would_catch']}",
                       f"- Affected hosts in later waves: {len(cf['exposed_hosts'])} ({cf['exposed_vms']} VMs, "
                       f"{len(cf['exposed_tier0_vms'])} tier-0), first in wave {cf['first_exposed_wave']}"]
+        if r.get("business_impact"):
+            from ..business import markdown as business_md
+
+            lines += ["", business_md(r["business_impact"])]
+        pm = r.get("premortem")
+        if pm:
+            lines += ["", "## Pre-mortem (assumption-driven, not measured)",
+                      f"P(tier-0 outage over the change) {pm.get('p_tier0_loss', 0):.2%}; expected VMs lost {pm.get('expected_vms_lost', 0):.2f}"]
+        mem = r.get("planning_memory")
+        if mem:
+            lines += ["", "## Planning memory",
+                      f"{mem.get('rules', 0)} rules; first-attempt pass rate {mem.get('first_attempt_pass_rate')} over {mem.get('runs', 0)} run(s)"]
+        if r.get("business_impact"):
+            from ..business import markdown as business_md
+
+            lines += ["", business_md(r["business_impact"])]
+        pm = r.get("premortem")
+        if pm:
+            lines += ["", "## Pre-mortem (assumption-driven, not measured)",
+                      f"P(tier-0 outage over the change) {pm.get('p_tier0_loss', 0):.2%}; expected VMs lost {pm.get('expected_vms_lost', 0):.2f}"]
+        mem = r.get("planning_memory")
+        if mem:
+            lines += ["", "## Planning memory",
+                      f"{mem.get('rules', 0)} rules; first-attempt pass rate {mem.get('first_attempt_pass_rate')} over {mem.get('runs', 0)} run(s)"]
         lines += ["", "## Approvals"] + [f"- {a['scope']}: {a['approver']} {a['decision']} (sig `{a['signature'][:16]}...`)" for a in r["approvals"]]
         lines += ["", "## Integrity",
                   f"Ledger entries: {r['ledger']['entries']}, chain verified: {r['ledger']['chain_ok']}, head `{(r['ledger']['head'] or '')[:16]}`  ",

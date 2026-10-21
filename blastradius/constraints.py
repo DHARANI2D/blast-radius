@@ -122,6 +122,10 @@ def check_plan(plan: dict, topo: Topology, targets: list[str], components: list[
             v("CANARY_COVERAGE", f"canary covers {cov['covered']}/{cov['total']} configuration cohorts; untested: "
               + "; ".join(f"{m['label']} ({m['size']} hosts)" for m in miss), 1, [])
 
+    rescheduled = sorted(a for a in seen if a in deferred)
+    if rescheduled:
+        v("DEFERRED", f"plan upgrades {len(rescheduled)} deferred asset(s) that match a known regression: "
+          f"{rescheduled[:6]}{'...' if len(rescheduled) > 6 else ''}", None, rescheduled)
     dupes = [a for a, n in seen.items() if n > 1]
     if dupes:
         v("COVERAGE", f"assets scheduled more than once: {dupes}", None, dupes)
