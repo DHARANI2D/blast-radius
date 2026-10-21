@@ -19,6 +19,7 @@ from collections import Counter
 from ..cohorts import build as build_cohorts, coverage
 from ..constraints import impact_kwargs, wave_duration
 from ..llm import load_prompt
+from ..mcp_layer import ToolCallError
 from ..models import ClaimList, Judgement
 from ..topology import Topology
 
@@ -54,6 +55,12 @@ class VerifierAgent:
         tail = [k for k in known if k.endswith(v.lstrip("vV"))]
         return tail[0] if tail else v
 
+    def _inventory_name(self, tool: str, name: str) -> tuple[str | None, str]:
+        """Resolve a server or cluster name against the (complete) inventory, ignoring case."""
+        items, ev = self.call(tool)
+        names = {x["name"].lower(): x["name"] for x in items}
+        return names.get(str(name).strip().lower()), ev
+
     def _uplinks(self) -> tuple[dict[str, set[str]], str]:
         lldp, ev = self.call("network.get_lldp_neighbors")
         ups: dict[str, set[str]] = {}
@@ -71,6 +78,8 @@ class VerifierAgent:
             return fn(claim["args"], ctx)
         except (KeyError, TypeError, ValueError) as exc:
             return "Unverifiable", f"claim arguments could not be checked ({exc})", []
+        except ToolCallError as exc:  # one bad claim must not abort the whole verification
+            return "Unverifiable", f"evidence could not be gathered ({exc})", [exc.evidence_id]
 
     def _c_fixes_cve(self, a, ctx):
         comp, cve = a["component"], a["cve"]
@@ -79,7 +88,10 @@ class VerifierAgent:
         advs, e2 = self.call("knowledge.list_advisories", cve=cve)
         if rn.get("found") is not False and cve in rn.get("security_fixes", []):
             return "Supported", f"{rn['id']} lists {cve} among its security fixes.", [e1]
-        elsewhere = [x for x in advs if (x.get("fixed_in") or {}).get("version") != ver]
+        here = [x for x in advs if ((x.get("fixed_in") or {}).get("component"), (x.get("fixed_in") or {}).get("version")) == (comp, ver)]
+        if here:
+            return "Supported", f"{here[0]['id']} says {cve} is fixed in {comp} {ver}.", [e2]
+        elsewhere = [x for x in advs if x.get("fixed_in")]  # each names a different fixed-in component/version
         detail = "; ".join(f"{x['id']} says {cve} is fixed in {x['fixed_in']['component']} {x['fixed_in']['version']}" for x in elsewhere)
         if rn.get("found") is not False and rn.get("security_fixes_complete"):
             msg = f"{rn['id']} lists security fixes {', '.join(rn['security_fixes'])}; {cve} is not among them"
@@ -101,8 +113,19 @@ class VerifierAgent:
             return "Unverifiable", f"no release notes for {comp} {ver}.", [e1]
         return "Supported", f"{rn['id']} lists no known issues and no advisory or incident matches.", [e1, e2, e3]
 
+    def _known_pair(self, a) -> tuple[dict | None, str, str]:
+        """Resolve both switch names against the network inventory (unknown names used to crash get_switch)."""
+        x, ev = self._inventory_name("network.list_switches", a["a"])
+        y, _ = self._inventory_name("network.list_switches", a["b"])
+        missing = a["a"] if x is None else a["b"] if y is None else ""
+        return (None if missing else {**a, "a": x, "b": y}), ev, missing
+
     def _c_pair_safe_together(self, a, ctx):
         topo: Topology = ctx["topo"]
+        known, e0, missing = self._known_pair(a)
+        if known is None:
+            return "Contradicted", f"the network inventory has no switch named {missing}.", [e0]
+        a = known
         sw, e1 = self.call("network.get_switch", name=a["a"])
         peer = (sw.get("redundancy") or {}).get("peer")
         imp = topo.simulate([a["a"], a["b"]], [], **impact_kwargs(self.sv.policy))
@@ -124,6 +147,10 @@ class VerifierAgent:
         return "Supported", "simulation shows no workload impact with both switches down.", ev
 
     def _c_pair_staggered(self, a, ctx):
+        known, e0, missing = self._known_pair(a)
+        if known is None:
+            return "Contradicted", f"the network inventory has no switch named {missing}.", [e0]
+        a = known
         sw, e1 = self.call("network.get_switch", name=a["a"])
         where = {x: [i for i, w in enumerate(ctx["plan"]["waves"], 1) if x in w["assets"]] for x in (a["a"], a["b"])}
         if not where[a["a"]] or not where[a["b"]]:
@@ -135,15 +162,21 @@ class VerifierAgent:
     def _c_all_dual_homed(self, a, ctx):
         clusters, e1 = self.call("virt.list_clusters")
         ups, e2 = self._uplinks()
-        cl = next((c for c in clusters if c["name"] == a["cluster"]), None)
+        cl = next((c for c in clusters if c["name"].lower() == str(a["cluster"]).strip().lower()), None)
         if not cl:
-            return "Unverifiable", f"cluster {a['cluster']} not found.", [e1]
+            return "Contradicted", f"the virtualization inventory has no cluster named {a['cluster']}.", [e1]
         single = [h for h in cl["hosts"] if len(ups.get(h, set())) < 2]
         if single:
             return "Contradicted", f"LLDP shows {', '.join(single)} with fewer than two live uplinks.", [e1, e2]
         return "Supported", f"all {len(cl['hosts'])} hosts have two live uplinks in LLDP.", [e1, e2]
 
     def _homed(self, server, want_single):
+        # A name the inventory does not know has no LLDP neighbours either; without this
+        # check a hallucinated host would read as "single-homed" and be Supported.
+        name, e0 = self._inventory_name("compute.list_servers", server)
+        if name is None:
+            return "Contradicted", f"the compute inventory has no server named {server}.", [e0]
+        server = name
         ups, ev = self._uplinks()
         n = len(ups.get(server, set()))
         is_single = n < 2
@@ -168,11 +201,14 @@ class VerifierAgent:
         return max_down, [e1, e2, e3]
 
     def _c_cluster_capacity(self, a, ctx):
-        max_down, ev = self._cluster_max_down(a["cluster"])
+        cluster, e0 = self._inventory_name("virt.list_clusters", a["cluster"])
+        if cluster is None:  # previously raised StopIteration and aborted the whole verification
+            return "Contradicted", f"the virtualization inventory has no cluster named {a['cluster']}.", [e0]
+        max_down, ev = self._cluster_max_down(cluster)
         n = int(a["hosts"])
         if n <= max_down:
-            return "Supported", f"{a['cluster']} can absorb up to {max_down} hosts in maintenance at its utilisation ceiling.", ev
-        return "Contradicted", f"{a['cluster']} can absorb at most {max_down} hosts in maintenance; {n} would overload it.", ev
+            return "Supported", f"{cluster} can absorb up to {max_down} hosts in maintenance at its utilisation ceiling.", ev
+        return "Contradicted", f"{cluster} can absorb at most {max_down} hosts in maintenance; {n} would overload it.", ev
 
     def _c_per_wave_cap(self, a, ctx):
         topo: Topology = ctx["topo"]
@@ -244,8 +280,8 @@ class VerifierAgent:
             return "Contradicted", "simulation finds outages in " + ", ".join(f"wave {i} ({n} VMs)" for i, n in bad) + ".", [e]
         return "Supported", "independent re-simulation of every wave finds no workload outage.", [e]
 
-    def _c_install_order(self, a, ctx):
-        first, second = a["first"], a["second"]
+    def _stated_order(self, first: str, second: str, ctx) -> tuple[str | None, list[str]]:
+        """Release-note sentence saying ``first`` is updated before ``second``, if any."""
         versions = {v.get(second) for v in ctx["target_versions"].values() if v.get(second)}
         ev = []
         for ver in sorted(versions):
@@ -253,12 +289,23 @@ class VerifierAgent:
             ev.append(e)
             text = (rn.get("install_notes", "") + " " + rn.get("text", "")).lower()
             if f"update {first.lower()} before {second.lower()}" in text or f"update {first.lower().split()[0]} first" in text:
-                return "Supported", f"{rn['id']} instructs updating {first} before {second}.", ev
+                return f"{rn['id']} instructs updating {first} before {second}.", ev
         for r in self.sv.kb.release_notes:
             if r["component"] == first and f"before {second.lower()}" in r.get("install_notes", "").lower():
                 rn, e = self.call("knowledge.get_release_notes", component=first, version=r["version"])
-                return "Supported", f"{rn['id']}: {rn['install_notes']}", ev + [e]
-        return "Unverifiable", f"release notes do not state an order for {first} and {second}.", ev
+                return f"{rn['id']}: {rn['install_notes']}", ev + [e]
+        return None, ev
+
+    def _c_install_order(self, a, ctx):
+        first, second = a["first"], a["second"]
+        said, ev = self._stated_order(first, second, ctx)
+        if said:
+            return "Supported", said, ev
+        # The notes may state the opposite order, which contradicts the claim.
+        said, ev2 = self._stated_order(second, first, ctx)
+        if said:
+            return "Contradicted", f"the release notes give the opposite order: {said}", ev + ev2
+        return "Unverifiable", f"release notes do not state an order for {first} and {second}.", ev + ev2
 
     def _c_in_window(self, a, ctx):
         topo: Topology = ctx["topo"]
