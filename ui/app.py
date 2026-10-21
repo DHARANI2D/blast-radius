@@ -93,6 +93,16 @@ with st.sidebar:
     kill = st.toggle("Kill switch", value=os.environ.get("BR_KILL_SWITCH") == "on",
                      help="Blocks every write action immediately (checked by the policy guard before each write).")
     os.environ["BR_KILL_SWITCH"] = "on" if kill else "off"
+    with st.expander("HPE GreenLake MCP (gl-mcp)"):
+        from blastradius.greenlake import doctor
+
+        rep = doctor(sv.settings)
+        st.markdown(("🟢 ready" if rep.get("ready") else "⚪ not ready") + f" · transport: {rep.get('transport') or 'not configured'}")
+        for k, v in (rep.get("env") or {}).items():
+            st.caption(f"{k}: {v}")
+        for prob in rep.get("problems", [])[:4]:
+            st.caption(f"• {prob}")
+        st.caption("Read-only device inventory from HPE's devices MCP server. See docs/GREENLAKE_MCP.md.")
     st.divider()
     st.caption("Synthetic lab digital twin (BLR-POD-1). Firmware, CVE and advisory IDs are fictitious. No customer data.")
 
@@ -195,6 +205,12 @@ with main:
             st.caption("Red outline/edge: single-homed host · dashed red: dead uplink · purple: storage array ports · blue: VSX/MC-LAG peer link · "
                        "dotted amber: tier-0 service placement · dashed grey node: deferred by learned regression")
             if risk.get("assets"):
+                gl = (state.get("topology") or {}).get("greenlake") or {}
+                if gl.get("enabled") and gl.get("ok"):
+                    st.markdown(f"**GreenLake inventory:** {gl.get('devices_seen', 0)} devices seen, {gl.get('matched_twin_servers', 0)} matched to "
+                                f"twin servers over {gl.get('pages', '?')} page(s)." + (f" {gl['note']}" if gl.get("note") else ""))
+                elif gl.get("enabled"):
+                    st.warning(f"GreenLake enrichment failed (discovery continued without it): {gl.get('error')}")
                 st.markdown("##### Risk & Advisory agent")
                 rows = [{"asset": a, "kind": r["kind"], "risk": r["score"], "deferred": "yes" if r["blocked"] else "",
                          "why": " · ".join(r["reasons"][:3]), "evidence": ", ".join(r["evidence"][:4])}
@@ -235,6 +251,20 @@ with main:
                 cdf = pd.DataFrame([{"": LABEL_ICON[x["label"]], "claim": x["text"], "verdict": x["label"], "why": x["explanation"],
                                      "evidence": ", ".join(x["evidence"])} for x in v["claims"]])
                 st.dataframe(cdf, hide_index=True, width="stretch")
+                opt = a.get("optimization")
+                if opt:
+                    b, af = opt["before"], opt["after"]
+                    st.markdown(f"**Risk-aware wave optimizer** · {opt['status'].replace('_', ' ')} · "
+                                f"objective J {b['J']:.0f} → {af['J']:.0f} ({(af['J'] - b['J']) / b['J'] * 100:+.0f}%), "
+                                f"{opt['stats']['iterations']} iterations in {opt['stats']['elapsed_s']:.1f}s. The Verifier above checked the optimised waves.")
+                    st.dataframe(pd.DataFrame([{"": "before", **{k: b[k] for k in ("waves", "duration_min", "sum_brs", "max_brs", "exposure", "J")}},
+                                               {"": "after", **{k: af[k] for k in ("waves", "duration_min", "sum_brs", "max_brs", "exposure", "J")}}]),
+                                 hide_index=True, width="stretch")
+                    moved = [c for c in opt["changes"] if c["weight"] >= 1]
+                    if moved:
+                        st.caption("Moved later so more of the plan is proven first: " + "; ".join(
+                            f"{c['asset']} wave {c['from_wave']} → {c['to_wave']} ({c['validated_before_pct'][0]:.0f}% → "
+                            f"{c['validated_before_pct'][1]:.0f}% validated before it)" for c in moved[:4]))
         with st.expander("Evidence viewer (every tool call is citable)"):
             ids = [e["id"] for e in sv.evidence.all()]
             if ids:
