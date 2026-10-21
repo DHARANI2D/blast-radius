@@ -139,6 +139,23 @@ def cmd_a2a(args) -> int:
     return 0
 
 
+def cmd_a2a_serve(args) -> int:
+    from .a2a_server import A2AService, make_server
+    from .services import Services
+    from .workflow import Engine
+
+    sv = Services.create(tool_transport=args.transport)
+    svc = A2AService(Engine(sv))
+    srv = make_server(svc, host=args.host, port=args.port)
+    print(f"A2A endpoint (read-only assess-change skill): {svc.base_url}/a2a")
+    print(f"Agent card: {svc.base_url}/.well-known/agent-card.json")
+    try:
+        srv.serve_forever()
+    except KeyboardInterrupt:
+        pass
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(prog="blastradius", description="Agentic change-safety mesh (HPE Agentic AI Hackathon 2026 PoC)")
     sub = p.add_subparsers(dest="cmd", required=True)
@@ -162,6 +179,11 @@ def main(argv: list[str] | None = None) -> int:
     m.add_argument("domain", choices=["compute", "network", "virt", "telemetry", "knowledge"])
     m.set_defaults(fn=cmd_mcp_serve)
     sub.add_parser("a2a-card", help="print the A2A agent card").set_defaults(fn=cmd_a2a)
+    a2 = sub.add_parser("a2a-serve", help="serve the read-only assess-change skill over A2A (JSON-RPC)")
+    a2.add_argument("--host", default="127.0.0.1")
+    a2.add_argument("--port", type=int, default=8765)
+    a2.add_argument("--transport", choices=["mcp", "inproc"], default="mcp")
+    a2.set_defaults(fn=cmd_a2a_serve)
     args = p.parse_args(argv)
     return args.fn(args)
 

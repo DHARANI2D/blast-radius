@@ -53,8 +53,14 @@ class LLMClient:
     mode: str
     history: list[CallRecord] = field(default_factory=list)
 
+    supports_tools = False
+
     def complete_json(self, role: str, system: str, user: str, schema: type[BaseModel], context: dict,
                       temperature: float = 0.2) -> BaseModel:
+        raise NotImplementedError
+
+    def chat_tools(self, role: str, messages: list[dict], tools: list[dict], temperature: float = 0.0) -> dict:
+        """One function-calling turn. Returns {"content", "tool_calls": [{"id", "name", "arguments"}], "message"}."""
         raise NotImplementedError
 
     def last(self) -> dict:
@@ -86,9 +92,14 @@ class OpenAICompatClient(LLMClient):
         self.timeout_s = timeout_s
         self.redact = redact
 
+    supports_tools = True
+
     def _post(self, messages: list[dict], temperature: float) -> str:
-        body: dict[str, Any] = {"messages": messages, "temperature": temperature,
-                                "response_format": {"type": "json_object"}}
+        msg = self._request({"messages": messages, "temperature": temperature, "response_format": {"type": "json_object"}})
+        return msg["content"]
+
+    def _request(self, body: dict[str, Any]) -> dict:
+        """POST a chat-completions request and return ``choices[0].message``."""
         headers = {"Content-Type": "application/json"}
         if self.mode == "azure":
             url = f"{self.base_url}/openai/deployments/{self.model}/chat/completions?api-version={self.api_version}"
@@ -107,9 +118,29 @@ class OpenAICompatClient(LLMClient):
         except urllib.error.URLError as e:
             raise LLMError(f"LLM endpoint unreachable: {e.reason}") from e
         try:
-            return data["choices"][0]["message"]["content"]
+            msg = data["choices"][0]["message"]
         except (KeyError, IndexError, TypeError) as e:
             raise LLMError(f"unexpected LLM response shape: {str(data)[:300]}") from e
+        if not isinstance(msg, dict):
+            raise LLMError(f"unexpected LLM message: {str(msg)[:300]}")
+        return msg
+
+    def chat_tools(self, role, messages, tools, temperature=0.0):
+        safe = [dict(m, content=self.redact(m["content"])) if isinstance(m.get("content"), str) else m for m in messages]
+        t0 = time.time()
+        msg = self._request({"messages": safe, "temperature": temperature, "tools": tools, "tool_choice": "auto"})
+        calls = []
+        for tc in msg.get("tool_calls") or []:
+            fn = tc.get("function") or {}
+            raw = fn.get("arguments") or "{}"
+            try:
+                args = json.loads(raw) if isinstance(raw, str) else dict(raw)
+            except (json.JSONDecodeError, TypeError, ValueError):
+                args = {}
+            calls.append({"id": tc.get("id") or f"call_{len(calls)}", "name": fn.get("name", ""), "arguments": args})
+        self.history.append(CallRecord(role, self.model, _sha(json.dumps(safe, default=str)), int((time.time() - t0) * 1000), True,
+                                       f"{len(calls)} tool call(s)"))
+        return {"content": msg.get("content"), "tool_calls": calls, "message": msg}
 
     def complete_json(self, role, system, user, schema, context, temperature=0.2):
         messages = [{"role": "system", "content": self.redact(system)}, {"role": "user", "content": self.redact(user)}]

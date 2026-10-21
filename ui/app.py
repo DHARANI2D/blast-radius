@@ -20,6 +20,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
+from blastradius.agents.investigator import InvestigatorAgent  # noqa: E402
 from blastradius.cli import DEFAULT_INTENT  # noqa: E402
 from blastradius.constraints import wave_impact  # noqa: E402
 from blastradius.ledger import Ledger  # noqa: E402
@@ -146,7 +147,7 @@ risk = state.get("risk", {})
 attempts = state.get("attempts", [])
 
 with main:
-    tabs = st.tabs(["① Blast radius", "② Plan & Verifier", "③ Go / No-Go", "④ Execution", "⑤ Audit & report"])
+    tabs = st.tabs(["① Blast radius", "② Plan & Verifier", "③ Go / No-Go", "④ Execution", "⑤ Audit & report", "⑥ Ask"])
 
     # --------------------------------------------------------- blast radius
     with tabs[0]:
@@ -399,3 +400,38 @@ with main:
                 led.tamper(victim["seq"], {**victim["payload"], "approver": "mallory"})
                 v = led.verify()
                 st.error(f"Edited entry {victim['seq']} ({victim['event']}) in a copy: chain BROKEN at seq {v['broken_at']}.")
+
+    # ----------------------------------------------------------------- ask
+    with tabs[5]:
+        st.markdown("##### Ask BlastRadius")
+        st.caption("The Investigator answers from read-only MCP tool calls only, cites the evidence for every sentence, and the "
+                   "independent Verifier re-checks the answer. "
+                   + ("Offline mode: a deterministic router stands in for the model's tool choices."
+                      if not sv.llm.supports_tools else f"Tool choice by {sv.llm.model} (function calling)."))
+        examples = ["Why is tor-r1-a the riskiest asset?", "Does System ROM U54 v2.32 fix SYN-CVE-2026-1105?",
+                    "How many hosts of PROD-BLR-07 can be in maintenance at once?", "Tell me about blr-esx-07"]
+        ex_cols = st.columns(len(examples))
+        for col, ex in zip(ex_cols, examples):
+            if col.button(ex, key=f"ex-{ex}", width="stretch"):
+                st.session_state.ask_q = ex
+        with st.form("ask"):
+            q = st.text_input("Question", value=st.session_state.get("ask_q", examples[0]))
+            asked = st.form_submit_button("Ask", type="primary")
+        if asked and q.strip():
+            with st.spinner("Investigating over MCP..."):
+                st.session_state.setdefault("qa", []).insert(0, {"q": q, **InvestigatorAgent(sv).ask(q, state, topo)})
+        for qa in st.session_state.get("qa", [])[:5]:
+            v = qa["verification"]
+            with st.container(border=True):
+                st.markdown(f"**Q:** {qa['q']}")
+                st.markdown(f"**A:** {qa['answer']}")
+                k = st.columns(3)
+                k[0].metric("Answer Trust Score", f"{v['trust_score']:.0f}")
+                k[1].metric("Tool calls", len(qa["steps"]))
+                k[2].metric("Claims", sum(v["counts"].values()))
+                st.caption(f"Tool choice: {qa['mode']} · verifier: {v['verifier_model']}")
+                with st.expander("Claims and tool calls"):
+                    st.dataframe(pd.DataFrame([{"": LABEL_ICON[c["label"]], "claim": c["text"], "verdict": c["label"], "why": c["explanation"]}
+                                               for c in v["claims"]]), hide_index=True, width="stretch")
+                    st.dataframe(pd.DataFrame([{"tool": s["tool"], "args": json.dumps(s["args"]), "evidence": s["evidence"]}
+                                               for s in qa["steps"]]), hide_index=True, width="stretch")
