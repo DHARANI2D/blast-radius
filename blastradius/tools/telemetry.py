@@ -12,9 +12,11 @@ def tools(ctx: ToolContext) -> list[ToolSpec]:
         """Current golden signals (health, NIC latency, drops, CRC, reachability, VM heartbeats) for each asset."""
         return [twin.signals(a) for a in assets]
 
-    def get_metric_series(asset: str, metric: str, minutes: int = 10) -> list[dict]:
-        """Samples of one metric over the last N minutes."""
-        return twin.series(asset, metric, minutes)
+    def get_metric_series(asset: str, metric: str, minutes: int = 10, start_t: int | None = None,
+                          end_t: int | None = None) -> list[dict]:
+        """Samples of one metric over the last N minutes, or over the explicit window start_t..end_t
+        (simulated minutes, inclusive). Server nic_latency_ms and rx_drop_rate come from recorded history."""
+        return twin.series(asset, metric, minutes, start_t=start_t, end_t=end_t)
 
     def get_clock() -> dict:
         """Simulated wall clock of the lab, in minutes since the change window opened."""
