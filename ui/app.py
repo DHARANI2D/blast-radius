@@ -53,11 +53,11 @@ st.markdown(
 
 
 # ------------------------------------------------------------------ session
-def services(transport: str, faults: bool) -> tuple[Services, Engine]:
-    key = (transport, faults)
+def services(transport: str, scenario: str) -> tuple[Services, Engine]:
+    key = (transport, scenario)
     if st.session_state.get("svc_key") != key:
-        os.environ["BR_FAULTS"] = "on" if faults else "off"
-        sv = Services.create(tool_transport=transport, faults_enabled=faults)
+        os.environ["BR_FAULTS"] = scenario
+        sv = Services.create(tool_transport=transport, fault_scenario=scenario)
         st.session_state.update(svc_key=key, sv=sv, engine=Engine(sv), run=None, animated=set())
     return st.session_state.sv, st.session_state.engine
 
@@ -67,9 +67,12 @@ with st.sidebar:
     st.caption("Know what breaks before you break it.")
     transport = st.radio("Tool transport", ["mcp", "inproc"], horizontal=True,
                          help="mcp: every agent tool call goes through an MCP client session to the domain MCP server.")
-    faults = st.toggle("Inject canary fault", value=True,
-                       help="Firmware combination System ROM U54 v2.32 + NIC fw 229.x regresses NIC latency. Agents cannot see this rule.")
-    sv, engine = services(transport, faults)
+    SCENARIOS = {"on": "Canary regression (ROM + NIC 229.x, ~4x)", "subtle": "Subtle regression (~1.3x, below the 2x rule)",
+                 "backup": "Backup job slows every host (no fault)", "on+backup": "Regression during the backup job",
+                 "subtle+backup": "Subtle regression during the backup job", "off": "No faults"}
+    scenario = st.selectbox("Fault scenario", list(SCENARIOS), format_func=SCENARIOS.get,
+                            help="Injected into the twin. Agents cannot see these rules; they only observe telemetry.")
+    sv, engine = services(transport, scenario)
     desc = sv.bus.describe()
     st.markdown(f"**MCP servers:** {', '.join(desc['servers'])}  \n**Tools:** {len(desc['tools'])} ({len(desc['write_tools'])} write, token-gated)")
     st.markdown(f"**Planner:** `{sv.llm.model}`  \n**Verifier:** `{sv.verifier_llm.model}`")
@@ -357,6 +360,37 @@ with main:
                     st.markdown(f"<div class='{'br-banner-green' if rb['recovered'] else 'br-banner-red'}'><b>Rollback:</b> "
                                 + ", ".join(f"{x['asset']} {x['component']} → {x['to']}" for x in rb["reverted"])
                                 + f". Signals {'recovered' if rb['recovered'] else 'NOT recovered'}.</div>", unsafe_allow_html=True)
+                cs = execs[0].get("canary_stats")
+                if cs:
+                    st.markdown("##### Statistical canary judge · canary vs un-upgraded peers, same minutes")
+                    st.caption("Each host is normalised to its own pre-change median. The band is the 10th-90th percentile of control "
+                               "hosts from the same configuration cohort; one-sided Mann-Whitney U, FAIL when p < "
+                               f"{cs['params']['alpha']} and the difference-in-differences ratio is at least {cs['params']['min_effect']}x.")
+                    k = st.columns(3)
+                    k[0].metric("Statistical verdict", cs["verdict"])
+                    k[1].metric("Canary score", f"{cs['score']}/100" if cs["score"] is not None else "-")
+                    k[2].metric("Checks", len(cs["checks"]))
+                    hosts = list(cs["band"])
+                    failing = [h for h in hosts if cs["hosts"].get(h, {}).get("verdict") == "FAIL"]
+                    pick = st.radio("Canary host", hosts, index=hosts.index(failing[0]) if failing else 0, horizontal=True,
+                                    key=f"band-{run['run_id']}")
+                    band = pd.DataFrame(cs["band"][pick].get("nic_latency_ms", []))
+                    if not band.empty:
+                        import altair as alt
+
+                        base = alt.Chart(band).encode(x=alt.X("t_min:Q", title="t (min)"))
+                        area = base.mark_area(opacity=0.25, color="#94a3b8").encode(
+                            y=alt.Y("control_p10:Q", title="NIC latency, x own pre-change median"), y2="control_p90:Q")
+                        med = base.mark_line(strokeDash=[4, 3], color="#64748b").encode(y="control_median:Q")
+                        can = base.mark_line(color="#dc2626" if pick in failing else "#2563eb", strokeWidth=2.5).encode(y="canary:Q")
+                        st.altair_chart(area + med + can, width="stretch", height=230)
+                    st.dataframe(pd.DataFrame([{"host": c["host"], "metric": c["metric"], "verdict": c["verdict"],
+                                                "effect (x)": round(c["effect"], 2) if c.get("effect") is not None else None,
+                                                "own change": round(c["canary_ratio"], 2) if c.get("canary_ratio") is not None else None,
+                                                "peers' change": round(c["control_ratio"], 2) if c.get("control_ratio") is not None else None,
+                                                "p": f"{c['p_value']:.1e}" if c.get("p_value") is not None else "",
+                                                "controls": f"{c.get('n_control_hosts', 0)} ({c.get('basis')})"}
+                                               for c in cs["checks"]]), hide_index=True, width="stretch")
                 if state.get("avoided_cost_usd"):
                     st.metric("Estimated outage avoided", f"${state['avoided_cost_usd']:,.0f}",
                               help="4 h x $300K/h (ITIC 2024 floor). Illustrative assumption from policy.yaml, not a measurement.")
