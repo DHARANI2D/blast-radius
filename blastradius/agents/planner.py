@@ -78,7 +78,14 @@ class PlannerAgent:
         }
         plan: Plan = self.sv.llm.complete_json("planner", load_prompt("planner"), json.dumps(prompt_input, default=str),
                                                Plan, context=context, temperature=0.3)
-        return {"plan": plan.model_dump(), "provenance": f"llm:{self.sv.llm.model}", "llm": self.sv.llm.last()}
+        if self.sv.settings.offline:
+            # Say plainly on screen what offline mode is: a scripted stand-in, not a model.
+            scripted = attempt == 1 and context["naive_first"]
+            provenance = ("offline stand-in: scripted ungrounded draft (what an unverified LLM plan looks like)" if scripted
+                          else "offline stand-in: corrected draft from verifier feedback")
+        else:
+            provenance = f"llm:{self.sv.llm.model}"
+        return {"plan": plan.model_dump(), "provenance": provenance, "llm": self.sv.llm.last()}
 
     def fallback(self, cr: dict, targets: dict, risk: dict, topo: Topology) -> dict:
         waves, dur = self.solver_plan(cr, targets, risk, topo)
