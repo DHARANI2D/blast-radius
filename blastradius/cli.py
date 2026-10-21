@@ -45,6 +45,13 @@ def _card(card: dict) -> None:
         print(f"  │ Canary {', '.join(cr['assets'])}: {cr['result']} ({cr['checked']} signal sets checked)")
     if card["deferred"]:
         print(f"  │ Deferred: {len(card['deferred'])} asset(s) - {card['deferred'][0]['reason'][:110]}")
+    pm = card.get("premortem")
+    if pm and card["scope"] == "canary":
+        cmp_rows = card.get("premortem_compare") or []
+        first = next((r for r in cmp_rows if r["plan"] == "attempt 1"), None)
+        print(f"  │ Pre-mortem (assumption-driven): P(tier-0 outage) {pm['p_tier0_loss']:.2%} over the change"
+              + (f" vs {first['p_tier0_loss']:.0%} for attempt 1" if first else "")
+              + f"; expected VMs lost {pm['expected_vms_lost']:.2f}")
     print(f"  │ Rollback: {card['rollback_plan'][:150]}...")
     print(f"  └─ requires {card['required_approvers']} approver(s)")
 
@@ -82,8 +89,17 @@ def cmd_demo(args) -> int:
         shown = _print_timeline(r["state"]["timeline"], shown)
     st = r["state"]
     print(f"\nOutcome: {st.get('status')}")
-    if st.get("avoided_cost_usd"):
-        print(f"Estimated outage avoided (illustrative, ITIC $300K/h floor x 4 h): ${st['avoided_cost_usd']:,.0f}")
+    if st.get("business_impact"):
+        from .business import summary_lines
+
+        for line in summary_lines(st["business_impact"]):
+            print(line)
+        opt = st["business_impact"].get("with_optimised_order")
+        if opt:
+            print(f"With the optimiser's risk-aware ordering alone, a missed canary would have cost ~${opt['counterfactual_usd']:,.0f} "
+                  f"({'no' if not opt['tier0_vms'] else len(opt['tier0_vms'])} tier-0 VMs exposed).")
+    mem = sv.memory.stats()
+    print(f"Planning memory: {mem['rules']} rules; first-attempt pass rate {mem['first_attempt_pass_rate']} over {mem['runs']} run(s)")
     if st.get("report"):
         print(f"Signed report: {st['report']['path']}")
     v = sv.ledger.verify()
@@ -131,6 +147,27 @@ def cmd_mcp_serve(args) -> int:
     from .mcp_layer import serve_stdio
 
     serve_stdio(args.domain)
+    return 0
+
+
+def cmd_redteam(args) -> int:
+    from .redteam import main as redteam_main
+
+    return redteam_main(["--seed", str(args.seed)] + (["--no-paraphrases"] if args.no_paraphrases else [])
+                        + (["--json", args.json] if args.json else []))
+
+
+def cmd_memory(args) -> int:
+    from .services import Services
+
+    sv = Services.create(tool_transport="inproc", ledger_path=":memory:")
+    if args.action == "clear":
+        sv.memory.clear()
+        print("planning memory cleared")
+        return 0
+    print(json.dumps({k: v for k, v in sv.memory.stats().items() if k != "top_rules"}, indent=2))
+    for r in sorted(sv.memory.rules(), key=lambda r: -r["hits"]):
+        print(f"- [{r['hits']}x] {r['key']}: {r['guidance']}")
     return 0
 
 
@@ -197,6 +234,14 @@ def main(argv: list[str] | None = None) -> int:
     m = sub.add_parser("mcp-serve", help="run one domain MCP server over stdio")
     m.add_argument("domain", choices=["compute", "network", "virt", "telemetry", "knowledge"])
     m.set_defaults(fn=cmd_mcp_serve)
+    rt = sub.add_parser("redteam", help="measure the Verifier against labelled false claims and mutated plans")
+    rt.add_argument("--seed", type=int, default=7)
+    rt.add_argument("--no-paraphrases", action="store_true")
+    rt.add_argument("--json")
+    rt.set_defaults(fn=cmd_redteam)
+    me = sub.add_parser("memory", help="show or clear the planner's learned rules")
+    me.add_argument("action", choices=["show", "clear"])
+    me.set_defaults(fn=cmd_memory)
     gl = sub.add_parser("greenlake", help="HPE GreenLake MCP (gl-mcp): readiness check, or a read-only device listing")
     gl.add_argument("action", choices=["doctor", "devices"])
     gl.set_defaults(fn=cmd_greenlake)
