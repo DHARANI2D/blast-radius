@@ -128,27 +128,61 @@ def _sentences(text: str) -> list[str]:
     return [s.strip() for s in re.split(r"(?<=[.!?])\s+", text.strip()) if s.strip()]
 
 
+# Paraphrase support for extract_claims. Each pattern below was added for a phrasing in the
+# red-team benchmark's "dev" templates (blastradius/redteam.py); its held-out templates were
+# not used. A negated sentence is left untyped (freeform -> Unverifiable) rather than guessed,
+# except "never in the same wave", which states that a pair is staggered.
+NEGATION = re.compile(r"\b(?:not|never|no longer|cannot|can't|isn't|aren't|doesn't|don't|won't|shouldn't)\b", re.I)
+CVE_ID = r"(?P<cve>(?:SYN-)?CVE-\d{4}-\d+)"
+FIX_WORD = r"\b(?:fix|remediat|resolv|address|patch)\w*"
+CLUSTER_NAME = r"(?P<cluster>[A-Z][A-Z0-9]*(?:-[A-Z0-9]+)+)"
+HOST_NAME = r"\b[a-z][a-z0-9]*(?:-[a-z0-9]+)*-\d+\b"  # blr-esx-07; switch names and tier-N are filtered out
+DUAL_HOMED = r"dual-homed|two (?:live )?uplinks|connected to both"
+SINGLE_HOMED = r"single-homed|only one (?:live )?uplink|a single (?:tor )?switch"
+TOGETHER = r"together|same wave|same time|simultaneous|in parallel"
+CANONICAL_COMPONENTS = {"ilo 6": "iLO 6", "system rom": "System ROM", "switch os": "Switch OS"}
+
+
 def extract_claims(ctx: dict) -> dict:
     switches = ctx.get("switch_names", [])
     claims: list[dict[str, Any]] = []
+
+    shapes = "|".join(sorted({re.sub(r"\d+", lambda _: r"\d+", re.escape(n)) for n in switches}))
+
+    def comp(name: str) -> str:
+        return CANONICAL_COMPONENTS.get(name.lower(), name)
+
     for s in _sentences(ctx["rationale"]):
         low = s.lower()
+        neg = bool(NEGATION.search(s))
         named = [n for n in switches if re.search(rf"\b{re.escape(n)}\b", s)]
+        if shapes:  # a name shaped like a known switch (tor-r3-a) is still a switch claim; the checker rejects unknown ones
+            named += [x for x in re.findall(rf"\b(?:{shapes})\b", s) if x not in named]
         m = re.search(COMP + r"\s+" + VER + r"\s+(?:fixes|remediates|resolves|addresses|patches)\s+(?P<cve>(?:SYN-)?CVE-\d{4}-\d+)", s, re.I)
+        if not m and not neg and re.search(FIX_WORD, low):
+            # any order: "The X V update patches CVE", "CVE is fixed in X V"
+            mv, mc = re.search(COMP + r"\s+" + VER, s, re.I), re.search(CVE_ID, s, re.I)
+            m = {"component": mv["component"], "version": mv["version"], "cve": mc["cve"]} if mv and mc else None
         if m:
-            claims.append({"text": s, "type": "fixes_cve", "args": {"component": m["component"], "version": m["version"], "cve": m["cve"]}})
+            claims.append({"text": s, "type": "fixes_cve", "args": {"component": comp(m["component"]), "version": m["version"], "cve": m["cve"]}})
             continue
         m = re.search(COMP + r"\s+" + VER + r"\s+has no known issues", s, re.I)
+        if not m and not neg and re.search(r"\b(?:no|free of) known (?:issues|defects|bugs)\b", low):
+            m = re.search(COMP + r"\s+" + VER, s, re.I)
         if m:
-            claims.append({"text": s, "type": "no_known_issues", "args": {"component": m["component"], "version": m["version"]}})
+            claims.append({"text": s, "type": "no_known_issues", "args": {"component": comp(m["component"]), "version": m["version"]}})
             continue
-        if len(named) >= 2 and re.search(r"different waves|separate waves", low):
+        if len(named) >= 2 and (re.search(r"different waves?|separate waves?", low) or (neg and re.search(TOGETHER, low))):
             claims.append({"text": s, "type": "pair_staggered", "args": {"a": named[0], "b": named[1]}})
             continue
-        if len(named) >= 2 and re.search(r"together|same wave|simultaneous|in parallel", low):
+        if len(named) >= 2 and not neg and re.search(TOGETHER, low):
             claims.append({"text": s, "type": "pair_safe_together", "args": {"a": named[0], "b": named[1]}})
             continue
         m = re.search(r"all hosts in (?P<cluster>[\w-]+) are dual-homed", s, re.I)
+        if not m and not neg and re.search(r"\b(?:all|every|each)\b", low) and re.search(r"\bhosts?\b", low) and re.search(DUAL_HOMED, low):
+            # "Every host in C has two live uplinks", "C hosts are all dual-homed" (any case)
+            m = (re.search(CLUSTER_NAME, s) or re.search(r"\b(?:in|of)\s+(?P<cluster>[a-z][\w-]*\d)\b", s, re.I)
+                 or re.search(r"(?P<cluster>\b[a-z][\w-]*\d)\s+hosts\b", s, re.I))
         if m:
             claims.append({"text": s, "type": "all_dual_homed", "args": {"cluster": m["cluster"]}})
             continue
@@ -156,29 +190,46 @@ def extract_claims(ctx: dict) -> dict:
         if m:
             claims.append({"text": s, "type": f"{m['kind'].lower()}_homed", "args": {"server": m["server"]}})
             continue
+        hosts = [h for h in re.findall(HOST_NAME, s, re.I) if h.lower() not in switches and not h.lower().startswith("tier-")]
+        if hosts and not neg and not re.search(r"\b(?:all|every|each|hosts)\b", low):  # plural: a cluster-level claim
+            kind = "dual" if re.search(DUAL_HOMED, low) else "single" if re.search(SINGLE_HOMED, low) else None
+            if kind:  # "h has two live uplinks", "h depends on a single ToR switch"
+                claims.append({"text": s, "type": f"{kind}_homed", "args": {"server": hosts[0]}})
+                continue
         m = re.search(r"(?P<cluster>[A-Z][\w-]+) can tolerate (?P<hosts>\d+) hosts", s)
+        if not m and not neg and "wave" not in low and re.search(r"tolerate|absorb|capacity|can be in maintenance", low):
+            mc, mh = re.search(CLUSTER_NAME, s), re.search(r"(?<![\w-])(?P<hosts>\d+) hosts", low)  # not the 08 of "prod-blr-08 hosts"
+            m = {"cluster": mc["cluster"], "hosts": mh["hosts"]} if mc and mh else None
         if m:
             claims.append({"text": s, "type": "cluster_capacity", "args": {"cluster": m["cluster"], "hosts": int(m["hosts"])}})
             continue
         m = re.search(r"no wave has more than (?P<hosts>\d+) hosts", s, re.I)
+        if not m and not neg and "wave" in low and "cluster" in low:
+            m = re.search(r"\b(?:at most|up to) (?P<hosts>\d+) hosts\b", low)  # "each wave puts at most N hosts per cluster ..."
         if m:
             claims.append({"text": s, "type": "per_wave_cap", "args": {"hosts": int(m["hosts"])}})
             continue
         m = re.search(r"canary covers (?:all|the) (?P<n>\d+)", low)
+        if not m and not neg and "canary" in low:
+            m = re.search(r"(?<![\w-])(?P<n>\d+)\s+(?:[\w-]+\s+){0,3}?cohorts", low)  # "one host from each of the N configuration cohorts"
         if m:
             claims.append({"text": s, "type": "canary_covers_cohorts", "args": {"cohorts": int(m["n"])}})
             continue
-        if "canary" in low and re.search(r"no tier-0|without tier-0|no critical", low):
+        if "canary" in low and not neg and re.search(r"no tier-0|without tier-0|no critical|avoids? (?:tier-[01]|critical)", low):
             claims.append({"text": s, "type": "canary_safe", "args": {}})
             continue
-        if re.search(r"no wave causes (?:a|any) (?:workload )?outage", low):
+        if re.search(r"no wave causes (?:a|any) (?:workload )?outage", low) or (
+                not neg and re.search(r"\bno (?:wave|workload|vm)s?\b|\bnone of the (?:waves|workloads|vms)\b", low)
+                and re.search(r"outage|loses? service", low)):
             claims.append({"text": s, "type": "no_planned_outage", "args": {}})
             continue
         m = re.search(r"(?:update|upgrade)\s+" + COMP.replace("component", "first") + r"\s+before\s+" + COMP.replace("component", "second"), s, re.I)
-        if m:
-            claims.append({"text": s, "type": "install_order", "args": {"first": m["first"], "second": m["second"]}})
+        if not m and not neg:  # "A must be updated before B", "A is flashed first, then B"
+            m = re.search(COMP.replace("component", "first") + r"\b.*?\b(?:before|first,? then)\b.*?" + COMP.replace("component", "second"), s, re.I)
+        if m and comp(m["first"]) != comp(m["second"]):
+            claims.append({"text": s, "type": "install_order", "args": {"first": comp(m["first"]), "second": comp(m["second"])}})
             continue
-        m = re.search(r"about (?P<minutes>\d+) minutes", low) or re.search(r"(?P<hours>\d+(?:\.\d+)?) hours", low)
+        m = re.search(r"(?:about|roughly) (?P<minutes>\d+) minutes", low) or re.search(r"(?P<hours>\d+(?:\.\d+)?) hours", low)
         if m and "window" in low:
             minutes = int(m["minutes"]) if "minutes" in m.groupdict() and m.groupdict().get("minutes") else int(float(m["hours"]) * 60)
             claims.append({"text": s, "type": "in_window", "args": {"minutes": minutes}})
