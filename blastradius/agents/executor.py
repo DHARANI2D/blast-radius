@@ -2,8 +2,8 @@
 
 Order inside a wave: snapshot golden signals -> evacuate hosts -> start switch
 upgrades -> *during* check on dependents while switches are down -> flash host
-firmware in vendor order -> wait for switches -> exit maintenance -> soak ->
-post snapshot. Every write passes the PolicyGuard and carries an approval token
+firmware in vendor order (canary: probe signals after each component) -> wait
+for switches -> exit maintenance -> soak -> post snapshot. Every write passes the PolicyGuard and carries an approval token
 that the MCP server verifies.
 """
 
@@ -69,10 +69,18 @@ class ExecutorAgent:
         for sw in switches:
             act("network.upgrade_switch_os", sw, switch=sw, version=target_versions[sw]["Switch OS"], hold_down=True)
         during, during_ev = (bus.call(self.name, "telemetry.get_golden_signals", assets=deps) if (switches and deps) else ([], None))
+        # Canary only: probe the host after each component while it is still in maintenance,
+        # so a regression can be attributed to one component instead of the whole bundle.
+        probe = index == 1 and bool(sv.policy.get("execution.canary_component_probe", True))
+        probes: list[dict] = []
         for h in servers:
             for comp in order:
                 if comp in components and comp in target_versions.get(h, {}):
                     act("compute.apply_firmware", h, server=h, component=comp, version=target_versions[h][comp])
+                    if probe:
+                        sig, ev = bus.call(self.name, "telemetry.get_golden_signals", assets=[h])
+                        probes.append({"host": h, "component": comp, "version": target_versions[h][comp],
+                                       "signals": sig[0], "evidence": ev})
         for sw in switches:
             res, ev = bus.call(self.name, "network.wait_upgrade_complete", switch=sw)
             actions.append({"tool": "network.wait_upgrade_complete", "asset": sw, "args": {}, "result": {"status": res["status"]}, "evidence": ev})
@@ -104,4 +112,5 @@ class ExecutorAgent:
             "evidence": {"pre": pre_ev, "during": during_ev, "post": post_ev},
             "series": series,
             "dependents": deps,
+            "probes": probes,
         }

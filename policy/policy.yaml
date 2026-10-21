@@ -8,7 +8,8 @@ version: 1
 planning:
   max_plan_attempts: 2          # planner retries before escalating (or solver fallback)
   solver_fallback: true         # use the deterministic wave solver if the LLM keeps failing
-  canary_max_assets: 2
+  canary_max_assets: 3           # also the canary budget for configuration cohorts
+  canary_cohort_coverage: true  # canary must include a host from each configuration cohort (model + untouched firmware)
   canary_max_tier: 2            # canary hosts may not run tier-0 or tier-1 workloads
   max_parallel_per_cluster: 5   # hosts in maintenance at once, per cluster
   max_assets_per_wave: 12
@@ -41,6 +42,7 @@ execution:
     "Switch OS": 20
     soak: 10
   component_order: ["iLO 6", "System ROM", "NIC BCM57414"]
+  canary_component_probe: true  # canary only: probe golden signals after each component, so a regression is pinned to one
   rollback_scope: wave          # roll back every asset in the failing wave
 
 golden_signals:                 # post-check thresholds (post vs. pre)

@@ -32,6 +32,14 @@ def _card(card: dict) -> None:
     for w in card["waves"]:
         ev = f" (+evacuate {', '.join(w['evacuate'])})" if w["evacuate"] else ""
         print(f"  │  {w['name']:<32} {len(w['assets']):>2} assets  BRS {w['brs']:>5.1f}  {w['duration_min']} min{ev}")
+    cov, rr = card.get("canary_coverage"), card.get("risk_ranked_coverage")
+    if cov and card["scope"] == "canary":
+        canary = card["waves"][0]["assets"] if card["waves"] else []
+        print(f"  │ Canary {', '.join(canary)} covers {cov['covered']}/{cov['total']} configuration cohorts "
+              f"({cov['hosts_represented']}/{cov['hosts_total']} hosts represented)")
+        if rr:
+            print(f"  │   a risk-ranked canary ({', '.join(rr['canary'])}) would cover {rr['covered']}/{rr['total']} "
+                  f"({rr['hosts_represented']}/{rr['hosts_total']})")
     if card.get("canary_result"):
         cr = card["canary_result"]
         print(f"  │ Canary {', '.join(cr['assets'])}: {cr['result']} ({cr['checked']} signal sets checked)")

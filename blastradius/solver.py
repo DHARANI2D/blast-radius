@@ -4,8 +4,8 @@ Used as the safety net when the LLM planner cannot produce a feasible plan, and
 as the reference the offline planner stand-in converges to. Greedy, but it
 always satisfies ``constraints.check_plan`` for feasible inputs:
 
-1. Canary: up to ``canary_max_assets`` lowest-risk, dual-homed hosts running no
-   critical workloads, one per cluster where possible.
+1. Canary: one lowest-risk, dual-homed host with no critical workloads from each
+   configuration cohort (model + untouched firmware), up to ``canary_max_assets``.
 2. Members of each redundant switch pair go into different waves.
 3. Hosts that are single-homed to a switch are scheduled (or evacuated) in that
    switch's wave, so they are already empty when it reboots.
@@ -14,6 +14,7 @@ always satisfies ``constraints.check_plan`` for feasible inputs:
 
 from __future__ import annotations
 
+from .cohorts import build as build_cohorts, required as required_cohorts, risk_ranked_canary, select_canary
 from .constraints import check_plan
 from .policy import Policy
 from .topology import Topology
@@ -21,34 +22,20 @@ from .topology import Topology
 
 def solve(target_servers: list[str], target_switches: list[str], topo: Topology, risk: dict[str, float],
           policy: Policy, components: list[str], window_minutes: int) -> list[dict]:
-    canary_max = int(policy.get("planning.canary_max_assets", 2))
-    canary_max_tier = int(policy.get("planning.canary_max_tier", 2))
     wave_max = int(policy.get("planning.max_assets_per_wave", 12))
     per_cluster = int(policy.get("planning.max_parallel_per_cluster", 5))
     cap = {c: max(1, min(per_cluster, topo.cluster_capacity(c)["max_hosts_down"])) for c in topo.clusters}
     single = {s["server"]: s["up_links"] for s in topo.single_homed()}
 
     servers = sorted(target_servers, key=lambda s: (risk.get(s, 0), s))
-    remaining = list(servers)
 
-    # 1. canary
-    canary: list[str] = []
-    for cluster in sorted({topo.servers[s]["cluster"] for s in servers}):
-        if len(canary) >= canary_max:
-            break
-        for s in remaining:
-            tier = topo.most_critical_tier(s)
-            if topo.servers[s]["cluster"] == cluster and s not in single and (tier is None or tier >= canary_max_tier):
-                canary.append(s)
-                remaining.remove(s)
-                break
-    for s in list(remaining):  # fewer clusters than canary slots: fill from any cluster
-        if len(canary) >= canary_max:
-            break
-        tier = topo.most_critical_tier(s)
-        if s not in single and (tier is None or tier >= canary_max_tier):
-            canary.append(s)
-            remaining.remove(s)
+    # 1. canary: one eligible host per configuration cohort (see cohorts.py), or the
+    #    conventional lowest-risk-per-cluster rule if cohort coverage is switched off.
+    if policy.get("planning.canary_cohort_coverage", True):
+        canary = select_canary(servers, topo, risk, policy, components)
+    else:
+        canary = risk_ranked_canary(servers, topo, risk, policy)
+    remaining = [s for s in servers if s not in canary]
     waves: list[dict] = []
     if canary:
         waves.append({"name": "Wave 1 - canary", "assets": canary, "evacuate": []})
@@ -121,8 +108,12 @@ def solve(target_servers: list[str], target_switches: list[str], topo: Topology,
     return waves
 
 
-def plan_facts(topo: Topology, targets: dict, policy: Policy) -> dict:
+def plan_facts(topo: Topology, targets: dict, policy: Policy, components: list[str] | None = None,
+               deferred: list[str] | set[str] = ()) -> dict:
     per_cluster = int(policy.get("planning.max_parallel_per_cluster", 5))
+    scheduled = [s for s in targets["servers"] if s not in set(deferred)]
+    cohorts = build_cohorts(scheduled, topo.servers, components or [])
+    req = {c["id"] for c in required_cohorts(cohorts, topo, policy)}
     limits = {c: min(per_cluster, topo.cluster_capacity(c)["max_hosts_down"]) for c in topo.clusters}
     tgt_sw = set(targets["switches"])
     return {
@@ -131,6 +122,9 @@ def plan_facts(topo: Topology, targets: dict, policy: Policy) -> dict:
         "single_homed_on_targets": [s for s in topo.single_homed() if set(s["up_links"]) & tgt_sw],
         "cluster_limits": limits,
         "per_cluster_limit": min(limits.values()) if limits else per_cluster,
+        "cohorts": [{"id": c["id"], "label": c["label"], "size": len(c["hosts"]), "required_in_canary": c["id"] in req}
+                    for c in cohorts],
+        "_cohorts_full": cohorts,
     }
 
 
@@ -138,6 +132,15 @@ def grounded_rationale(waves: list[dict], facts: dict, components: list[str], du
     s = []
     if waves:
         s.append(f"Wave 1 is a canary of {' and '.join(waves[0]['assets'])} with no tier-0 or tier-1 workloads.")
+    full = facts.get("_cohorts_full") or []
+    req = {c["id"] for c in facts.get("cohorts", []) if c["required_in_canary"]}
+    if waves and req:
+        canary = set(waves[0]["assets"])
+        hit = {c["id"] for c in full if canary & set(c["hosts"])}
+        if req <= hit:
+            n = len(facts["cohorts"])
+            s.append(f"The canary covers all {n} configuration cohorts." if len(req) == n
+                     else f"The canary covers the {len(req)} largest of {n} configuration cohorts.")
     for a, b, _t in facts["redundant_target_pairs"]:
         s.append(f"{a} and {b} are upgraded in different waves.")
     for sh in facts["single_homed_on_targets"]:

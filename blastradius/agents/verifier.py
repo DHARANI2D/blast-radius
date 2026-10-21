@@ -16,6 +16,7 @@ from __future__ import annotations
 import json
 from collections import Counter
 
+from ..cohorts import build as build_cohorts, coverage
 from ..constraints import impact_kwargs, wave_duration
 from ..llm import load_prompt
 from ..models import ClaimList, Judgement
@@ -24,7 +25,7 @@ from ..topology import Topology
 CATEGORY = {
     "pair_safe_together": "safety", "pair_staggered": "safety", "all_dual_homed": "safety",
     "dual_homed": "safety", "single_homed": "safety", "cluster_capacity": "safety", "per_wave_cap": "safety",
-    "canary_safe": "safety", "no_planned_outage": "safety",
+    "canary_safe": "safety", "no_planned_outage": "safety", "canary_covers_cohorts": "safety",
     "fixes_cve": "factual", "no_known_issues": "factual", "install_order": "factual",
     "in_window": "informational", "freeform": "informational",
 }
@@ -206,6 +207,28 @@ class VerifierAgent:
         if bad:
             return "Contradicted", "canary is not safe: " + "; ".join(bad) + ".", ev
         return "Supported", f"canary {', '.join(waves[0]['assets'])} runs only tier-{min_tier}+ workloads.", ev
+
+    def _c_canary_covers_cohorts(self, a, ctx):
+        """Rebuild the configuration cohorts from inventory the Verifier fetches itself, then check the canary."""
+        waves = ctx["plan"]["waves"]
+        topo: Topology = ctx["topo"]
+        if not waves:
+            return "Unverifiable", "plan has no waves.", []
+        servers, e1 = self.call("compute.list_servers")
+        info = {s["name"]: s for s in servers}
+        scheduled = [x for w in waves for x in w["assets"] if x in info]
+        cohorts = build_cohorts(scheduled, info, ctx["cr"]["components"])
+        cov = coverage([x for x in waves[0]["assets"] if x in info], cohorts, topo, self.sv.policy)
+        e2 = self.sv.evidence.add(self.name, "blastradius.cohort_coverage", {"canary": waves[0]["assets"]},
+                                  {k: cov[k] for k in ("covered", "total", "required", "missing", "hosts_represented", "hosts_total")})
+        claimed = a.get("cohorts")
+        if not cov["ok"]:
+            return ("Contradicted", f"canary covers {cov['covered']} of {cov['total']} configuration cohorts; untested: "
+                    + "; ".join(f"{m['label']} ({m['size']} hosts)" for m in cov["missing"]) + ".", [e1, e2])
+        if claimed is not None and int(claimed) not in (cov["required"], cov["total"]):
+            return "Contradicted", f"inventory shows {cov['total']} cohorts ({cov['required']} required in the canary), not {claimed}.", [e1, e2]
+        return ("Supported", f"inventory groups the {len(scheduled)} scheduled hosts into {cov['total']} cohorts; the canary covers "
+                f"{cov['covered']} ({cov['hosts_represented']}/{cov['hosts_total']} hosts represented).", [e1, e2])
 
     def _c_no_planned_outage(self, a, ctx):
         topo: Topology = ctx["topo"]

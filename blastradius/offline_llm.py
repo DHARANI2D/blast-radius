@@ -164,6 +164,10 @@ def extract_claims(ctx: dict) -> dict:
         if m:
             claims.append({"text": s, "type": "per_wave_cap", "args": {"hosts": int(m["hosts"])}})
             continue
+        m = re.search(r"canary covers (?:all|the) (?P<n>\d+)", low)
+        if m:
+            claims.append({"text": s, "type": "canary_covers_cohorts", "args": {"cohorts": int(m["n"])}})
+            continue
         if "canary" in low and re.search(r"no tier-0|without tier-0|no critical", low):
             claims.append({"text": s, "type": "canary_safe", "args": {}})
             continue

@@ -82,8 +82,9 @@ INNOVATION = [
     "cite retrieved evidence. Any contradiction blocks the plan: Track 1 trust scoring inside the control loop.",
     "**LLM proposes, code disposes:** redundancy, capacity, canary and window rules are code, with a deterministic solver as "
     "fallback; write tools check an HMAC token scoped to (run, asset, action) on the server side.",
-    "**Learns by differential diagnosis:** firmware also applied to a healthy canary host is exonerated; traits unique to the "
-    "failing host become the lesson's match conditions, so the next run defers exactly the affected hosts.",
+    "**Cohort-coverage canary, provable diagnosis:** the canary holds one host per configuration cohort (model + untouched "
+    "firmware), not the lowest-risk hosts, which a risk-ranked rule picks and which here would have missed the fault. Per-component "
+    "probes and same-model controls pin the culprit and its condition, so the next run defers exactly the affected hosts.",
 ]
 
 BUSINESS = [
@@ -106,11 +107,13 @@ HOW = [
     "**Discover:** 7 MCP calls build a 563-node, 1,652-edge NetworkX graph; LLDP exposes a single-homed host.",
     "**Assess:** release notes, advisories and incidents plus simulated single-asset failure; the ToR the single-homed "
     "payments-DB host depends on scores 79/100.",
-    "**Plan:** the Planner proposes waves; constraints and per-wave Blast-Radius Scores are computed in code.",
+    "**Plan:** the Planner proposes waves and a cohort-covering canary; constraints, VM-by-VM evacuation and per-wave "
+    "Blast-Radius Scores are computed in code.",
     "**Verify:** Trust = 100 x evidence-weighted support - 15 per contradiction; under 80 or any contradiction means re-plan "
     "with feedback, then solver fallback, then escalation.",
     "**Approve:** LangGraph interrupt; HMAC-signed approval (1 signer canary, 2 distinct signers fleet) grants scoped write tokens.",
-    "**Execute:** evacuate hosts, start switch upgrades, check dependents *during* the reboot, flash iLO then ROM, soak.",
+    "**Execute:** evacuate hosts, start switch upgrades, check dependents *during* the reboot, flash iLO then ROM (canary: "
+    "probe after each component), soak.",
     "**Post-validate, report, learn:** NIC latency (2x), drops, CRC rate, health, reachability, VM heartbeats; on regression "
     "halt, revoke, revert and confirm recovery; then a signed report and a lesson in the knowledge base.",
 ]
@@ -119,7 +122,7 @@ STACK = [
     "**LLMs (HPE-approved only):** OpenAI-compatible endpoint (NVIDIA NIM on HPE Private Cloud AI or the ChatHPE/GenAI Hub "
     "gateway) or Azure OpenAI; separate Verifier model; offline deterministic mode for a reproducible demo.",
     "**Frameworks:** LangGraph 1.x, MCP Python SDK 2.x (5 servers, 26 tools), NetworkX, BM25 retrieval (Chroma/pgvector in "
-    "Phase 2), Pydantic-validated outputs, YAML policy, SQLite hash-chained ledger, Streamlit, Docker; 38 pytest tests.",
+    "Phase 2), Pydantic-validated outputs, YAML policy, SQLite hash-chained ledger, Streamlit, Docker; 43 pytest tests.",
 ]
 
 RAI = [
@@ -134,8 +137,9 @@ DEMO = [
     f"**Code:** {REPO} (`python -m blastradius ui`). **Video:** [Brightidea link].",
     "**PoC (twin of one Bangalore pod: 40 ProLiant Gen11, 504 VMs, 2 ToR pairs, Alletra):** the naive plan puts both VSX "
     "members in wave 1 (504 VMs incl. payments-db lose service; Trust 0 vs. self-reported 91; a false CVE claim contradicted); "
-    "the re-plan scores Trust 97; the canary's 4.1x NIC-latency regression auto-halts and rolls back; the next run defers "
-    "exactly the 20 affected hosts. Execution is simulated with an injected fault; twin IDs are fictitious.",
+    "the re-plan scores Trust 98 with a canary covering all 3 configuration cohorts; its 3.9x NIC-latency regression on a "
+    "NIC-229.x host auto-halts and rolls back (a risk-ranked canary would have passed it into the payments-db wave); the next "
+    "run defers exactly the 16 affected hosts. Execution is simulated with an injected fault; twin IDs are fictitious.",
 ]
 
 REFERENCES = [

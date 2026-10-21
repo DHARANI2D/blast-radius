@@ -1,9 +1,10 @@
 """Reporter agent: signed post-change report, plus the learning loop.
 
 When a wave is rolled back, the reporter turns the canary result into a lesson
-by differential diagnosis: components whose new version also went onto a host
-that stayed healthy are exonerated, and the firmware attributes shared only by
-the regressed hosts become the incident's matching conditions. The lesson is
+by differential diagnosis: per-component probes on the regressed host pin the
+culprit component, healthy canary hosts that got the same version act as
+controls, and the untouched-firmware attributes that separate the regressed
+hosts from those controls become the incident's matching conditions. The lesson is
 written to the knowledge base, so the next plan for a similar change scores
 those hosts as high risk.
 """
@@ -33,50 +34,139 @@ class ReporterAgent:
         self.sv = sv
 
     # ------------------------------------------------------------- learning
+    def _regressed(self, pre: dict | None, sig: dict) -> bool:
+        if pre is None:
+            return False
+        from .postcheck import PostValidationAgent
+
+        return not PostValidationAgent(self.sv).compare([pre], [sig])["passed"]
+
     def lesson_from_rollback(self, run_id: str, wave_exec: dict, regressions: list[dict], topo: Topology,
                              baseline_versions: dict) -> dict | None:
-        bad_assets = sorted({r["asset"] for r in regressions if r["asset"] in topo.servers})
-        if not bad_assets:
+        """Differential diagnosis of a canary regression.
+
+        1. Culprit: the canary probes each host after every component it flashes. The first
+           component after which a regressed host's signals break is the culprit; components
+           flashed before it are exonerated *on that host*, which is the only valid evidence
+           for exonerating them. Without probes we fall back to a set difference and say so.
+        2. Scope: healthy canary hosts that received the same culprit version are controls.
+           Untouched-firmware attributes shared by every regressed host and by no control
+           are the regression's conditions (e.g. NIC firmware 229.x). With no control, the
+           lesson is scoped to the regressed hosts' whole configuration cohort.
+        """
+        bad = sorted({r["asset"] for r in regressions if r["asset"] in topo.servers})
+        if not bad:
             return None
         changes = wave_exec["firmware_changes"]
-        good_assets = [a for a in wave_exec["assets"] if a in topo.servers and a not in bad_assets]
-        healthy_versions = {(c["component"], c["to"]) for c in changes if c["asset"] in good_assets}
-        suspects = sorted({(c["component"], c["to"]) for c in changes if c["asset"] in bad_assets} - healthy_versions)
-        exonerated = sorted({(c["component"], c["to"]) for c in changes if c["asset"] in bad_assets} & healthy_versions)
-        if not suspects:
-            suspects = sorted({(c["component"], c["to"]) for c in changes if c["asset"] in bad_assets})
-        bad_fw = [topo.servers[a]["firmware"] for a in bad_assets]
-        good_fw = [topo.servers[a]["firmware"] for a in good_assets]
-        model = topo.servers[bad_assets[0]]["model"]
-        prefixes = {}
-        for comp, ver in bad_fw[0].items():
-            if any(comp == s[0] for s in suspects):
+        changed = sorted({c["component"] for c in changes})
+        good = [a for a in wave_exec["assets"] if a in topo.servers and a not in bad]
+        pre = {s["asset"]: s for s in wave_exec.get("pre", [])}
+
+        culprit, cleared, method = None, [], "set-difference"
+        for p in wave_exec.get("probes", []):
+            if p["host"] not in bad or culprit:
                 continue
-            major = ver.split(".")[0] + "."
-            if all(f.get(comp, "").startswith(major) for f in bad_fw) and not any(f.get(comp, "").startswith(major) for f in good_fw):
-                prefixes[comp] = major
-        comp, ver = suspects[0]
+            if self._regressed(pre.get(p["host"]), p["signals"]):
+                culprit, method = (p["component"], p["version"]), "per-component probe"
+            else:
+                cleared.append((p["component"], p["version"], p["host"]))
+        if culprit is None:
+            bad_v = {(c["component"], c["to"]) for c in changes if c["asset"] in bad}
+            good_v = {(c["component"], c["to"]) for c in changes if c["asset"] in good}
+            culprit = (sorted(bad_v - good_v) or sorted(bad_v))[0]
+            cleared, method = [], "set-difference (ambiguous: no per-component probe)"
+        comp, ver = culprit
+        exonerated = sorted({(c, v) for c, v, _h in cleared if (c, v) != culprit})
+
+        # Untouched-firmware attributes every regressed host shares (pre-change firmware from discovery).
+        bad_fw = [topo.servers[a]["firmware"] for a in bad]
+        shared = {}
+        for k, v in bad_fw[0].items():
+            if k in changed:
+                continue
+            maj = v.split(".")[0] + "."
+            if all(f.get(k, "").startswith(maj) for f in bad_fw):
+                shared[k] = maj
+        controls = sorted(a for a in good if any(c["asset"] == a and (c["component"], c["to"]) == culprit for c in changes))
+        if controls:
+            prefixes = {k: p for k, p in shared.items()
+                        if all(not topo.servers[c]["firmware"].get(k, "").startswith(p) for c in controls)}
+            scope = "control" if prefixes else "intermittent"
+            if not prefixes:
+                prefixes = shared
+        else:
+            prefixes, scope = shared, "cohort"
+        models = sorted({topo.servers[a]["model"] for a in bad})
+        short = models[0].replace("HPE ProLiant ", "")
+        cond_txt = ", ".join(f"{k} {p}x" for k, p in prefixes.items())
+
         worst = next((r for r in regressions if r["metric"] == "nic_latency_ms"), regressions[0])
-        fix_hint = ""
+        parts = []
+        if method == "per-component probe":
+            parts.append(f"Per-component probe: signals on {', '.join(bad)} were normal after "
+                         + (", ".join(f"{c} {v}" for c, v in exonerated) or "the earlier steps")
+                         + f" and broke right after {comp} {ver}"
+                         + (f", so {', '.join(f'{c} {v}' for c, v in exonerated)} is exonerated." if exonerated else "."))
+        else:
+            parts.append(f"No per-component probe was available, so {comp} {ver} is only the most likely suspect.")
+        if scope == "control":
+            ctl = controls[0]
+            ctl_attrs = ", ".join(f"{k} {topo.servers[ctl]['firmware'].get(k, '?').split('.')[0]}.x" for k in prefixes)
+            parts.append(f"Control {', '.join(controls)} ({topo.servers[ctl]['model'].replace('HPE ProLiant ', '')}, {ctl_attrs}) "
+                         f"received the same {comp} {ver} and stayed healthy, so the regression is specific to {cond_txt}.")
+        elif scope == "intermittent":
+            parts.append(f"Control {', '.join(controls)} has the same configuration and stayed healthy; the regression may be "
+                         "intermittent, so the lesson covers the whole cohort.")
+        else:
+            parts.append(f"No healthy canary host received {comp} {ver}, so the lesson covers the whole {short} cohort"
+                         + (f" ({cond_txt})." if cond_txt else "."))
         for c, p in prefixes.items():
-            target = baseline_versions.get(model, {}).get(c)
+            target = baseline_versions.get(models[0], {}).get(c)
             if target and not target.startswith(p):
-                fix_hint = f" Update {c} to {target} before applying {comp} {ver}."
+                parts.append(f"Update {c} to {target} before applying {comp} {ver}.")
         return {
             "id": f"INC-BR-{run_id}",
-            "title": f"{comp} {ver} regression on {model.replace('HPE ProLiant ', '')} (learned by BlastRadius)",
+            "title": f"{comp} {ver} regression on {short} (learned by BlastRadius)",
             "date": time.strftime("%Y-%m-%d"),
             "severity": "high",
             "kind": "regression",
             "component": comp,
             "version": ver,
-            "models": [model],
+            "models": models,
             "conditions": {"firmware_prefix": prefixes} if prefixes else {},
-            "symptom": f"{worst['message']} on canary {', '.join(bad_assets)} after {comp} {ver}"
-                       + (f" with {', '.join(f'{c} {p}x' for c, p in prefixes.items())}" if prefixes else "") + ".",
-            "lesson": ("Exonerated: " + ", ".join(f"{c} {v}" for c, v in exonerated) + " (applied to healthy canary "
-                       + ", ".join(good_assets) + ")." if exonerated else "No healthy control host in the canary.") + fix_hint,
+            "symptom": f"{worst['message']} on canary {', '.join(bad)} after {comp} {ver}" + (f" with {cond_txt}" if cond_txt else "") + ".",
+            "lesson": " ".join(parts),
+            "diagnosis": {"method": method, "culprit": f"{comp} {ver}", "exonerated": [f"{c} {v}" for c, v in exonerated],
+                          "controls": controls, "scope": scope},
             "source": f"blastradius run {run_id} (automatic rollback)",
+        }
+
+    def counterfactual(self, lesson: dict, plan: dict, risk: dict, topo: Topology, components: list[str]) -> dict:
+        """Would a conventional risk-ranked canary of the same size have caught this regression?"""
+        from ..cohorts import build, coverage, risk_ranked_canary
+
+        pol = self.sv.policy
+        scheduled = [a for w in plan["waves"] for a in w["assets"] if a in topo.servers]
+        scores = {a: r["score"] for a, r in risk["assets"].items()}
+        naive = risk_ranked_canary(scheduled, topo, scores, pol)
+        conds = (lesson.get("conditions") or {}).get("firmware_prefix", {})
+
+        def affected(h: str) -> bool:
+            s = topo.servers[h]
+            return s["model"] in lesson["models"] and all(s["firmware"].get(c, "").startswith(p) for c, p in conds.items())
+
+        later = [(i, h) for i, w in enumerate(plan["waves"][1:], start=2) for h in w["assets"] if h in topo.servers and affected(h)]
+        hosts = [h for _, h in later]
+        vms = [v for h in hosts for v in topo.vms_on(h)]
+        cov = coverage(naive, build(scheduled, topo.servers, components), topo, pol)
+        return {
+            "risk_ranked_canary": naive,
+            "risk_ranked_would_catch": any(affected(h) for h in naive),
+            "risk_ranked_cohorts": f"{cov['covered']}/{cov['total']}",
+            "first_exposed_wave": later[0][0] if later else None,
+            "exposed_hosts": hosts,
+            "exposed_vms": len(vms),
+            "exposed_tier0_vms": sorted(v["name"] for v in vms if v["tier"] == 0),
         }
 
     def learn(self, incident: dict) -> str:
@@ -120,6 +210,8 @@ class ReporterAgent:
                          "recovered": (state.get("rollback") or {}).get("recovered")} if state.get("rollback") else None,
             "deferred": (state.get("risk") or {}).get("deferred", []),
             "learned_incident": (state.get("lesson") or {}).get("id"),
+            "diagnosis": (state.get("lesson") or {}).get("diagnosis"),
+            "counterfactual": state.get("counterfactual"),
             "avoided_cost_usd": state.get("avoided_cost_usd"),
             "ledger": {"entries": verify["entries"], "chain_ok": verify["ok"], "head": verify.get("head")},
             "model": {"planner": sv.llm.model, "verifier": sv.verifier_llm.model},
@@ -158,6 +250,17 @@ class ReporterAgent:
             lines += ["", "## Deferred assets"] + [f"- {d['asset']}: {d['reason']}" for d in r["deferred"]]
         if r.get("lessons"):
             lines += ["", "## Lessons"] + [f"- {x}" for x in r["lessons"]]
+        if r.get("diagnosis"):
+            d = r["diagnosis"]
+            lines += ["", "## Diagnosis", f"- Method: {d['method']}", f"- Culprit: {d['culprit']}",
+                      f"- Exonerated: {', '.join(d['exonerated']) or 'none'}", f"- Controls: {', '.join(d['controls']) or 'none'} (scope: {d['scope']})"]
+        cf = r.get("counterfactual")
+        if cf:
+            lines += ["", "## Counterfactual: risk-ranked canary",
+                      f"- Canary {', '.join(cf['risk_ranked_canary'])} covers {cf['risk_ranked_cohorts']} configuration cohorts; "
+                      f"would have caught the regression: {cf['risk_ranked_would_catch']}",
+                      f"- Affected hosts in later waves: {len(cf['exposed_hosts'])} ({cf['exposed_vms']} VMs, "
+                      f"{len(cf['exposed_tier0_vms'])} tier-0), first in wave {cf['first_exposed_wave']}"]
         lines += ["", "## Approvals"] + [f"- {a['scope']}: {a['approver']} {a['decision']} (sig `{a['signature'][:16]}...`)" for a in r["approvals"]]
         lines += ["", "## Integrity",
                   f"Ledger entries: {r['ledger']['entries']}, chain verified: {r['ledger']['chain_ok']}, head `{(r['ledger']['head'] or '')[:16]}`  ",

@@ -21,6 +21,7 @@ rng = random.Random(20261021)
 
 HOST_MEM_GB = 1024
 HOST_CORES = 64
+NIC_REFRESHED = (3, 11, 16, 20)  # R1 hosts already on NIC BCM57414 230.x
 
 # Hand-placed "anchor" workloads. Everything else is filler that brings each
 # host to a realistic 48-60% memory utilisation.
@@ -88,7 +89,10 @@ def servers() -> list[dict]:
             "firmware": {
                 "iLO 6": ilo,
                 "System ROM": f"{rom_family} v2.16",
-                "NIC BCM57414": "229.1.123.0" if r1 else "230.0.156.0",
+                # Dev/CI hosts get firmware first: four R1 hosts already run the newer NIC
+                # firmware. They are also the lowest-risk hosts, so a risk-ranked canary
+                # picks them and never tests the NIC 229.x configuration.
+                "NIC BCM57414": "230.0.156.0" if (not r1 or i in NIC_REFRESHED) else "229.1.123.0",
             },
             "nics": [
                 {"name": "ens1f0", "speedGbps": 25, "mac": f"94:40:c9:{i:02x}:00:00"},

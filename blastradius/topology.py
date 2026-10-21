@@ -157,26 +157,40 @@ class Topology:
             elif not ds_ok[v["datastore"]]:
                 impacted[v["name"]] = f"datastore {v['datastore']} unreachable ({self.datastores[v['datastore']]['array']} cut off)"
 
+        # Evacuation is simulated VM by VM, the way a placement engine does it: hosts are
+        # emptied in wave order, largest VMs first, each onto the least-utilised healthy host
+        # that stays under the cluster's memory ceiling. Aggregate free memory is not enough:
+        # a 256 GB VM needs 256 GB free on one host.
+        seq = maintenance_hosts if isinstance(maintenance_hosts, (list, tuple)) else sorted(maintenance_hosts)
+        order = list(dict.fromkeys(h for h in seq if h in self.servers))
+        used: dict[str, float] = defaultdict(float)
+        for v in self.vms.values():
+            used[v["host"]] += v["memoryGB"]
         capacity_shortfall = {}
         for cname, c in self.clusters.items():
-            hosts_maint = [h for h in c["hosts"] if h in maint]
+            hosts_maint = [h for h in order if h in c["hosts"]]
             if not hosts_maint:
                 continue
             healthy = [h for h in c["hosts"] if h not in maint and net_ok[h]]
             limit = c.get("maxMemoryUtilPct", 85) / 100.0
-            cap = limit * sum(self.servers[h]["memoryGB"] for h in healthy)
-            demand = sum(v["memoryGB"] for v in self.vms.values() if v["cluster"] == cname and (v["host"] in maint or v["host"] in healthy))
-            moving = [v for v in self.vms.values() if v["host"] in hosts_maint]
-            if demand > cap:
-                capacity_shortfall[cname] = round(demand - cap)
-                for v in moving:
-                    impacted[v["name"]] = f"{cname} lacks capacity to evacuate {v['host']} (short {capacity_shortfall[cname]} GB)"
-            else:
-                for v in moving:
+            short = 0
+            for h in hosts_maint:
+                for v in sorted(self.vms_on(h), key=lambda x: (-x["memoryGB"], x["name"])):
+                    fits = [d for d in healthy if used[d] + v["memoryGB"] <= limit * self.servers[d]["memoryGB"]]
+                    if not fits:
+                        short += v["memoryGB"]
+                        impacted[v["name"]] = (f"{cname} has no host with {v['memoryGB']} GB free under its "
+                                               f"{round(limit * 100)}% ceiling to take {v['name']} from {h}")
+                        continue
+                    d = min(fits, key=lambda x: (used[x] / self.servers[x]["memoryGB"], x))
+                    used[d] += v["memoryGB"]
+                    used[h] -= v["memoryGB"]
                     if ds_ok[v["datastore"]]:
                         migrated.append(v["name"])
                     else:
                         impacted[v["name"]] = f"datastore {v['datastore']} unreachable"
+            if short:
+                capacity_shortfall[cname] = round(short)
 
         services: dict[str, dict] = defaultdict(lambda: {"impacted": 0, "total": 0, "tier": 3})
         for v in self.vms.values():

@@ -36,7 +36,8 @@ def test_solver_plan_satisfies_every_constraint(topo, sv):
     where = {a: i for i, w in enumerate(waves) for a in w["assets"]}
     assert where["tor-r1-a"] != where["tor-r1-b"]
     assert where["blr-esx-07"] == where["tor-r1-a"]
-    assert len(waves[0]["assets"]) <= 2 and not set(waves[0]["assets"]) & set(SWITCHES)
+    assert len(waves[0]["assets"]) <= int(sv.policy.get("planning.canary_max_assets")) and not set(waves[0]["assets"]) & set(SWITCHES)
+    assert res["canary_coverage"]["ok"]
 
 
 def test_solver_evacuates_non_target_single_homed_host(topo, sv):

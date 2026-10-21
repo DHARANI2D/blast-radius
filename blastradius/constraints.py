@@ -6,6 +6,7 @@ A plan is rejected if any wave:
   * puts more hosts of a cluster in maintenance than capacity/policy allow (CLUSTER_CAPACITY)
   * is larger than the policy wave size (WAVE_SIZE)
   * has a canary that is too big or hosts critical workloads (CANARY_FIRST)
+  * has a canary that leaves a required configuration cohort untested (CANARY_COVERAGE)
 or the plan as a whole misses/duplicates targets (COVERAGE) or overruns the window (WINDOW).
 """
 
@@ -13,6 +14,7 @@ from __future__ import annotations
 
 from collections import Counter
 
+from .cohorts import build as build_cohorts, coverage
 from .policy import Policy
 from .topology import Topology
 
@@ -110,6 +112,16 @@ def check_plan(plan: dict, topo: Topology, targets: list[str], components: list[
             if sw:
                 v("CANARY_FIRST", f"canary wave includes network devices {sw}; canary with servers first", 1, sw)
 
+    cov = None
+    if plan["waves"] and policy.get("planning.canary_cohort_coverage", True):
+        scheduled = [a for a in targets if a in topo.servers and a not in deferred]
+        cov = coverage([a for a in plan["waves"][0]["assets"] if a in topo.servers],
+                       build_cohorts(scheduled, topo.servers, components), topo, policy)
+        if not cov["ok"]:
+            miss = cov["missing"]
+            v("CANARY_COVERAGE", f"canary covers {cov['covered']}/{cov['total']} configuration cohorts; untested: "
+              + "; ".join(f"{m['label']} ({m['size']} hosts)" for m in miss), 1, [])
+
     dupes = [a for a, n in seen.items() if n > 1]
     if dupes:
         v("COVERAGE", f"assets scheduled more than once: {dupes}", None, dupes)
@@ -123,4 +135,4 @@ def check_plan(plan: dict, topo: Topology, targets: list[str], components: list[
     if total > window_minutes:
         v("WINDOW", f"plan needs {total} min; maintenance window is {window_minutes} min", None, [])
     return {"ok": not violations, "violations": violations, "impacts": impacts, "total_duration_min": total,
-            "max_brs": max((x["brs"] for x in impacts), default=0.0), "cluster_limits": cap}
+            "max_brs": max((x["brs"] for x in impacts), default=0.0), "cluster_limits": cap, "canary_coverage": cov}

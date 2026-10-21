@@ -40,10 +40,11 @@ class PlannerAgent:
     def run(self, attempt: int, cr: dict, targets: dict, risk: dict, topo: Topology, feedback: dict | None) -> dict:
         policy = self.sv.policy
         inp = self._inputs(cr, targets, risk, topo)
-        facts = plan_facts(topo, targets, policy)
+        facts = plan_facts(topo, targets, policy, cr["components"], inp["deferred"])
+        cohort_of = {h: c["id"] for c in facts["_cohorts_full"] for h in c["hosts"]}
         hosts = [
             {"name": s, "cluster": topo.servers[s]["cluster"], "most_critical_tier": topo.most_critical_tier(s),
-             "risk": risk["assets"][s]["score"], "uplinks": topo.links_of(s)}
+             "risk": risk["assets"][s]["score"], "uplinks": topo.links_of(s), "cohort": cohort_of.get(s)}
             for s in inp["servers"]
         ]
         prompt_input = {
@@ -53,7 +54,8 @@ class PlannerAgent:
                  "risk_reasons": risk["assets"][s]["reasons"][:3]} for s in inp["switches"]]},
             "deferred": risk["deferred"],
             "target_versions": inp["target_versions"],
-            "facts": {**facts, "clusters": [topo.cluster_capacity(c) for c in topo.clusters],
+            "facts": {**{k: v for k, v in facts.items() if not k.startswith("_")},
+                      "clusters": [topo.cluster_capacity(c) for c in topo.clusters],
                       "storage_paths": {a: [p["switch"] for p in arr["ports"]] for a, arr in topo.arrays.items()}},
             "policy": {k: policy.get(f"planning.{k}") for k in ("canary_max_assets", "canary_max_tier", "max_parallel_per_cluster", "max_assets_per_wave")},
             "window_minutes": cr["window"]["duration_minutes"],
@@ -80,6 +82,7 @@ class PlannerAgent:
 
     def fallback(self, cr: dict, targets: dict, risk: dict, topo: Topology) -> dict:
         waves, dur = self.solver_plan(cr, targets, risk, topo)
-        facts = plan_facts(topo, targets, self.sv.policy)
+        inp = self._inputs(cr, targets, risk, topo)
+        facts = plan_facts(topo, targets, self.sv.policy, cr["components"], inp["deferred"])
         plan = {"waves": waves, "rationale": grounded_rationale(waves, facts, cr["components"], dur), "self_confidence": None}
         return {"plan": plan, "provenance": "deterministic-solver", "llm": {}}

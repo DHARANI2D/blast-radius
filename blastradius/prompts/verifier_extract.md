@@ -13,6 +13,8 @@ one of these types and fill its arguments exactly; use "freeform" only when noth
 - cluster_capacity {cluster, hosts}: the cluster tolerates N hosts in maintenance at once
 - per_wave_cap {hosts}: no wave has more than N hosts of one cluster in maintenance
 - canary_safe {}: the canary wave is small and runs no critical workloads
+- canary_covers_cohorts {cohorts?}: the canary contains a host from every (or the N largest)
+  configuration cohort(s), i.e. every model + untouched-firmware combination being upgraded
 - no_planned_outage {}: no wave causes a workload outage
 - install_order {first, second}: component `first` must be updated before `second`
 - in_window {minutes}: the plan takes about N minutes and fits the window

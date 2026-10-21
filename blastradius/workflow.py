@@ -32,6 +32,7 @@ from .agents import (ExecutorAgent, IntakeAgent, PlannerAgent, PostValidationAge
                      RollbackAgent, TopologyAgent, VerifierAgent)
 from .agents.executor import ExecutionHalted
 from .agents.reporter import plan_hash
+from .cohorts import build as build_cohorts, coverage, risk_ranked_canary
 from .constraints import check_plan
 from .llm import LLMError
 from .mcp_layer import ToolCallError
@@ -60,6 +61,7 @@ class RunState(TypedDict, total=False):
     halt_reason: str
     rollback: dict
     lesson: dict
+    counterfactual: dict
     avoided_cost_usd: float
     report: dict
     timeline: Annotated[list, operator.add]
@@ -140,7 +142,9 @@ def build_graph(sv):
         log(state, "code:constraints", "constraint_check", {"attempt": n, "ok": cons["ok"], "violations": cons["violations"],
                                                              "max_brs": cons["max_brs"]})
         level = "success" if cons["ok"] else "error"
-        detail = (f"attempt {n} ({out['provenance']}{note}): {len(p['waves'])} waves, max Blast-Radius Score {cons['max_brs']:.0f}; "
+        cov = cons.get("canary_coverage")
+        cov_txt = f", canary covers {cov['covered']}/{cov['total']} configuration cohorts" if cov else ""
+        detail = (f"attempt {n} ({out['provenance']}{note}): {len(p['waves'])} waves, max Blast-Radius Score {cons['max_brs']:.0f}{cov_txt}; "
                   + ("all constraints satisfied" if cons["ok"] else f"{len(cons['violations'])} violation(s): "
                      + "; ".join(v["message"] for v in cons["violations"][:2])))
         return {"attempts": attempts, "timeline": _t("planner", "proposed", detail, level)}
@@ -224,6 +228,8 @@ def build_graph(sv):
             "deferred": risk["deferred"],
             "top_risks": [{"asset": r["asset"], "score": r["score"], "reasons": r["reasons"][:2]} for r in top],
             "rollback_plan": rollback_plan,
+            "canary_coverage": cons.get("canary_coverage"),
+            "risk_ranked_coverage": _risk_ranked_coverage(state),
         }
         if scope == "fleet":
             canary = state["executions"][0]
@@ -231,6 +237,17 @@ def build_graph(sv):
                                   "migrated_vms": canary["migrated_vms"]}
             c["waves"] = c["waves"][1:]
         return c
+
+    def _risk_ranked_coverage(state) -> dict | None:
+        """Coverage a conventional lowest-risk canary of the same size would have had (for comparison on the card)."""
+        topo, p = topo_of(state), state["plan"]
+        scheduled = [a for w in p["waves"] for a in w["assets"] if a in topo.servers]
+        if not scheduled:
+            return None
+        scores = {a: r["score"] for a, r in state["risk"]["assets"].items()}
+        naive = risk_ranked_canary(scheduled, topo, scores, pol)
+        cov = coverage(naive, build_cohorts(scheduled, topo.servers, state["change_request"]["components"]), topo, pol)
+        return {"canary": naive, **{k: cov[k] for k in ("covered", "total", "missing", "hosts_represented", "hosts_total")}}
 
     def _grant(state, waves: list[dict]):
         assets = sorted({a for w in waves for a in w["assets"] + w.get("evacuate", [])})
@@ -354,6 +371,16 @@ def build_graph(sv):
             log(state, "agent:reporter", "lesson_recorded", {"incident": lesson, "evidence": ev})
             upd["lesson"] = lesson
             tl += _t("reporter", "learned", f"{lesson['id']}: {lesson['symptom']} {lesson['lesson']}", "warn")
+            cf = rep_a.counterfactual(lesson, state["plan"], state["risk"], topo, state["change_request"]["components"])
+            upd["counterfactual"] = cf
+            log(state, "agent:reporter", "counterfactual", cf)
+            if not cf["risk_ranked_would_catch"] and cf["exposed_hosts"]:
+                t0 = cf["exposed_tier0_vms"]
+                tl += _t("reporter", "counterfactual",
+                         f"A risk-ranked canary of the same size ({', '.join(cf['risk_ranked_canary'])}; {cf['risk_ranked_cohorts']} cohorts) "
+                         f"has no affected host and would have passed. Wave {cf['first_exposed_wave']} would then have started flashing "
+                         f"{len(cf['exposed_hosts'])} affected hosts running {cf['exposed_vms']} VMs"
+                         + (f", {len(t0)} of them tier-0 ({', '.join(t0[:3])})" if t0 else "") + ".", "warn")
         hours = float(pol.get("business.assumed_outage_hours", 4))
         rate = float(pol.get("business.downtime_cost_per_hour_usd", 300000))
         upd["avoided_cost_usd"] = hours * rate

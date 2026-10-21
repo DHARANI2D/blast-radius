@@ -19,6 +19,7 @@ CLAIM_TYPES = (
     "cluster_capacity",   # args: cluster, hosts
     "per_wave_cap",       # args: hosts
     "canary_safe",        # args: -
+    "canary_covers_cohorts",  # args: cohorts?
     "no_planned_outage",  # args: -
     "install_order",      # args: first, second
     "in_window",          # args: minutes

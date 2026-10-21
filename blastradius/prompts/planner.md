@@ -13,8 +13,11 @@ Hard constraints (the plan is rejected if any is violated):
    the same wave as that switch (so it is evacuated first).
 4. Per wave, at most `max_parallel_per_cluster` hosts of any one cluster, and at most
    `max_assets_per_wave` assets.
-5. Every target appears in exactly one wave; do not schedule deferred assets.
-6. The total duration must fit the maintenance window.
+5. The canary must contain one eligible host from each configuration cohort marked
+   `required_in_canary` in `facts.cohorts` (each host lists its `cohort`). A canary that only
+   tests one hardware/firmware configuration cannot catch a regression on another.
+6. Every target appears in exactly one wave; do not schedule deferred assets.
+7. The total duration must fit the maintenance window.
 
 If `feedback` is present, your previous plan failed: fix every listed violation and drop or
 correct every contradicted claim.

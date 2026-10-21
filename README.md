@@ -23,7 +23,7 @@ pip install -r requirements.txt
 python -m blastradius ui                              # Control Tower at http://localhost:8501
 python -m blastradius demo --auto-approve --reset     # the whole story in the terminal
 python -m blastradius demo --faults off --auto-approve --reset   # clean run, all 5 waves
-python -m pytest -q                                   # 38 tests
+python -m pytest -q                                   # 43 tests
 docker compose up --build                             # same UI in a container
 ```
 
@@ -36,12 +36,14 @@ Intent: *"Upgrade iLO 6 and System ROM on clusters PROD-BLR-07 and PROD-BLR-08 a
 | Step | What happens |
 |---|---|
 | Hidden dependency | LLDP shows `blr-esx-07` (it runs `payments-db-01`) has had its second uplink err-disabled for weeks. The Risk agent's failure simulation makes `tor-r1-a` the riskiest asset (79/100). |
-| First plan blocked | The planner batches both VSX members into wave 1. Simulation: **504 VMs lose service**, because the Alletra array hangs only off the R1 ToR pair, so the *other* cluster loses its datastores too. 12 constraint violations. |
+| First plan blocked | The planner batches both VSX members into wave 1. Simulation: **504 VMs lose service**, because the Alletra array hangs only off the R1 ToR pair, so the *other* cluster loses its datastores too. 13 constraint violations, including a canary that leaves a configuration cohort untested. |
 | Hallucination caught | The Verifier contradicts *"System ROM U54 v2.32 remediates SYN-CVE-2026-1105"* (the release notes list other CVEs; the advisory says it is fixed in iLO 6 v1.66) along with 4 other claims. **Trust Score 0 against a self-reported 91.** |
-| Re-plan accepted | Staggered VSX members, the single-homed host co-scheduled with its switch, at most 5 hosts per cluster per wave. **Trust Score 97** (7 supported, 1 unverifiable). |
-| Human gate | Go/no-go card, HMAC-signed approval, scoped write tokens. |
-| Canary regression | ROM U54 v2.32 combined with NIC firmware 229.x raises NIC latency **4.1x** on `blr-esx-03`. The wave auto-halts, write access is revoked, the wave is rolled back and signals recover. *Estimated outage avoided: $1.2M (illustrative).* |
-| Learning | Differential diagnosis: iLO 1.64 is exonerated (the healthy control host got it too) and ROM + NIC 229.x is blamed. Press **New run**: the **20 affected DL380 hosts are deferred** and the remaining 22 assets complete safely. |
+| Re-plan accepted | Staggered VSX members, the single-homed host co-scheduled with its switch, at most 5 hosts per cluster per wave, and a **cohort-coverage canary**: one host from each of the 3 configuration cohorts (`blr-esx-21` DL360 · NIC 230.x, `blr-esx-01` DL380 · NIC 229.x, `blr-esx-03` DL380 · NIC 230.x). **Trust Score 98** (8 supported, 1 unverifiable). |
+| Human gate | Go/no-go card with canary coverage (3/3 cohorts, 40/40 hosts represented; a risk-ranked canary would cover 2/3), HMAC-signed approval, scoped write tokens. |
+| Canary regression | ROM U54 v2.32 combined with NIC firmware 229.x raises NIC latency **3.9x** on `blr-esx-01`. The wave auto-halts, write access is revoked, the wave is rolled back and signals recover. *Estimated outage avoided: $1.2M (illustrative).* |
+| Diagnosis | The canary probed each host after every component: `blr-esx-01` was normal after iLO 1.64 and broke right after ROM U54 v2.32, so **iLO is exonerated on the regressed host itself**. Control `blr-esx-03` (same DL380 model, NIC 230.x) got the same ROM and stayed healthy, so the lesson is scoped to **NIC 229.x**, with the fix: update the NIC to 230.0.156.0 first. |
+| Counterfactual | A conventional risk-ranked canary of the same size (`blr-esx-03`, `blr-esx-21`, `blr-esx-11`: the dev/CI hosts that got new NIC firmware first) covers 2/3 cohorts and **would have passed**. Wave 2 would then have started flashing 15 affected hosts running 165 VMs, including tier-0 `payments-db-01`. |
+| Learning | Press **New run**: only the **16 DL380 hosts still on NIC 229.x are deferred**; the 4 DL380s on NIC 230.x and all DL360s (26 assets) complete safely. |
 | Audit | Signed report; ledger verified; *Simulate tampering* breaks the chain on a copy. |
 
 | Plan & Verifier | Canary rollback |
@@ -59,6 +61,7 @@ Intent: *"Upgrade iLO 6 and System ROM on clusters PROD-BLR-07 and PROD-BLR-08 a
 | `blastradius/mcp_layer.py`, `tools/` | 5 MCP servers (compute, network, virt, telemetry, knowledge; 26 tools) and the ToolBus. Every call is recorded as evidence `EV-xxxx` |
 | `blastradius/topology.py` | NetworkX cross-domain graph and failure simulation (network isolation, storage reachability, cluster capacity), plus the Blast-Radius Score |
 | `blastradius/constraints.py`, `solver.py` | Hard constraints in code, and a deterministic wave solver used as fallback |
+| `blastradius/cohorts.py` | Configuration cohorts, cohort-coverage canary selection, and the risk-ranked baseline used for the counterfactual |
 | `blastradius/ledger.py`, `approval.py`, `policy.py` | Hash-chained ledger, HMAC approvals and write tokens, allow-list, rate limit, kill switch, redaction |
 | `blastradius/twin.py`, `data/` | Seeded digital twin (COM / Central / Mist / Morpheus / OpsRamp-shaped JSON) with fault injection, and a synthetic knowledge base |
 | `ui/app.py` | Streamlit Control Tower |
@@ -70,6 +73,18 @@ Intent: *"Upgrade iLO 6 and System ROM on clusters PROD-BLR-07 and PROD-BLR-08 a
 2. Each typed claim goes to a deterministic checker that gathers **its own** evidence over MCP (release notes, advisories, LLDP, cluster capacity, independent re-simulation). Untyped claims go to an LLM judge that may only cite retrieved evidence; if it cites nothing, its verdict is downgraded to *Unverifiable*.
 3. `Trust = 100 × Σ(weight × value) / Σ weight − 15 × contradictions`, where value is Supported 1, Unverifiable 0.5, Contradicted 0, and weight is safety 3, factual 2, informational 1.
 4. A plan reaches a human only if the constraints pass, Trust ≥ 80 and there are **no** contradictions. Otherwise the planner retries with the violations and contradicted claims as feedback, then the deterministic solver takes over, then the change is escalated.
+
+### How the canary is chosen, and how a canary failure is diagnosed
+
+A canary only tests the configurations it contains. Picking it by *risk* is the conventional rule, and it is quietly wrong: the lowest-risk hosts are usually dev/CI boxes, which are also the hosts that got firmware first and least resemble production.
+
+1. **Configuration cohorts** (`blastradius/cohorts.py`). Target servers are grouped by model plus the major version of every firmware component the change does *not* touch (here NIC BCM57414 229.x vs 230.x). Those are the attributes that interact with the new firmware and that the change will not make uniform.
+2. **Cohort-coverage canary.** The canary takes one eligible host (dual-homed, no tier-0/1 workloads) from each cohort, largest first, up to `canary_max_assets`. `CANARY_COVERAGE` is a hard constraint, and `canary_covers_cohorts` is a typed Verifier claim checked against inventory the Verifier fetches itself.
+3. **Per-component probe.** In the canary wave only, the Executor reads golden signals after each component it flashes, while the host is still in maintenance. The first component after which a regressed host breaks is the culprit, and components flashed before it are exonerated *on that host*.
+4. **Controls.** Healthy canary hosts that received the same culprit version are controls. Untouched-firmware attributes shared by every regressed host and by no control become the incident's conditions. With no control, the lesson is scoped to the whole cohort and says so.
+5. **Counterfactual.** After a rollback, the Reporter replays the conventional risk-ranked canary rule against the learned lesson and reports whether it would have caught the regression, and what the later waves would have hit.
+
+Evacuation capacity is also simulated VM by VM (largest first, onto the least-utilised host under the cluster ceiling), not as aggregate free memory: a 256 GB database VM needs 256 GB free on *one* host.
 
 ## Responsible AI and governance
 

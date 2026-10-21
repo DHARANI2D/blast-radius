@@ -251,6 +251,20 @@ with main:
             k[1].metric("Max BRS", f"{card['max_brs']:.0f}")
             k[2].metric("Duration", f"{card['total_duration_min']} min")
             k[3].metric("Deferred", len(card["deferred"]))
+            cov, rr = card.get("canary_coverage"), card.get("risk_ranked_coverage")
+            if cov and card["scope"] == "canary":
+                canary = card["waves"][0]["assets"] if card["waves"] else []
+                cmp = ""
+                if rr:
+                    cmp = (f" A risk-ranked canary ({', '.join(rr['canary'])}) would cover {rr['covered']}/{rr['total']} "
+                           f"({rr['hosts_represented']}/{rr['hosts_total']} hosts)"
+                           + (": untested " + "; ".join(m["label"] for m in rr["missing"]) if rr["missing"] else "") + ".")
+                st.markdown(f"<div class='{'br-banner-green' if cov['ok'] else 'br-banner-red'}'><b>Canary coverage:</b> "
+                            f"{', '.join(canary)} covers <b>{cov['covered']}/{cov['total']}</b> configuration cohorts "
+                            f"({cov['hosts_represented']}/{cov['hosts_total']} hosts represented).{cmp}</div>", unsafe_allow_html=True)
+                with st.expander("Configuration cohorts (model + firmware the change does not touch)"):
+                    st.dataframe(pd.DataFrame([{"cohort": c["label"], "hosts": c["size"], "canary host": ", ".join(c["canary"]) or "-"}
+                                               for c in cov["cohorts"]]), hide_index=True, width="stretch")
             if card.get("canary_result"):
                 cr = card["canary_result"]
                 st.markdown(f"<div class='br-banner-green'>Canary {', '.join(cr['assets'])}: <b>{cr['result']}</b>; "
@@ -349,6 +363,14 @@ with main:
                     les = state["lesson"]
                     st.markdown(f"<div class='br-banner-amber'><b>Learned {les['id']}:</b> {les['symptom']} {les['lesson']} "
                                 "Press <b>New run</b> and analyse again: affected hosts are now deferred.</div>", unsafe_allow_html=True)
+                cf = state.get("counterfactual")
+                if cf and not cf["risk_ranked_would_catch"] and cf["exposed_hosts"]:
+                    t0 = cf["exposed_tier0_vms"]
+                    st.markdown(f"<div class='br-banner-red'><b>Counterfactual:</b> a risk-ranked canary of the same size "
+                                f"({', '.join(cf['risk_ranked_canary'])}; {cf['risk_ranked_cohorts']} cohorts) has no affected host and "
+                                f"would have passed. Wave {cf['first_exposed_wave']} would then have started flashing "
+                                f"{len(cf['exposed_hosts'])} affected hosts running {cf['exposed_vms']} VMs"
+                                + (f", including tier-0 {', '.join(t0[:3])}" if t0 else "") + ".</div>", unsafe_allow_html=True)
 
     # --------------------------------------------------------------- audit
     with tabs[4]:

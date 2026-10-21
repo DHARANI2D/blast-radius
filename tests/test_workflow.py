@@ -17,13 +17,21 @@ def test_full_story_with_canary_regression(engine, sv):
     assert [g["scope"] for g in gates] == ["canary"]
     assert st["status"] == "rolled_back"
     assert st["rollback"]["recovered"] is True
-    assert st["executions"][0]["regressions"][0]["asset"] == "blr-esx-03"
+    # the cohort canary includes a DL380 on NIC 229.x (regresses) and a DL380 on NIC 230.x (control)
+    assert {"blr-esx-01", "blr-esx-03"} <= set(st["plan"]["waves"][0]["assets"])
+    assert {r["asset"] for r in st["executions"][0]["regressions"]} == {"blr-esx-01"}
     for c in st["executions"][0]["firmware_changes"]:
         assert sv.twin.servers[c["asset"]]["firmware"][c["component"]] == c["from"]
-    # lesson: ROM blamed, iLO exonerated by the healthy control host
+    # lesson: the per-component probe blames ROM and exonerates iLO on the regressed host itself;
+    # the same-model control on NIC 230.x narrows the condition to NIC 229.x
     les = st["lesson"]
     assert les["component"] == "System ROM" and les["conditions"]["firmware_prefix"] == {"NIC BCM57414": "229."}
-    assert "iLO 6 1.64" in les["lesson"]
+    d = les["diagnosis"]
+    assert d["method"] == "per-component probe" and d["exonerated"] == ["iLO 6 1.64"]
+    assert d["controls"] == ["blr-esx-03"] and d["scope"] == "control"
+    # counterfactual: a risk-ranked canary of the same size would have missed it
+    cf = st["counterfactual"]
+    assert not cf["risk_ranked_would_catch"] and "payments-db-01" in cf["exposed_tier0_vms"]
     assert st["avoided_cost_usd"] == 1_200_000
     assert sv.ledger.verify()["ok"]
 
@@ -42,7 +50,10 @@ def test_learned_regression_defers_matching_hosts(tmp_path):
     r, gates = drive(Engine(sv))
     st = r["state"]
     deferred = {d["asset"] for d in st["risk"]["deferred"]}
-    assert len(deferred) == 20 and all(sv.twin.servers[a]["model"].endswith("DL380 Gen11") for a in deferred)
+    # only DL380s still on NIC 229.x are deferred; the four DL380s on NIC 230.x proceed
+    assert len(deferred) == 16
+    assert all(sv.twin.servers[a]["model"].endswith("DL380 Gen11")
+               and sv.twin.servers[a]["firmware"]["NIC BCM57414"].startswith("229.") for a in deferred)
     assert st["status"] == "completed"
     planned = {a for w in st["plan"]["waves"] for a in w["assets"]}
     assert not planned & deferred
