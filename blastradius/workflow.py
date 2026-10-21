@@ -35,6 +35,7 @@ from .agents.reporter import plan_hash
 from .canary_stats import analyse_wave, changed_assets, params as stat_params, summary as stat_summary
 from .cohorts import build as build_cohorts, coverage, risk_ranked_canary
 from .constraints import check_plan
+from .optimizer import describe as describe_optimization, optimize, regrounded
 from .llm import LLMError
 from .mcp_layer import ToolCallError
 
@@ -149,6 +150,38 @@ def build_graph(sv):
                   + ("all constraints satisfied" if cons["ok"] else f"{len(cons['violations'])} violation(s): "
                      + "; ".join(v["message"] for v in cons["violations"][:2])))
         return {"attempts": attempts, "timeline": _t("planner", "proposed", detail, level)}
+
+    def optimise(state: RunState):
+        """Risk-aware wave optimizer: improves a feasible plan under the same hard constraints.
+
+        The Verifier then runs on the optimised waves, so every claim is re-checked and the
+        plan hash that the approval signs covers what will actually execute.
+        """
+        attempts = list(state["attempts"])
+        cur = dict(attempts[-1])
+        if not cur["constraints"]["ok"] or not pol.get("optimizer.enabled", True):
+            return {}
+        cr, targets, risk, topo = state["change_request"], state["targets"], state["risk"], topo_of(state)
+        res = optimize(cur["plan"], targets, topo, risk, pol, cr["components"], cr["window"]["duration_minutes"],
+                       risk["deferred"], seed=int(pol.get("optimizer.seed", 5)),
+                       time_budget_s=float(pol.get("optimizer.time_budget_s", 2.0)))
+        summary = {k: res[k] for k in ("status", "improved", "before", "after", "changes", "stats", "weights")}
+        cur["optimization"] = summary
+        if res["improved"]:
+            new_plan = res["plan"]
+            if cur["provenance"] == "deterministic-solver":
+                new_plan = regrounded(new_plan, topo, targets, pol, cr["components"], risk["deferred"])
+            cur["plan_before_optimization"] = cur["plan"]
+            cur["plan"] = new_plan
+            cur["constraints"] = check_plan(new_plan, topo, targets["servers"] + targets["switches"], cr["components"], pol,
+                                            cr["window"]["duration_minutes"], [d["asset"] for d in risk["deferred"]])
+        attempts[-1] = cur
+        log(state, "code:optimizer", "plan_optimized" if res["improved"] else "plan_not_improved",
+            {"attempt": cur["attempt"], "plan_hash": plan_hash(cur["plan"]), "before": res["before"], "after": res["after"],
+             "moves": len(res.get("moves", [])), "stats": res["stats"]})
+        return {"attempts": attempts,
+                "timeline": _t("optimizer", "optimized" if res["improved"] else "kept", describe_optimization(res),
+                               "success" if res["improved"] else "info")}
 
     def verify(state: RunState):
         attempts = list(state["attempts"])
@@ -409,7 +442,8 @@ def build_graph(sv):
                                               "success" if rep["outcome"] == "completed" else "info")}
 
     g = StateGraph(RunState)
-    for name, fn in [("intake", intake), ("discover", discover), ("assess", assess), ("plan", plan), ("verify", verify),
+    for name, fn in [("intake", intake), ("discover", discover), ("assess", assess), ("plan", plan), ("optimise", optimise),
+                     ("verify", verify),
                      ("escalate", escalate), ("approve_canary", approve_canary), ("approve_fleet", approve_fleet),
                      ("execute", execute), ("postcheck", postcheck), ("rollback", rollback), ("report", report)]:
         g.add_node(name, fn)
@@ -417,7 +451,8 @@ def build_graph(sv):
     g.add_edge("intake", "discover")
     g.add_edge("discover", "assess")
     g.add_edge("assess", "plan")
-    g.add_edge("plan", "verify")
+    g.add_edge("plan", "optimise")
+    g.add_edge("optimise", "verify")
     g.add_conditional_edges("verify", after_verify, ["approve_canary", "plan", "escalate"])
     g.add_edge("escalate", "report")
     g.add_conditional_edges("approve_canary", after_canary_approval, ["execute", "report"])

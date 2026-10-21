@@ -54,7 +54,12 @@ class Settings:
     # command line that starts the server over stdio.
     gl_mcp_url: str = field(default_factory=lambda: _env("BR_GL_MCP_URL"))
     gl_mcp_cmd: str = field(default_factory=lambda: _env("BR_GL_MCP_CMD"))
-    gl_mcp_devices_tool: str = field(default_factory=lambda: _env("BR_GL_MCP_DEVICES_TOOL"))
+    gl_mcp_devices_tool: str = field(default_factory=lambda: _env("BR_GL_MCP_DEVICES_TOOL"))  # empty = getdevicesv1
+    gl_mcp_cwd: str = field(default_factory=lambda: _env("BR_GL_MCP_CWD"))            # cwd for a gl-mcp source checkout
+    gl_mcp_filter: str = field(default_factory=lambda: _env("BR_GL_MCP_FILTER"))      # OData, e.g. deviceType eq 'COMPUTE'
+    gl_mcp_page_size: int = field(default_factory=lambda: int(_env("BR_GL_MCP_PAGE_SIZE", "2000") or 2000))
+    gl_mcp_max_pages: int = field(default_factory=lambda: int(_env("BR_GL_MCP_MAX_PAGES", "10") or 10))
+    gl_mcp_timeout_s: float = field(default_factory=lambda: float(_env("BR_GL_MCP_TIMEOUT_S", "60") or 60))
 
     @property
     def twin_file(self) -> Path:

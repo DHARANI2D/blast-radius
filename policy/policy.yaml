@@ -53,6 +53,16 @@ golden_signals:                 # post-check thresholds (post vs. pre)
   switch_ports_down_delta_max: 0
   require_health: OK
 
+optimizer:                      # risk-aware wave optimizer (simulated annealing under the same hard constraints)
+  enabled: true
+  seed: 5
+  iterations: 2500              # about 1 s on the demo scenario; deterministic when the iteration count is reached first
+  time_budget_s: 2.0
+  w_brs: 1.0                    # J = minutes + w_brs * sum(per-wave BRS) + w_exposure * exposure + w_waves * waves
+  w_exposure: 30.0              # progressive exposure: risky and tier-0-carrying assets should run after more of the plan is proven
+  w_waves: 10.0                 # minutes-equivalent cost per wave (hand-off, soak, approval)
+  tier0_weight: 1.0
+
 canary_stats:                   # peer comparison: canary hosts vs un-upgraded hosts of the same cohort, same minutes
   enabled: true
   all_waves: false              # fleet waves run out of un-upgraded controls; judge the canary only

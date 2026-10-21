@@ -134,6 +134,23 @@ def cmd_mcp_serve(args) -> int:
     return 0
 
 
+def cmd_greenlake(args) -> int:
+    from .config import Settings
+    from .greenlake import doctor, list_devices
+
+    s = Settings()
+    if args.action == "doctor":
+        rep = doctor(s)
+        print(json.dumps(rep, indent=2))
+        return 0 if rep.get("ready") else 1
+    r = list_devices(s)  # the one real network call
+    for d in r.get("devices", [])[:50]:
+        print(f"{d.get('serial', ''):<16} {d.get('model', ''):<34} {d.get('device_type', ''):<10} subs={len(d.get('subscriptions') or [])}")
+    print(f"pages={r.get('pages')} total_reported={r.get('total_reported')} truncated={r.get('truncated')} ok={r.get('ok')}"
+          + (f" error={r.get('error')}" if r.get("error") else ""))
+    return 0 if r.get("ok") else 1
+
+
 def cmd_a2a(args) -> int:
     print((ROOT / "a2a" / "agent-card.json").read_text())
     return 0
@@ -180,6 +197,9 @@ def main(argv: list[str] | None = None) -> int:
     m = sub.add_parser("mcp-serve", help="run one domain MCP server over stdio")
     m.add_argument("domain", choices=["compute", "network", "virt", "telemetry", "knowledge"])
     m.set_defaults(fn=cmd_mcp_serve)
+    gl = sub.add_parser("greenlake", help="HPE GreenLake MCP (gl-mcp): readiness check, or a read-only device listing")
+    gl.add_argument("action", choices=["doctor", "devices"])
+    gl.set_defaults(fn=cmd_greenlake)
     sub.add_parser("a2a-card", help="print the A2A agent card").set_defaults(fn=cmd_a2a)
     a2 = sub.add_parser("a2a-serve", help="serve the read-only assess-change skill over A2A (JSON-RPC)")
     a2.add_argument("--host", default="127.0.0.1")
