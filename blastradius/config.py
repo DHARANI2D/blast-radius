@@ -40,7 +40,10 @@ class Settings:
     # session; "inproc" calls the same tool functions directly (faster tests).
     tool_transport: str = field(default_factory=lambda: _env("BR_TOOL_TRANSPORT", "mcp"))
 
-    # Fault injection for the demo (canary regression on a firmware combination).
+    # Fault injection for the demo. BR_FAULTS = on (canary regression), off, subtle (a 1.3x
+    # regression the fixed threshold misses), backup (a slowdown on every host), or a
+    # '+' combination such as on+backup. faults_enabled is kept for callers that pass a bool.
+    fault_scenario: str = field(default_factory=lambda: _env("BR_FAULTS", "on").lower())
     faults_enabled: bool = field(default_factory=lambda: _env("BR_FAULTS", "on").lower() in ("1", "on", "true", "yes"))
 
     # Secret used to sign approvals, write-tool tokens and reports (HMAC-SHA256).

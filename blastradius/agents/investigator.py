@@ -30,6 +30,9 @@ TRAILING_CITE = re.compile(r"\.\s*(\[EV-\d{4}(?:,\s*EV-\d{4})*\])")
 
 
 def _json_type(ann) -> dict:
+    args = [a for a in typing.get_args(ann) if a is not type(None)]
+    if args and type(None) in typing.get_args(ann):  # Optional[X] -> X
+        ann = args[0]
     origin = typing.get_origin(ann)
     if ann in (str, "str"):
         return {"type": "string"}

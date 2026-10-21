@@ -147,9 +147,11 @@ def test_demo_regression_fails_with_tiny_p(tmp_path):
 
 def test_subtle_regression_passes_the_2x_rule_but_fails_statistically(tmp_path):
     sv, r, ex, stat = run_canary(tmp_path, "subtle")
-    # the fixed rule waves it through: the workflow is at the fleet gate
-    assert ex["result"] == "passed" and r["interrupt"]["scope"] == "fleet"
+    # the fixed rule alone would wave it through...
     assert PostValidationAgent(sv).compare(ex["pre"], ex["post"], ex["during"])["passed"]
+    # ...but the workflow merges the statistical verdict, so the canary is rolled back instead of reaching the fleet gate
+    assert ex["result"] == "regression" and r["state"]["status"] == "rolled_back" and r["interrupt"] is None
+    assert {g["asset"] for g in ex["regressions"]} == {"blr-esx-21"} and ex["canary_stats"]["verdict"] == FAIL
     c = check(stat, "blr-esx-21")
     assert c["verdict"] == FAIL and c["p_value"] < 1e-4 and 1.2 < c["effect"] < 1.5
     assert c["cohort"] == "DL360 Gen11 · NIC BCM57414 230.x" and c["n_control_hosts"] == 19

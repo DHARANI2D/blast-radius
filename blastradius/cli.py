@@ -54,7 +54,7 @@ def cmd_demo(args) -> int:
     from .workflow import Engine
 
     os.environ["BR_FAULTS"] = args.faults
-    sv = Services.create(tool_transport=args.transport, faults_enabled=args.faults == "on")
+    sv = Services.create(tool_transport=args.transport, fault_scenario=args.faults)
     if args.reset:
         sv.reset_lab(forget_lessons=True)
     eng = Engine(sv)
@@ -161,7 +161,9 @@ def main(argv: list[str] | None = None) -> int:
     sub = p.add_subparsers(dest="cmd", required=True)
     d = sub.add_parser("demo", help="run the end-to-end story in the terminal")
     d.add_argument("--intent", default=DEFAULT_INTENT)
-    d.add_argument("--faults", choices=["on", "off"], default="on", help="inject the canary firmware regression")
+    d.add_argument("--faults", choices=["on", "off", "subtle", "backup", "on+backup", "subtle+backup"], default="on",
+                   help="on: canary regression (4x); subtle: 1.3x regression only the statistical judge catches; "
+                        "backup: slowdown on every host that a tight fixed threshold would mistake for a regression")
     d.add_argument("--transport", choices=["mcp", "inproc"], default="mcp")
     d.add_argument("--auto-approve", action="store_true")
     d.add_argument("--reset", action="store_true", help="reset the twin and forget learned incidents first")

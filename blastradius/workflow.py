@@ -32,6 +32,7 @@ from .agents import (ExecutorAgent, IntakeAgent, PlannerAgent, PostValidationAge
                      RollbackAgent, TopologyAgent, VerifierAgent)
 from .agents.executor import ExecutionHalted
 from .agents.reporter import plan_hash
+from .canary_stats import analyse_wave, changed_assets, params as stat_params, summary as stat_summary
 from .cohorts import build as build_cohorts, coverage, risk_ranked_canary
 from .constraints import check_plan
 from .llm import LLMError
@@ -235,6 +236,9 @@ def build_graph(sv):
             canary = state["executions"][0]
             c["canary_result"] = {"assets": canary["assets"], "result": canary.get("result"), "checked": canary.get("checked"),
                                   "migrated_vms": canary["migrated_vms"]}
+            cs = canary.get("canary_stats")
+            if cs:
+                c["canary_result"]["statistical"] = {"verdict": cs["verdict"], "score": cs["score"], "summary": stat_summary(cs)}
             c["waves"] = c["waves"][1:]
         return c
 
@@ -323,6 +327,17 @@ def build_graph(sv):
         execs = list(state["executions"])
         cur = dict(execs[-1])
         cmp = post_a.compare(cur["pre"], cur["post"], cur["during"])
+        tl_stats: list[dict] = []
+        sp = stat_params(pol)
+        if sp["enabled"] and (cur["index"] == 1 or sp["all_waves"]):
+            # Peer comparison against un-upgraded hosts of the same configuration cohort, same time window.
+            stat = analyse_wave(sv, cur, topo_of(state), state["change_request"]["components"], exclude=changed_assets(execs[:-1]))
+            cur["canary_stats"] = stat
+            cmp["regressions"] = cmp["regressions"] + [r for r in stat["regressions"]
+                                                       if (r["asset"], r["metric"]) not in {(x["asset"], x["metric"]) for x in cmp["regressions"]}]
+            cmp["passed"] = cmp["passed"] and stat["verdict"] != "FAIL"
+            log(state, "agent:postcheck", "canary_stats", {k: stat[k] for k in ("verdict", "score", "checks", "controls", "windows", "evidence")})
+            tl_stats = _t("postcheck", "canary_stats", stat_summary(stat), {"FAIL": "error", "MARGINAL": "warn"}.get(stat["verdict"], "info"))
         cur.update(result="passed" if cmp["passed"] else "regression", regressions=cmp["regressions"], checked=cmp["checked"])
         execs[-1] = cur
         log(state, "agent:postcheck", "golden_signals", {"wave": cur["index"], "passed": cmp["passed"], "regressions": cmp["regressions"],
@@ -331,14 +346,14 @@ def build_graph(sv):
         if not cmp["passed"]:
             sv.authority.revoke_run(state["run_id"])
             upd["status"] = "rolling_back"
-            upd["timeline"] = _t("postcheck", "regression", f"{cur['name']}: " + "; ".join(f"{r['asset']} {r['message']}" for r in cmp["regressions"][:3])
-                                 + " - auto-halt, write access revoked", "error")
+            upd["timeline"] = tl_stats + _t("postcheck", "regression", f"{cur['name']}: " + "; ".join(f"{r['asset']} {r['message']}" for r in cmp["regressions"][:3])
+                                            + " - auto-halt, write access revoked", "error")
         elif cur["index"] == len(state["plan"]["waves"]):
             upd["status"] = "completed"
-            upd["timeline"] = _t("postcheck", "passed", f"{cur['name']}: {cmp['checked']} signal sets within thresholds; all waves complete", "success")
+            upd["timeline"] = tl_stats + _t("postcheck", "passed", f"{cur['name']}: {cmp['checked']} signal sets within thresholds; all waves complete", "success")
         else:
             upd["current_wave"] = cur["index"] + 1
-            upd["timeline"] = _t("postcheck", "passed", f"{cur['name']}: {cmp['checked']} signal sets within thresholds", "success")
+            upd["timeline"] = tl_stats + _t("postcheck", "passed", f"{cur['name']}: {cmp['checked']} signal sets within thresholds", "success")
         return upd
 
     def after_postcheck(state: RunState) -> str:

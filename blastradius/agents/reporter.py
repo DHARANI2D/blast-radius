@@ -34,12 +34,27 @@ class ReporterAgent:
         self.sv = sv
 
     # ------------------------------------------------------------- learning
-    def _regressed(self, pre: dict | None, sig: dict) -> bool:
+    def _regressed(self, pre: dict | None, sig: dict, stat_regs: list[dict] = ()) -> bool:
+        """Did this probe snapshot already show the regression?
+
+        Fixed thresholds first. For a regression only the statistical judge caught (e.g. 1.3x),
+        the snapshot is compared with the shift the judge measured: a probe that already shows
+        at least three quarters of that shift is where the regression started.
+        """
         if pre is None:
             return False
         from .postcheck import PostValidationAgent
 
-        return not PostValidationAgent(self.sv).compare([pre], [sig])["passed"]
+        if not PostValidationAgent(self.sv).compare([pre], [sig])["passed"]:
+            return True
+        for r in stat_regs:
+            base, now, post = pre.get(r["metric"]), sig.get(r["metric"]), r.get("post")
+            if not base or now is None or not r.get("pre") or not post:
+                continue
+            shift = post / r["pre"]
+            if shift > 1 and now / base >= 1 + 0.75 * (shift - 1):
+                return True
+        return False
 
     def lesson_from_rollback(self, run_id: str, wave_exec: dict, regressions: list[dict], topo: Topology,
                              baseline_versions: dict) -> dict | None:
@@ -66,7 +81,8 @@ class ReporterAgent:
         for p in wave_exec.get("probes", []):
             if p["host"] not in bad or culprit:
                 continue
-            if self._regressed(pre.get(p["host"]), p["signals"]):
+            stat_regs = [r for r in regressions if r.get("check") == "statistical" and r["asset"] == p["host"]]
+            if self._regressed(pre.get(p["host"]), p["signals"], stat_regs):
                 culprit, method = (p["component"], p["version"]), "per-component probe"
             else:
                 cleared.append((p["component"], p["version"], p["host"]))

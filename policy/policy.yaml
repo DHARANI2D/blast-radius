@@ -53,6 +53,18 @@ golden_signals:                 # post-check thresholds (post vs. pre)
   switch_ports_down_delta_max: 0
   require_health: OK
 
+canary_stats:                   # peer comparison: canary hosts vs un-upgraded hosts of the same cohort, same minutes
+  enabled: true
+  all_waves: false              # fleet waves run out of un-upgraded controls; judge the canary only
+  alpha: 0.01                   # one-sided Mann-Whitney U significance level
+  min_effect: 1.15              # minimum difference-in-differences ratio for FAIL (smaller significant shifts are MARGINAL)
+  metrics: [nic_latency_ms, rx_drop_rate]
+  pre_minutes: 15
+  min_controls: 3               # fewer cohort peers widens to the same model; still fewer is reported as insufficient
+  widen_to_model: true
+  min_samples: 5
+  exact_max_n: 40               # exact permutation p-value up to this many samples
+
 impact:
   tier_weights: {0: 10, 1: 4, 2: 2, 3: 1}
   migrated_vm_weight: 0.02      # live migration is not free; small exposure weight

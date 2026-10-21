@@ -37,7 +37,10 @@ class Services:
         if overrides:
             settings = replace(settings, **overrides)
         policy = Policy.load(settings.policy_file)
-        twin = Twin(settings.twin_file, faults_enabled=settings.faults_enabled)
+        # An explicit faults_enabled override (tests, UI toggle) wins over the BR_FAULTS scenario.
+        explicit_bool = "faults_enabled" in overrides and "fault_scenario" not in overrides
+        twin = Twin(settings.twin_file, faults_enabled=settings.faults_enabled,
+                    scenario=None if explicit_bool else settings.fault_scenario)
         kb = KnowledgeBase(settings.knowledge_dir, settings.runtime_dir)
         authority = ApprovalAuthority(settings.signing_key)
         ledger = Ledger(ledger_path if ledger_path is not None else settings.runtime_dir / "ledger.sqlite")
