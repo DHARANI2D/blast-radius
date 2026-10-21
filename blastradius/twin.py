@@ -7,6 +7,13 @@ it through the MCP tool layer. Agents never touch it directly.
 It also holds the fault-injection rules used in the demo. Agents cannot see
 these rules; they only observe their effect through telemetry, exactly as they
 would observe a real firmware regression.
+
+Which faults are live is a *scenario* (``BR_FAULTS``-style string, see
+:func:`parse_scenario`): ``on`` is the demo regression and the default,
+``off`` is a clean lab, and two opt-in scenarios exercise statistical canary
+analysis (``blastradius.canary_stats``): ``subtle`` is a ~1.3x regression a 2x
+threshold misses, and ``backup`` is a common-mode backup job that slows every
+host at once. They combine with ``+``, e.g. ``on+backup``.
 """
 
 from __future__ import annotations
@@ -16,14 +23,16 @@ import hashlib
 import json
 import threading
 from pathlib import Path
-from typing import Any
+from typing import Any, Iterable
 
-# A firmware combination that regresses NIC latency. It is the "unknown
-# unknown" the canary wave exists to catch: nothing in the knowledge base
-# mentions it until BlastRadius learns it from a rollback.
+# Firmware combinations that regress NIC latency. FAULT-NIC-LAT-01 is the
+# "unknown unknown" the canary wave exists to catch: nothing in the knowledge
+# base mentions it until BlastRadius learns it from a rollback. Each rule is
+# live only while its scenario is selected.
 FAULT_RULES: list[dict[str, Any]] = [
     {
         "id": "FAULT-NIC-LAT-01",
+        "scenario": "regression",
         "description": (
             "System ROM U54 v2.32 changes PCIe link-training defaults; BCM57414 adapters still on "
             "NIC firmware 229.x renegotiate badly, raising NIC latency ~4x and dropping packets."
@@ -32,8 +41,59 @@ FAULT_RULES: list[dict[str, Any]] = [
         "firmware_equals": {"System ROM": "U54 v2.32"},
         "firmware_prefix": {"NIC BCM57414": "229."},
         "effect": {"nic_latency_multiplier": 4.1, "rx_drop_rate": 0.012, "crc_errors_per_min": 35},
-    }
+    },
+    {
+        # Opt-in (scenario "subtle"): small enough that post > 2x pre never fires.
+        "id": "FAULT-NIC-LAT-02",
+        "scenario": "subtle",
+        "description": (
+            "System ROM U63 v2.32 enables PCIe ASPM L1 on the OCP slot by default; BCM57414 adapters on "
+            "NIC firmware 230.x pay a link-state exit penalty: NIC latency ~1.3x and slightly more drops."
+        ),
+        "model": "HPE ProLiant DL360 Gen11",
+        "firmware_equals": {"System ROM": "U63 v2.32"},
+        "firmware_prefix": {"NIC BCM57414": "230."},
+        "effect": {"nic_latency_multiplier": 1.3, "rx_drop_rate": 0.0003},
+    },
 ]
+
+# Common-mode events hit every host in the pod for a period of simulated time,
+# whatever its firmware. They are not caused by the change, so a canary judged
+# only against its own past (post vs. pre) blames the change for them.
+COMMON_MODE_EVENTS: list[dict[str, Any]] = [
+    {
+        "id": "EVT-BACKUP-01",
+        "scenario": "backup",
+        "description": "Nightly backup job (proxy-based VM snapshots) loads every host uplink: NIC latency +40%.",
+        "start_min": 72,   # minutes since the change window opened (inclusive)
+        "end_min": 162,    # exclusive
+        "effect": {"nic_latency_multiplier": 1.4},
+    },
+]
+
+SCENARIOS = {"regression": "FAULT-NIC-LAT-01 (demo, default)", "subtle": "FAULT-NIC-LAT-02 (~1.3x, opt-in)",
+             "backup": "EVT-BACKUP-01 (common-mode, opt-in)"}
+_ON, _OFF = {"on", "1", "true", "yes", "regression"}, {"off", "0", "false", "no", "none", ""}
+
+# Metrics whose per-minute history the twin records (None while a host is in maintenance).
+HISTORY_METRICS = ("nic_latency_ms", "rx_drop_rate")
+BASE_RX_DROP_RATE = 0.0001
+
+
+def parse_scenario(value: str | bool | Iterable[str] | None) -> frozenset[str]:
+    """``"on"`` -> {regression}, ``"off"`` -> {}, ``"subtle+backup"`` -> {subtle, backup}."""
+    if value is None or isinstance(value, bool):
+        return frozenset({"regression"} if value in (None, True) else set())
+    tokens = value.replace(",", "+").split("+") if isinstance(value, str) else list(value)
+    out: set[str] = set()
+    for tok in (t.strip().lower() for t in tokens):
+        if tok in _ON:
+            out.add("regression")
+        elif tok in SCENARIOS:
+            out.add(tok)
+        elif tok not in _OFF:
+            raise ValueError(f"unknown fault scenario {tok!r}; use on, off, subtle, backup or a '+' combination")
+    return frozenset(out)
 
 
 class TwinError(RuntimeError):
@@ -41,11 +101,27 @@ class TwinError(RuntimeError):
 
 
 class Twin:
-    def __init__(self, twin_file: Path, faults_enabled: bool = True):
+    def __init__(self, twin_file: Path, faults_enabled: bool = True, scenario: str | Iterable[str] | None = None):
+        """``scenario`` (e.g. ``"subtle"``, ``"on+backup"``) overrides ``faults_enabled`` when given."""
         self._file = twin_file
         self._lock = threading.RLock()
-        self.faults_enabled = faults_enabled
+        self.scenarios = parse_scenario(faults_enabled if scenario is None else scenario)
         self.reset()
+
+    @property
+    def faults_enabled(self) -> bool:
+        """The demo regression (FAULT-NIC-LAT-01) is live."""
+        return "regression" in self.scenarios
+
+    @faults_enabled.setter
+    def faults_enabled(self, on: bool) -> None:
+        self.scenarios = (self.scenarios | {"regression"}) if on else (self.scenarios - {"regression"})
+
+    def set_scenario(self, scenario: str | Iterable[str] | None) -> frozenset[str]:
+        """Select live faults/events. Takes effect for samples recorded from now on (reset() keeps it)."""
+        with self._lock:
+            self.scenarios = parse_scenario(scenario)
+            return self.scenarios
 
     # ------------------------------------------------------------------ state
     def reset(self) -> None:
@@ -66,9 +142,11 @@ class Twin:
             self.clock_min = 0
             self.firmware_history: list[dict] = []
             self.crc_counters: dict[str, int] = {n: 100 + (i * 7) % 40 for i, n in enumerate(self.servers)}
-            # Per-minute NIC latency history (None while a host is in maintenance),
-            # seeded with 15 minutes of pre-window baseline.
-            self.history: dict[str, list[tuple[int, float | None]]] = {n: [] for n in self.servers}
+            # Per-minute history of HISTORY_METRICS (None while a host is in maintenance),
+            # seeded with 15 minutes of pre-window baseline. ``history`` is the NIC latency one.
+            self.metric_history: dict[str, dict[str, list[tuple[int, float | None]]]] = {
+                m: {n: [] for n in self.servers} for m in HISTORY_METRICS}
+            self.history = self.metric_history["nic_latency_ms"]
             for t in range(-15, 1):
                 self._record(t)
 
@@ -91,8 +169,11 @@ class Twin:
                     self.crc_counters[name] += int(eff.get("crc_errors_per_min", 0) * minutes)
 
     def _record(self, t: int) -> None:
+        drops = self.metric_history["rx_drop_rate"]
         for name in self.servers:
-            self.history[name].append((t, None if name in self.maintenance else round(self._latency(name, t), 4)))
+            down = name in self.maintenance
+            self.history[name].append((t, None if down else round(self._latency(name, t), 4)))
+            drops[name].append((t, None if down else self._drop_rate(name)))
 
     # ----------------------------------------------------------- read helpers
     def get_server(self, name: str) -> dict:
@@ -196,11 +277,11 @@ class Twin:
 
     # -------------------------------------------------------------- telemetry
     def _fault_effect(self, server: str) -> dict | None:
-        if not self.faults_enabled:
+        if not self.scenarios:
             return None
         srv = self.servers[server]
         for rule in FAULT_RULES:
-            if srv["model"] != rule["model"]:
+            if rule["scenario"] not in self.scenarios or srv["model"] != rule["model"]:
                 continue
             if any(srv["firmware"].get(c) != v for c, v in rule["firmware_equals"].items()):
                 continue
@@ -224,10 +305,22 @@ class Twin:
             return False
         return self._host_network_ok(host)
 
+    def _common_mode_latency(self, t: int) -> float:
+        """NIC latency multiplier of the common-mode events running at minute ``t`` (1.0 if none)."""
+        mult = 1.0
+        for ev in COMMON_MODE_EVENTS:
+            if ev["scenario"] in self.scenarios and ev["start_min"] <= t < ev["end_min"]:
+                mult *= ev["effect"].get("nic_latency_multiplier", 1.0)
+        return mult
+
     def _latency(self, name: str, t: int) -> float:
         base = 0.17 + (int(hashlib.sha256(name.encode()).hexdigest(), 16) % 30) / 1000.0
         eff = self._fault_effect(name) or {}
-        return base * eff.get("nic_latency_multiplier", 1.0) * (1 + self._jitter(name, t, 0.06))
+        mult = eff.get("nic_latency_multiplier", 1.0) * self._common_mode_latency(t)
+        return base * mult * (1 + self._jitter(name, t, 0.06))
+
+    def _drop_rate(self, name: str) -> float:
+        return (self._fault_effect(name) or {}).get("rx_drop_rate", BASE_RX_DROP_RATE)
 
     @staticmethod
     def _jitter(key: str, t: int, scale: float) -> float:
@@ -251,7 +344,7 @@ class Twin:
                 "health": srv["state"]["health"],
                 "maintenanceMode": name in self.maintenance,
                 "nic_latency_ms": round(lat, 4),
-                "rx_drop_rate": eff.get("rx_drop_rate", 0.0001),
+                "rx_drop_rate": eff.get("rx_drop_rate", BASE_RX_DROP_RATE),
                 "crc_errors_total": self.crc_counters[name],
                 "crc_errors_per_min": eff.get("crc_errors_per_min", 0),
                 "network_reachable": net_ok,
@@ -283,14 +376,20 @@ class Twin:
             return self.switch_signals(asset, t)
         raise TwinError(f"unknown asset {asset!r}")
 
-    def series(self, asset: str, metric: str, minutes: int = 10) -> list[dict]:
-        """Samples of one metric over the last ``minutes`` of simulated time."""
-        end = self.clock_min
-        if metric == "nic_latency_ms" and asset in self.history:
-            return [{"t_min": t, "value": v} for t, v in self.history[asset] if t > end - minutes]
-        out = []
-        for t in range(max(0, end - minutes + 1), end + 1):
-            s = self.signals(asset, t)
-            out.append({"t_min": t, "value": s.get(metric)})
-        return out
+    def series(self, asset: str, metric: str, minutes: int = 10, start_t: int | None = None,
+               end_t: int | None = None) -> list[dict]:
+        """Samples of one metric over the last ``minutes`` of simulated time, or over the explicit
+        window ``start_t..end_t`` (inclusive; ``end_t`` defaults to now and is capped at now).
+
+        Recorded metrics (HISTORY_METRICS on servers) come from history, so a past window shows what
+        the host reported then. Other metrics are recomputed from the current state at each minute.
+        """
+        with self._lock:
+            end = self.clock_min if end_t is None else min(int(end_t), self.clock_min)
+            start = end - int(minutes) + 1 if start_t is None else int(start_t)
+            hist = self.metric_history.get(metric, {}).get(asset)
+            if hist is not None:
+                return [{"t_min": t, "value": v} for t, v in hist if start <= t <= end]
+            lo = max(0, start) if start_t is None else start
+            return [{"t_min": t, "value": self.signals(asset, t).get(metric)} for t in range(lo, end + 1)]
 
