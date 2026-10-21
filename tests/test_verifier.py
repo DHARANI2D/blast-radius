@@ -1,0 +1,61 @@
+from blastradius.agents import RiskAgent, VerifierAgent
+from blastradius.solver import solve
+
+SERVERS = [f"blr-esx-{i:02d}" for i in range(1, 41)]
+SWITCHES = ["tor-r1-a", "tor-r1-b"]
+COMPS = ["iLO 6", "System ROM", "Switch OS"]
+CR = {"components": COMPS, "window": {"day": "Saturday", "start": "22:00", "duration_minutes": 480}}
+
+
+def ctx(sv, topo, plan):
+    risk = RiskAgent(sv).run({"servers": SERVERS, "switches": SWITCHES}, COMPS, topo)
+    return {"plan": plan, "cr": CR, "topo": topo, "target_versions": risk["target_versions"]}, risk
+
+
+def check(sv, topo, plan, ctype, args, text="claim"):
+    v = VerifierAgent(sv)
+    c, _ = ctx(sv, topo, plan)
+    return v.check({"type": ctype, "args": args, "text": text}, c)
+
+
+def test_hallucinated_cve_is_contradicted_with_evidence(sv, topo):
+    label, why, ev = check(sv, topo, {"waves": []}, "fixes_cve",
+                           {"component": "System ROM", "version": "U54 v2.32", "cve": "SYN-CVE-2026-1105"})
+    assert label == "Contradicted"
+    assert "ADV-SYN-2026-017" in why and "1.66" in why
+    assert all(sv.evidence.get(e) for e in ev)
+
+
+def test_true_cve_claim_is_supported(sv, topo):
+    label, _, _ = check(sv, topo, {"waves": []}, "fixes_cve", {"component": "iLO 6", "version": "v1.64", "cve": "SYN-CVE-2026-1101"})
+    assert label == "Supported"
+
+
+def test_redundant_pair_together_is_contradicted(sv, topo):
+    label, why, _ = check(sv, topo, {"waves": []}, "pair_safe_together", {"a": "tor-r1-a", "b": "tor-r1-b"})
+    assert label == "Contradicted" and "one member at a time" in why
+
+
+def test_dual_homed_claim_checked_against_lldp(sv, topo):
+    assert check(sv, topo, {"waves": []}, "all_dual_homed", {"cluster": "PROD-BLR-07"})[0] == "Contradicted"
+    assert check(sv, topo, {"waves": []}, "all_dual_homed", {"cluster": "PROD-BLR-08"})[0] == "Supported"
+    assert check(sv, topo, {"waves": []}, "single_homed", {"server": "blr-esx-07"})[0] == "Supported"
+
+
+def test_freeform_claims_default_to_unverifiable(sv, topo):
+    assert check(sv, topo, {"waves": []}, "freeform", {}, "Traffic will be low on Saturday night.")[0] == "Unverifiable"
+
+
+def test_trust_score_blocks_contradictions(sv, topo):
+    waves = solve(SERVERS, SWITCHES, topo, {}, sv.policy, COMPS, 480)
+    good = {"waves": waves, "self_confidence": 90,
+            "rationale": "tor-r1-a and tor-r1-b are upgraded in different waves. No wave causes a workload outage. "
+                         "Update iLO 6 before System ROM."}
+    _, risk = ctx(sv, topo, good)
+    res = VerifierAgent(sv).run(good, CR, topo, risk)
+    assert res["passed"] and res["trust_score"] == 100
+    bad = dict(good, rationale=good["rationale"] + " System ROM U54 v2.32 remediates SYN-CVE-2026-1105.")
+    res = VerifierAgent(sv).run(bad, CR, topo, risk)
+    assert not res["passed"]
+    assert res["counts"]["Contradicted"] == 1
+    assert res["trust_score"] < 80

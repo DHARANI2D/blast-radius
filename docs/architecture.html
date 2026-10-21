@@ -1,0 +1,82 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>BlastRadius architecture</title>
+<style>
+  body{margin:0;background:#fff;font-family:Helvetica,Arial,sans-serif;color:#0f172a}
+  .wrap{width:1500px;padding:28px 32px;box-sizing:border-box}
+  h1{font-size:24px;margin:0 0 4px} .sub{color:#475569;font-size:14px;margin-bottom:18px}
+  .row{display:flex;gap:10px;align-items:stretch}
+  .box{border:1.5px solid #cbd5e1;border-radius:10px;padding:10px 12px;background:#f8fafc;font-size:13px}
+  .box b{display:block;font-size:14px;margin-bottom:3px}
+  .lane{border:2px dashed #94a3b8;border-radius:14px;padding:12px 14px 14px;margin:10px 0}
+  .lane > .t{font-size:12px;font-weight:bold;color:#475569;letter-spacing:.06em;text-transform:uppercase;margin-bottom:8px}
+  .step{flex:1;text-align:center;background:#eff6ff;border-color:#93c5fd}
+  .step.h{background:#fef3c7;border-color:#f59e0b}
+  .step.v{background:#fee2e2;border-color:#ef4444}
+  .arrow{align-self:center;color:#64748b;font-size:20px}
+  .agent{flex:1;background:#f0fdf4;border-color:#86efac}
+  .agent.v{background:#fff1f2;border-color:#fda4af}
+  .mcp{flex:1;background:#f5f3ff;border-color:#c4b5fd}
+  .mcp.opt{background:#fff;border-style:dashed}
+  .src{flex:1;background:#f1f5f9}
+  .gov{background:#ecfeff;border-color:#67e8f9}
+  .grid{display:grid;grid-template-columns:1fr 330px;gap:14px}
+  .small{font-size:11.5px;color:#475569}
+  .down{text-align:center;color:#64748b;font-size:18px;margin:-4px 0}
+</style></head><body><div class="wrap">
+<h1>BlastRadius: agentic change-safety mesh</h1>
+<div class="sub">Preventive, evidence-gated runtime control for firmware and configuration changes across HPE compute, network, virtualization and storage</div>
+<div class="grid"><div>
+<div class="box" style="text-align:center;background:#fff">
+  <b>Change intent</b>Operator (natural language) · ServiceNow change request · upstream copilot via A2A agent card
+</div>
+<div class="down">▼</div>
+<div class="lane"><div class="t">LangGraph supervisor · checkpointed state machine · interrupts for humans</div>
+<div class="row">
+  <div class="box step"><b>Intake</b>intent → typed change request</div><div class="arrow">→</div>
+  <div class="box step"><b>Discover</b>cross-domain graph</div><div class="arrow">→</div>
+  <div class="box step"><b>Assess</b>risk + exposure</div><div class="arrow">→</div>
+  <div class="box step"><b>Plan</b>LLM waves</div><div class="arrow">→</div>
+  <div class="box step v"><b>Verify</b>constraints + claims</div><div class="arrow">→</div>
+  <div class="box step h"><b>Approve</b>1 / 2 signers</div><div class="arrow">→</div>
+  <div class="box step"><b>Execute</b>wave by wave</div><div class="arrow">→</div>
+  <div class="box step"><b>Post-check</b>golden signals</div><div class="arrow">→</div>
+  <div class="box step v"><b>Rollback · Learn</b>signed report</div>
+</div>
+<div class="small" style="margin-top:6px">Gate fails → re-plan with the violations and contradicted claims as feedback (then deterministic solver, then escalate). Canary passes → fleet waves need two distinct approvers.</div>
+</div>
+<div class="lane"><div class="t">Agents (each sees the estate only through MCP tools; every call becomes citable evidence)</div>
+<div class="row">
+  <div class="box agent"><b>Topology</b>servers ↔ NIC ↔ switch port (LLDP) ↔ VSX pair ↔ cluster ↔ VM ↔ datastore ↔ array</div>
+  <div class="box agent"><b>Risk &amp; Advisory</b>release notes, advisories, incidents (RAG) + simulated downstream exposure</div>
+  <div class="box agent"><b>Wave Planner</b>HPE-approved LLM proposes canary waves and a rationale</div>
+  <div class="box agent v"><b>Verifier (independent)</b>atomic claims → Supported / Contradicted / Unverifiable → Trust Score</div>
+  <div class="box agent"><b>Executor · Post-Validation · Rollback · Reporter</b>guarded writes, pre/during/post diff, revert, lesson</div>
+</div></div>
+<div class="lane"><div class="t">MCP tool layer (Model Context Protocol servers)</div>
+<div class="row">
+  <div class="box mcp"><b>compute</b>COM shapes: servers, baselines, apply_firmware*</div>
+  <div class="box mcp"><b>network</b>Central / Mist shapes: switches, LLDP, upgrade_switch_os*</div>
+  <div class="box mcp"><b>virt</b>Morpheus shapes: clusters, VMs, datastores, maintenance*</div>
+  <div class="box mcp"><b>telemetry</b>OpsRamp-style golden signals</div>
+  <div class="box mcp"><b>knowledge</b>release notes, advisories, incidents (BM25)</div>
+  <div class="box mcp opt"><b>gl-mcp (optional)</b>official HPE GreenLake MCP, read-only inventory</div>
+</div><div class="small" style="margin-top:6px">* write tools verify an HMAC approval token scoped to (run, asset, action) on the server side</div></div>
+<div class="down">▼</div>
+<div class="row">
+  <div class="box src"><b>PoC: seeded digital twin of BLR-POD-1</b>40 ProLiant Gen11 · 2 clusters (504 VMs) · 2 ToR pairs (Aruba CX VSX, Juniper QFX MC-LAG) · spine pair · Alletra MP array · injected firmware fault</div>
+  <div class="box src"><b>Production path</b>Compute Ops Management, Aruba Central / Mist, Morpheus, OpsRamp APIs behind the same MCP contracts</div>
+</div>
+</div>
+<div>
+  <div class="box gov" style="height:100%;box-sizing:border-box">
+    <b style="font-size:16px;margin-bottom:8px">Governance (enforced in code)</b>
+    <p><b>Deterministic constraints</b>never both VSX members together; no simulated workload outage; N-k cluster capacity; canary first; window.</p>
+    <p><b>Trust Score gate</b>evidence-weighted share of supported claims minus contradiction penalty; &lt;80 or any contradiction blocks.</p>
+    <p><b>Human in the loop</b>analysis automatic · canary 1 signer · fleet 2 distinct signers · HMAC-signed approvals.</p>
+    <p><b>Policy guard</b>write allow-list, approved scope only, per-wave rate limit, kill switch.</p>
+    <p><b>Hash-chained audit ledger</b>prompts (hash), models, tool calls, claims, scores, approvals, actions, outcomes.</p>
+    <p><b>Data protection</b>synthetic data only; secrets redacted before prompts; HPE-approved endpoints only.</p>
+    <p><b>Learning loop</b>rollback → differential diagnosis → incident in knowledge base → matching hosts deferred next time.</p>
+  </div>
+</div></div>
+</div></body></html>

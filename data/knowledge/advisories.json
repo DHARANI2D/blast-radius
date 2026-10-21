@@ -1,0 +1,26 @@
+[
+  {
+    "id": "ADV-SYN-2026-017",
+    "title": "iLO 6 web interface input validation (SYN-CVE-2026-1105) (synthetic)",
+    "severity": "high",
+    "cves": ["SYN-CVE-2026-1105"],
+    "component": "iLO 6",
+    "affected_versions": ["1.58", "1.60", "1.62", "1.64"],
+    "fixed_in": {"component": "iLO 6", "version": "1.66"},
+    "models": ["HPE ProLiant DL380 Gen11", "HPE ProLiant DL360 Gen11"],
+    "status": "fix scheduled; iLO 6 v1.66 not yet in any baseline",
+    "text": "SYN-CVE-2026-1105 affects the iLO 6 web interface in versions up to and including 1.64. It is fixed in iLO 6 v1.66, which is not yet part of a released baseline. System ROM updates do not remediate this issue. Mitigation: restrict iLO web access to the management VLAN."
+  },
+  {
+    "id": "ADV-SYN-2026-009",
+    "title": "DL380 Gen11 System ROM older than U54 v2.20 may log spurious memory errors (synthetic)",
+    "severity": "medium",
+    "cves": [],
+    "component": "System ROM",
+    "affected_versions": ["U54 v2.10", "U54 v2.16"],
+    "fixed_in": {"component": "System ROM", "version": "U54 v2.20"},
+    "models": ["HPE ProLiant DL380 Gen11"],
+    "status": "resolved in U54 v2.20 and later",
+    "text": "DL380 Gen11 servers running System ROM U54 v2.16 or earlier may log correctable memory errors that trigger unnecessary DIMM replacement. Update to U54 v2.20 or later."
+  }
+]

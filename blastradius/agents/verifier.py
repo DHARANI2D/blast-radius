@@ -1,0 +1,302 @@
+"""Verifier (critic) agent: anti-hallucination gate.
+
+1. A separate model/prompt at temperature 0 splits the Planner's rationale into
+   atomic, typed claims.
+2. Each typed claim is checked by a deterministic checker that gathers its *own*
+   evidence through MCP tools (the Verifier never reuses the Planner's inputs).
+   Untyped ("freeform") claims go to an LLM judge that may only cite retrieved
+   evidence and defaults to Unverifiable.
+3. Trust Score = evidence-weighted share of supported claims, minus a penalty
+   per contradicted claim. Safety claims weigh more than factual claims, which
+   weigh more than informational ones.
+"""
+
+from __future__ import annotations
+
+import json
+from collections import Counter
+
+from ..constraints import impact_kwargs, wave_duration
+from ..llm import load_prompt
+from ..models import ClaimList, Judgement
+from ..topology import Topology
+
+CATEGORY = {
+    "pair_safe_together": "safety", "pair_staggered": "safety", "all_dual_homed": "safety",
+    "dual_homed": "safety", "single_homed": "safety", "cluster_capacity": "safety", "per_wave_cap": "safety",
+    "canary_safe": "safety", "no_planned_outage": "safety",
+    "fixes_cve": "factual", "no_known_issues": "factual", "install_order": "factual",
+    "in_window": "informational", "freeform": "informational",
+}
+
+
+class VerifierAgent:
+    name = "verifier"
+
+    def __init__(self, sv):
+        self.sv = sv
+        self._cache: dict = {}
+
+    # ------------------------------------------------------------ helpers
+    def call(self, tool: str, **args):
+        key = (tool, json.dumps(args, sort_keys=True, default=str))
+        if key not in self._cache:
+            self._cache[key] = self.sv.bus.call(self.name, tool, **args)
+        return self._cache[key]
+
+    def _resolve_version(self, component: str, version: str) -> str:
+        v = version.strip()
+        known = [r["version"] for r in self.sv.kb.release_notes if r["component"] == component]
+        for cand in (v, v.lstrip("vV"), v.replace("version ", "")):
+            if cand in known:
+                return cand
+        tail = [k for k in known if k.endswith(v.lstrip("vV"))]
+        return tail[0] if tail else v
+
+    def _uplinks(self) -> tuple[dict[str, set[str]], str]:
+        lldp, ev = self.call("network.get_lldp_neighbors")
+        ups: dict[str, set[str]] = {}
+        for p in lldp:
+            if p["status"] == "up" and p.get("neighbor"):
+                ups.setdefault(p["neighbor"], set()).add(p["switch"])
+        return ups, ev
+
+    # ------------------------------------------------------------ checkers
+    def check(self, claim: dict, ctx: dict) -> tuple[str, str, list[str]]:
+        fn = getattr(self, f"_c_{claim['type']}", None)
+        if fn is None or claim["type"] == "freeform":
+            return self._c_freeform(claim, ctx)
+        try:
+            return fn(claim["args"], ctx)
+        except (KeyError, TypeError, ValueError) as exc:
+            return "Unverifiable", f"claim arguments could not be checked ({exc})", []
+
+    def _c_fixes_cve(self, a, ctx):
+        comp, cve = a["component"], a["cve"]
+        ver = self._resolve_version(comp, a["version"])
+        rn, e1 = self.call("knowledge.get_release_notes", component=comp, version=ver)
+        advs, e2 = self.call("knowledge.list_advisories", cve=cve)
+        if rn.get("found") is not False and cve in rn.get("security_fixes", []):
+            return "Supported", f"{rn['id']} lists {cve} among its security fixes.", [e1]
+        elsewhere = [x for x in advs if (x.get("fixed_in") or {}).get("version") != ver]
+        detail = "; ".join(f"{x['id']} says {cve} is fixed in {x['fixed_in']['component']} {x['fixed_in']['version']}" for x in elsewhere)
+        if rn.get("found") is not False and rn.get("security_fixes_complete"):
+            msg = f"{rn['id']} lists security fixes {', '.join(rn['security_fixes'])}; {cve} is not among them"
+            return "Contradicted", msg + (f". {detail}." if detail else "."), [e1, e2]
+        if elsewhere:
+            return "Contradicted", detail + ".", [e2]
+        return "Unverifiable", f"no release notes or advisory link {comp} {ver} to {cve}.", [e1, e2]
+
+    def _c_no_known_issues(self, a, ctx):
+        comp = a["component"]
+        ver = self._resolve_version(comp, a["version"])
+        rn, e1 = self.call("knowledge.get_release_notes", component=comp, version=ver)
+        advs, e2 = self.call("knowledge.list_advisories", component=comp, version=ver)
+        incs, e3 = self.call("knowledge.list_incidents", component=comp, version=ver, model=a.get("model", ""))
+        issues = [ki["id"] for ki in rn.get("known_issues", [])] + [x["id"] for x in advs] + [i["id"] for i in incs]
+        if issues:
+            return "Contradicted", f"{comp} {ver} has open issues: {', '.join(issues)}.", [e1, e2, e3]
+        if rn.get("found") is False:
+            return "Unverifiable", f"no release notes for {comp} {ver}.", [e1]
+        return "Supported", f"{rn['id']} lists no known issues and no advisory or incident matches.", [e1, e2, e3]
+
+    def _c_pair_safe_together(self, a, ctx):
+        topo: Topology = ctx["topo"]
+        sw, e1 = self.call("network.get_switch", name=a["a"])
+        peer = (sw.get("redundancy") or {}).get("peer")
+        imp = topo.simulate([a["a"], a["b"]], [], **impact_kwargs(self.sv.policy))
+        e2 = self.sv.evidence.add(self.name, "blastradius.simulate", {"down_switches": [a["a"], a["b"]]},
+                                  {k: imp[k] for k in ("impacted_vms", "critical_vms", "isolated_servers", "arrays_unreachable", "brs")})
+        ev = [e1, e2]
+        tv = ctx["target_versions"].get(a["a"], {}).get("Switch OS")
+        note = ""
+        if tv:
+            rn, e3 = self.call("knowledge.get_release_notes", component="Switch OS", version=tv)
+            ev.append(e3)
+            if "one member at a time" in rn.get("install_notes", ""):
+                note = f" {rn['id']}: VSX pairs must be upgraded one member at a time."
+        if imp["impacted_vms"]:
+            return ("Contradicted", f"{a['a']} and {a['b']} are {'redundant peers' if peer == a['b'] else 'switches'} carrying the same hosts; "
+                    f"with both down, {len(imp['impacted_vms'])} VMs lose service (incl. {', '.join(imp['critical_vms'][:3]) or 'none tier-0'}).{note}", ev)
+        if note and peer == a["b"]:
+            return "Contradicted", note.strip(), ev
+        return "Supported", "simulation shows no workload impact with both switches down.", ev
+
+    def _c_pair_staggered(self, a, ctx):
+        sw, e1 = self.call("network.get_switch", name=a["a"])
+        where = {x: [i for i, w in enumerate(ctx["plan"]["waves"], 1) if x in w["assets"]] for x in (a["a"], a["b"])}
+        if not where[a["a"]] or not where[a["b"]]:
+            return "Unverifiable", f"plan does not schedule both {a['a']} and {a['b']}.", [e1]
+        if set(where[a["a"]]) & set(where[a["b"]]):
+            return "Contradicted", f"plan puts {a['a']} and {a['b']} in the same wave.", [e1]
+        return "Supported", f"{a['a']} is in wave {where[a['a']][0]}, {a['b']} in wave {where[a['b']][0]}; peer of {a['a']} is {(sw.get('redundancy') or {}).get('peer')}.", [e1]
+
+    def _c_all_dual_homed(self, a, ctx):
+        clusters, e1 = self.call("virt.list_clusters")
+        ups, e2 = self._uplinks()
+        cl = next((c for c in clusters if c["name"] == a["cluster"]), None)
+        if not cl:
+            return "Unverifiable", f"cluster {a['cluster']} not found.", [e1]
+        single = [h for h in cl["hosts"] if len(ups.get(h, set())) < 2]
+        if single:
+            return "Contradicted", f"LLDP shows {', '.join(single)} with fewer than two live uplinks.", [e1, e2]
+        return "Supported", f"all {len(cl['hosts'])} hosts have two live uplinks in LLDP.", [e1, e2]
+
+    def _homed(self, server, want_single):
+        ups, ev = self._uplinks()
+        n = len(ups.get(server, set()))
+        is_single = n < 2
+        label = "Supported" if is_single == want_single else "Contradicted"
+        return label, f"LLDP shows {n} live uplink(s) for {server}: {', '.join(sorted(ups.get(server, []))) or 'none'}.", [ev]
+
+    def _c_single_homed(self, a, ctx):
+        return self._homed(a["server"], True)
+
+    def _c_dual_homed(self, a, ctx):
+        return self._homed(a["server"], False)
+
+    def _cluster_max_down(self, cluster: str) -> tuple[int, list[str]]:
+        clusters, e1 = self.call("virt.list_clusters")
+        vms, e2 = self.call("virt.list_vms", cluster=cluster)
+        servers, e3 = self.call("compute.list_servers", cluster=cluster)
+        cl = next(c for c in clusters if c["name"] == cluster)
+        demand = sum(v["memoryGB"] for v in vms)
+        per_host = sum(s["memoryGB"] for s in servers) / max(1, len(servers))
+        limit = cl.get("maxMemoryUtilPct", 85) / 100
+        max_down = max([k for k in range(len(servers)) if demand <= limit * per_host * (len(servers) - k)], default=0)
+        return max_down, [e1, e2, e3]
+
+    def _c_cluster_capacity(self, a, ctx):
+        max_down, ev = self._cluster_max_down(a["cluster"])
+        n = int(a["hosts"])
+        if n <= max_down:
+            return "Supported", f"{a['cluster']} can absorb up to {max_down} hosts in maintenance at its utilisation ceiling.", ev
+        return "Contradicted", f"{a['cluster']} can absorb at most {max_down} hosts in maintenance; {n} would overload it.", ev
+
+    def _c_per_wave_cap(self, a, ctx):
+        topo: Topology = ctx["topo"]
+        worst = 0
+        for w in ctx["plan"]["waves"]:
+            c = Counter(topo.servers[h]["cluster"] for h in w["assets"] + w.get("evacuate", []) if h in topo.servers)
+            worst = max([worst] + list(c.values()))
+        servers, e1 = self.call("compute.list_servers")
+        if worst <= int(a["hosts"]):
+            return "Supported", f"the busiest wave has {worst} hosts of one cluster in maintenance.", [e1]
+        return "Contradicted", f"a wave has {worst} hosts of one cluster in maintenance.", [e1]
+
+    def _c_canary_safe(self, a, ctx):
+        waves = ctx["plan"]["waves"]
+        if not waves:
+            return "Unverifiable", "plan has no waves.", []
+        topo: Topology = ctx["topo"]
+        max_assets = int(self.sv.policy.get("planning.canary_max_assets", 2))
+        min_tier = int(self.sv.policy.get("planning.canary_max_tier", 2))
+        ev, bad = [], []
+        for h in waves[0]["assets"]:
+            if h in topo.switches:
+                bad.append(f"{h} is a switch")
+                continue
+            vms, e = self.call("virt.list_vms", host=h)
+            ev.append(e)
+            crit = [v["name"] for v in vms if v["tier"] < min_tier]
+            if crit:
+                bad.append(f"{h} runs {', '.join(crit[:3])}")
+        if len(waves[0]["assets"]) > max_assets:
+            bad.append(f"{len(waves[0]['assets'])} assets (limit {max_assets})")
+        if bad:
+            return "Contradicted", "canary is not safe: " + "; ".join(bad) + ".", ev
+        return "Supported", f"canary {', '.join(waves[0]['assets'])} runs only tier-{min_tier}+ workloads.", ev
+
+    def _c_no_planned_outage(self, a, ctx):
+        topo: Topology = ctx["topo"]
+        bad = []
+        for i, w in enumerate(ctx["plan"]["waves"], 1):
+            sw = [x for x in w["assets"] if x in topo.switches]
+            hosts = [x for x in w["assets"] + w.get("evacuate", []) if x in topo.servers]
+            imp = topo.simulate(sw, hosts, **impact_kwargs(self.sv.policy))
+            if imp["impacted_vms"]:
+                bad.append((i, len(imp["impacted_vms"])))
+        e = self.sv.evidence.add(self.name, "blastradius.simulate", {"plan_waves": len(ctx["plan"]["waves"])}, {"waves_with_outage": bad})
+        if bad:
+            return "Contradicted", "simulation finds outages in " + ", ".join(f"wave {i} ({n} VMs)" for i, n in bad) + ".", [e]
+        return "Supported", "independent re-simulation of every wave finds no workload outage.", [e]
+
+    def _c_install_order(self, a, ctx):
+        first, second = a["first"], a["second"]
+        versions = {v.get(second) for v in ctx["target_versions"].values() if v.get(second)}
+        ev = []
+        for ver in sorted(versions):
+            rn, e = self.call("knowledge.get_release_notes", component=second, version=ver)
+            ev.append(e)
+            text = (rn.get("install_notes", "") + " " + rn.get("text", "")).lower()
+            if f"update {first.lower()} before {second.lower()}" in text or f"update {first.lower().split()[0]} first" in text:
+                return "Supported", f"{rn['id']} instructs updating {first} before {second}.", ev
+        for r in self.sv.kb.release_notes:
+            if r["component"] == first and f"before {second.lower()}" in r.get("install_notes", "").lower():
+                rn, e = self.call("knowledge.get_release_notes", component=first, version=r["version"])
+                return "Supported", f"{rn['id']}: {rn['install_notes']}", ev + [e]
+        return "Unverifiable", f"release notes do not state an order for {first} and {second}.", ev
+
+    def _c_in_window(self, a, ctx):
+        topo: Topology = ctx["topo"]
+        comps = ctx["cr"]["components"]
+        total = sum(wave_duration(w["assets"], w.get("evacuate", []), topo, comps, self.sv.policy) for w in ctx["plan"]["waves"])
+        window = ctx["cr"]["window"]["duration_minutes"]
+        claimed = int(a["minutes"])
+        e = self.sv.evidence.add(self.name, "blastradius.duration", {"waves": len(ctx["plan"]["waves"])}, {"computed_min": total, "window_min": window})
+        if total > window:
+            return "Contradicted", f"computed duration {total} min exceeds the {window}-min window.", [e]
+        if abs(claimed - total) > 0.35 * total:
+            return "Contradicted", f"claimed {claimed} min but the plan computes to {total} min (window {window}).", [e]
+        return "Supported", f"computed {total} min, within the {window}-min window.", [e]
+
+    def _c_freeform(self, claim, ctx):
+        hits, e = self.call("knowledge.search", query=claim["text"], k=3)
+        evidence = [e]
+        user = json.dumps({"claim": claim["text"], "evidence": [self.sv.evidence.summary(x, 1200) for x in evidence]})
+        j: Judgement = self.sv.verifier_llm.complete_json(
+            "verifier_judge", load_prompt("verifier_judge"), user, Judgement,
+            context={"claim": claim["text"], "hits": hits}, temperature=0.0)
+        cited = [x for x in j.evidence if self.sv.evidence.get(x)]
+        if j.label != "Unverifiable" and not cited:
+            return "Unverifiable", f"judge answered {j.label} without citing evidence; downgraded.", evidence
+        return j.label, j.explanation, cited or evidence
+
+    # -------------------------------------------------------------- run
+    def run(self, plan: dict, cr: dict, topo: Topology, risk: dict) -> dict:
+        self._cache.clear()
+        pol = self.sv.policy
+        user = json.dumps({"rationale": plan["rationale"], "switches": list(topo.switches), "clusters": list(topo.clusters)})
+        extracted: ClaimList = self.sv.verifier_llm.complete_json(
+            "verifier_extract", load_prompt("verifier_extract"), user, ClaimList,
+            context={"rationale": plan["rationale"], "switch_names": list(topo.switches)}, temperature=0.0)
+        ctx = {"plan": plan, "cr": cr, "topo": topo, "target_versions": risk["target_versions"]}
+        weights = pol.get("verification.claim_weights", {})
+        values = pol.get("verification.label_values", {})
+        claims = []
+        for i, c in enumerate(extracted.claims, 1):
+            cd = c.model_dump()
+            label, why, ev = self.check(cd, ctx)
+            cat = CATEGORY.get(cd["type"], "informational")
+            claims.append({"id": f"C{i}", **cd, "category": cat, "weight": weights.get(cat, 1), "label": label,
+                           "explanation": why, "evidence": ev})
+        tw = sum(c["weight"] for c in claims)
+        share = (sum(c["weight"] * values.get(c["label"], 0) for c in claims) / tw) if tw else 0.5
+        n_contra = sum(1 for c in claims if c["label"] == "Contradicted")
+        trust = max(0.0, min(100.0, 100 * share - float(pol.get("verification.contradiction_penalty", 15)) * n_contra))
+        threshold = float(pol.get("verification.trust_threshold", 80))
+        blocked_by = []
+        if trust < threshold:
+            blocked_by.append(f"Trust Score {trust:.0f} < {threshold:.0f}")
+        if n_contra and pol.get("verification.block_on_contradiction", True):
+            blocked_by.append(f"{n_contra} contradicted claim(s)")
+        return {
+            "claims": claims,
+            "trust_score": round(trust, 1),
+            "self_confidence": plan.get("self_confidence"),
+            "counts": dict(Counter(c["label"] for c in claims)),
+            "passed": not blocked_by,
+            "blocked_by": blocked_by,
+            "verifier_model": self.sv.verifier_llm.model,
+            "independent_model": self.sv.verifier_llm.model != self.sv.llm.model,
+        }
