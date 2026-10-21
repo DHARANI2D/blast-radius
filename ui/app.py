@@ -265,6 +265,51 @@ with main:
                         st.caption("Moved later so more of the plan is proven first: " + "; ".join(
                             f"{c['asset']} wave {c['from_wave']} → {c['to_wave']} ({c['validated_before_pct'][0]:.0f}% → "
                             f"{c['validated_before_pct'][1]:.0f}% validated before it)" for c in moved[:4]))
+        ms = sv.memory.stats()
+        with st.expander(f"Planning memory: {ms['rules']} rules learned from rejected plans · first-attempt pass rate "
+                         f"{ms['first_attempt_pass_rate'] if ms['runs'] else '-'} over {ms['runs']} run(s)"):
+            st.caption(f"With memory: {ms['with_memory']['first_attempt_pass_rate']} · without: {ms['without_memory']['first_attempt_pass_rate']}. "
+                       "Reset lab forgets these rules; New run keeps them.")
+            for r in sorted(sv.memory.rules(), key=lambda r: -r["hits"])[:15]:
+                st.markdown(f"- `{r['hits']}x` **{r['key']}**: {r['guidance']}")
+        with st.expander("Red-team benchmark: how do we know the Trust Score works?"):
+            if st.button("Run benchmark (about 5 s)", key="rt-run"):
+                from blastradius.redteam import run_benchmark
+
+                with st.spinner("Generating labelled false claims and unsafe plan mutations..."):
+                    st.session_state.redteam = run_benchmark(sv, seed=7)
+            rt = st.session_state.get("redteam")
+            if rt:
+                h = rt["headline"]
+                k = st.columns(4)
+                k[0].metric("False claims contradicted", f"{h['typed_caught']}/{h['typed_false']}",
+                            help=f"95% CI {h['typed_catch_ci'][0]:.0%}-{h['typed_catch_ci'][1]:.0%}")
+                k[1].metric("Dangerous misses", h["typed_dangerous_misses"])
+                k[2].metric("False blocks on true claims", f"{h['typed_false_blocks']}/{h['typed_true']}")
+                k[3].metric("Unsafe plan mutations rejected", f"{h['plan_mutations_detected']}/{h['plan_mutations']}")
+                st.caption(f"Paraphrase robustness of the offline claim extractor: canonical {h['extraction_canonical']:.0%}, "
+                           f"dev {h['extraction_dev']:.0%}, held-out {h['extraction_held_out']:.0%} (a live model extractor is the fix). "
+                           f"Injected hallucinations caught: {h['injections_caught']}/{h['injections']}.")
+                from blastradius.redteam import format_markdown
+
+                st.download_button("Download full report (Markdown)", format_markdown(rt), file_name="blastradius-redteam.md")
+            if state.get("plan") and topo is not None:
+                from blastradius.redteam import HALLUCINATION_KINDS, verify_injected
+
+                c1, c2 = st.columns([2, 1])
+                kind = c1.selectbox("Inject a labelled hallucination into the accepted plan's rationale", HALLUCINATION_KINDS)
+                if c2.button("Inject and verify", width="stretch"):
+                    try:
+                        st.session_state.inj = verify_injected(sv, state["plan"], state["change_request"], topo, state["risk"], kind)
+                    except ValueError as exc:
+                        st.session_state.inj = {"error": str(exc)}
+                inj = st.session_state.get("inj")
+                if inj and "error" in inj:
+                    st.warning(inj["error"])
+                elif inj:
+                    st.markdown(f"🧪 **Injected (red-team test, not planner output):** \"{inj['sentence']}\"  \n"
+                                f"Verifier: **{inj['label']}** · plan {'blocked' if inj['plan_blocked'] else 'NOT blocked'} · "
+                                f"Trust {inj['trust']:.0f}")
         with st.expander("Evidence viewer (every tool call is citable)"):
             ids = [e["id"] for e in sv.evidence.all()]
             if ids:
@@ -309,6 +354,20 @@ with main:
             if card["deferred"]:
                 st.markdown(f"<div class='br-banner-amber'><b>{len(card['deferred'])} host(s) deferred</b> by a learned regression: "
                             f"{card['deferred'][0]['reason']}</div>", unsafe_allow_html=True)
+            pm = card.get("premortem")
+            if pm:
+                st.markdown("**Pre-mortem** · Monte Carlo over failure assumptions (*assumption-driven, not measured*)")
+                k = st.columns(4)
+                k[0].metric("P(tier-0 outage)", f"{pm['p_tier0_loss']:.2%}")
+                k[1].metric("Attributable to change", f"{pm['p_tier0_loss_attributable']:.2%}")
+                k[2].metric("Expected VMs lost", f"{pm['expected_vms_lost']:.2f}")
+                first = next((r for r in (card.get("premortem_compare") or []) if r["plan"] == "attempt 1"), None)
+                k[3].metric("Attempt 1 draft", f"{first['p_tier0_loss']:.0%}" if first else "-")
+                st.dataframe(pd.DataFrame([{"wave": w["name"], "P(tier-0 loss)": f"{w['p_tier0_loss']:.3%}",
+                                            "most likely": w.get("top_scenario"), "most severe": w.get("worst_scenario")}
+                                           for w in pm["waves"]]), hide_index=True, width="stretch")
+                with st.expander("Pre-mortem assumptions"):
+                    st.json(pm.get("assumptions", {}))
             st.markdown("**Top risks**")
             for r in card["top_risks"][:4]:
                 st.markdown(f"- `{r['asset']}` risk {r['score']}: {'; '.join(r['reasons'])}")
@@ -421,9 +480,30 @@ with main:
                                                 "p": f"{c['p_value']:.1e}" if c.get("p_value") is not None else "",
                                                 "controls": f"{c.get('n_control_hosts', 0)} ({c.get('basis')})"}
                                                for c in cs["checks"]]), hide_index=True, width="stretch")
-                if state.get("avoided_cost_usd"):
-                    st.metric("Estimated outage avoided", f"${state['avoided_cost_usd']:,.0f}",
-                              help="4 h x $300K/h (ITIC 2024 floor). Illustrative assumption from policy.yaml, not a measurement.")
+                biz = state.get("business_impact")
+                if biz:
+                    from blastradius.business import cost_table
+
+                    st.markdown("##### Business impact, replayed on the twin")
+                    h = biz["headline"]
+                    k = st.columns(4)
+                    k[0].metric("Avoided (illustrative rates)", f"${h['avoided_usd']:,.0f}")
+                    k[1].metric("Conventional process", f"${h['counterfactual_usd']:,.0f}",
+                                help="Risk-ranked canary on the greedy wave order, replayed on the twin.")
+                    k[2].metric("What happened", f"${h['actual_usd']:,.0f}")
+                    opt = biz.get("with_optimised_order")
+                    k[3].metric("Optimised order alone", f"${opt['counterfactual_usd']:,.0f}" if opt else "-",
+                                help="If the canary had missed it but the risk-aware ordering had been used.")
+                    st.caption(h["text"])
+                    st.dataframe(pd.DataFrame(cost_table(biz)), hide_index=True, width="stretch")
+                    with st.expander("Timeline, exposure, sensitivity and assumptions"):
+                        st.write(biz["explanation"])
+                        st.dataframe(pd.DataFrame(biz["counterfactual"]["waves"]), hide_index=True, width="stretch")
+                        st.dataframe(pd.DataFrame(biz["sensitivity"]), hide_index=True, width="stretch")
+                        st.dataframe(pd.DataFrame([{**a, "value": str(a["value"])} for a in biz["assumptions"]]),
+                                     hide_index=True, width="stretch")
+                        itic = biz["itic_reference"]
+                        st.caption(f"Cross-check only (ITIC 2024): flat ${itic['flat_usd']:,.0f}; not used in any total.")
                 if state.get("lesson"):
                     les = state["lesson"]
                     st.markdown(f"<div class='br-banner-amber'><b>Learned {les['id']}:</b> {les['symptom']} {les['lesson']} "
