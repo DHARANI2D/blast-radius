@@ -549,7 +549,7 @@ def build_graph(sv):
             cf = rep_a.counterfactual(lesson, baseline, state["risk"], topo, state["change_request"]["components"])
             upd["counterfactual"] = cf
             log(state, "agent:reporter", "counterfactual", cf)
-            if not cf["risk_ranked_would_catch"] and cf["exposed_hosts"]:
+            if cur["index"] == 1 and not cf["risk_ranked_would_catch"] and cf["exposed_hosts"]:  # only our canary caught it
                 tl += _t("reporter", "counterfactual",
                          f"A risk-ranked canary of the same size ({', '.join(cf['risk_ranked_canary'])}; {cf['risk_ranked_cohorts']} cohorts) "
                          f"has no affected host and would have passed. {cf['sentence']}", "warn")

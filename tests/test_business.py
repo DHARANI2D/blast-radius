@@ -162,3 +162,22 @@ def test_workflow_reports_the_same_impact_and_the_optimised_order(canon):
     # the optimiser moved the single-homed payments host late, so even a missed canary is caught before tier-0
     assert opt["counterfactual"]["tier0_vms"] == [] and opt["headline"]["counterfactual_usd"] < imp["headline"]["counterfactual_usd"]
     assert st["business_impact"]["with_optimised_order"]["counterfactual_usd"] == opt["headline"]["counterfactual_usd"]
+
+
+def test_regression_caught_in_a_fleet_wave_earns_no_canary_saving(tmp_path):
+    # with the cohort-coverage rule off the risk-ranked canary runs, passes, and wave 2 regresses
+    sv = make_services(tmp_path)
+    sv.policy.data["planning"]["canary_cohort_coverage"] = False
+    r, gates = drive(Engine(sv))
+    st = r["state"]
+    assert [g["scope"] for g in gates] == ["canary", "fleet"] and st["status"] == "rolled_back"
+    assert st["executions"][-1]["index"] == 2
+    biz = st["business_impact"]
+    assert biz["actual"]["label"] == "Risk-ranked canary (what happened)"
+    assert biz["avoided"]["usd"] == 0 == st["avoided_cost_usd"] and not biz["avoided"]["sev1_avoided"]
+    assert biz["avoided"]["caught_in_fleet_wave"] == 2 and all(s["avoided_usd"] == 0 for s in biz["sensitivity"])
+    assert biz["headline"]["text"].startswith("No canary saving") and "same wave" not in biz["headline"]["text"]
+    assert "no saving is credited to the canary" in biz["explanation"]
+    # the lesson names the wave its hosts were in, and no "our canary caught it" counterfactual is told
+    assert " on wave 2 blr-esx-" in st["lesson"]["symptom"] and "on canary" not in st["lesson"]["symptom"]
+    assert not [e for e in st["timeline"] if e["event"] == "counterfactual"]

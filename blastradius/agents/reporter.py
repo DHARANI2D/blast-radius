@@ -150,7 +150,8 @@ class ReporterAgent:
             "version": ver,
             "models": models,
             "conditions": {"firmware_prefix": prefixes} if prefixes else {},
-            "symptom": f"{worst['message']} on canary {', '.join(bad)} after {comp} {ver}" + (f" with {cond_txt}" if cond_txt else "") + ".",
+            "symptom": f"{worst['message']} on {'canary' if wave_exec.get('index', 1) == 1 else 'wave ' + str(wave_exec['index'])} "
+                       f"{', '.join(bad)} after {comp} {ver}" + (f" with {cond_txt}" if cond_txt else "") + ".",
             "lesson": " ".join(parts),
             "diagnosis": {"method": method, "culprit": f"{comp} {ver}", "exonerated": [f"{c} {v}" for c, v in exonerated],
                           "controls": controls, "scope": scope},
