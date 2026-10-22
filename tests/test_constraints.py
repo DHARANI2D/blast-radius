@@ -49,6 +49,24 @@ def test_solver_evacuates_non_target_single_homed_host(topo, sv):
     assert "blr-esx-07" in w["evacuate"]
 
 
+def test_planner_facts_never_make_a_deferred_host_look_schedulable(topo, sv):
+    from blastradius.solver import grounded_rationale, plan_facts
+
+    targets = {"servers": SERVERS, "switches": SWITCHES}
+    facts = plan_facts(topo, targets, sv.policy, COMPS)
+    assert [s["server"] for s in facts["single_homed_on_targets"]] == ["blr-esx-07"] and facts["evacuate_with_switch"] == []
+    facts = plan_facts(topo, targets, sv.policy, COMPS, deferred=["blr-esx-07"])
+    assert facts["single_homed_on_targets"] == []
+    assert [(s["server"], s["up_links"], s["reason"]) for s in facts["evacuate_with_switch"]] == [("blr-esx-07", ["tor-r1-a"], "deferred")]
+    # what a planner following the facts produces: the deferred host is evacuated with its switch, not upgraded
+    servers = [s for s in SERVERS if s != "blr-esx-07"]
+    waves = solve(servers, SWITCHES, topo, {}, sv.policy, COMPS, 480)
+    res = check_plan({"waves": waves}, topo, SERVERS + SWITCHES, COMPS, sv.policy, 480, ["blr-esx-07"])
+    assert res["ok"], res["violations"]
+    text = grounded_rationale(waves, facts, COMPS, res["total_duration_min"])
+    assert "blr-esx-07 is single-homed and is evacuated in the same wave as tor-r1-a." in text and "scheduled in the same wave" not in text
+
+
 def test_window_is_enforced(topo, sv):
     waves = solve(SERVERS, SWITCHES, topo, {}, sv.policy, COMPS, 480)
     res = check_plan({"waves": waves}, topo, SERVERS + SWITCHES, COMPS, sv.policy, 60)

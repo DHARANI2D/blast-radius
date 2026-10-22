@@ -112,6 +112,7 @@ def plan_facts(topo: Topology, targets: dict, policy: Policy, components: list[s
                deferred: list[str] | set[str] = ()) -> dict:
     per_cluster = int(policy.get("planning.max_parallel_per_cluster", 5))
     scheduled = [s for s in targets["servers"] if s not in set(deferred)]
+    on_targets = [s for s in topo.single_homed() if set(s["up_links"]) & set(targets["switches"])]
     cohorts = build_cohorts(scheduled, topo.servers, components or [])
     req = {c["id"] for c in required_cohorts(cohorts, topo, policy)}
     limits = {c: min(per_cluster, topo.cluster_capacity(c)["max_hosts_down"]) for c in topo.clusters}
@@ -119,7 +120,11 @@ def plan_facts(topo: Topology, targets: dict, policy: Policy, components: list[s
     return {
         "redundant_target_pairs": [p for p in topo.redundant_pairs() if p[0] in tgt_sw and p[1] in tgt_sw],
         "single_homed": topo.single_homed(),
-        "single_homed_on_targets": [s for s in topo.single_homed() if set(s["up_links"]) & tgt_sw],
+        # Hosts to upgrade in their switch's wave; a deferred or non-target host must not look schedulable,
+        # so it is listed apart: it goes in that wave's `evacuate` (maintenance mode, no upgrade).
+        "single_homed_on_targets": [s for s in on_targets if s["server"] in scheduled],
+        "evacuate_with_switch": [{**s, "reason": "deferred" if s["server"] in set(deferred) else "not a target"}
+                                 for s in on_targets if s["server"] not in scheduled],
         "cluster_limits": limits,
         "per_cluster_limit": min(limits.values()) if limits else per_cluster,
         "cohorts": [{"id": c["id"], "label": c["label"], "size": len(c["hosts"]), "required_in_canary": c["id"] in req}
@@ -146,6 +151,9 @@ def grounded_rationale(waves: list[dict], facts: dict, components: list[str], du
     for sh in facts["single_homed_on_targets"]:
         if sh["up_links"]:
             s.append(f"{sh['server']} is single-homed and is scheduled in the same wave as {sh['up_links'][0]}.")
+    for sh in facts.get("evacuate_with_switch", []):
+        if sh["up_links"]:
+            s.append(f"{sh['server']} is single-homed and is evacuated in the same wave as {sh['up_links'][0]}.")
     s.append(f"No wave has more than {facts['per_cluster_limit']} hosts of one cluster in maintenance.")
     s.append("No wave causes a workload outage.")
     if "iLO 6" in components and "System ROM" in components:
