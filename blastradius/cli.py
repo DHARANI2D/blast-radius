@@ -156,7 +156,7 @@ def cmd_mcp_serve(args) -> int:
 def cmd_redteam(args) -> int:
     from .redteam import main as redteam_main
 
-    return redteam_main(["--seed", str(args.seed)] + (["--no-paraphrases"] if args.no_paraphrases else [])
+    return redteam_main(["--seed", str(args.seed), "--extractor", args.extractor] + (["--no-paraphrases"] if args.no_paraphrases else [])
                         + (["--json", args.json] if args.json else []))
 
 
@@ -214,14 +214,16 @@ def cmd_a2a_serve(args) -> int:
 
 
 def main(argv: list[str] | None = None) -> int:
+    # BR_FAULTS and BR_TOOL_TRANSPORT (.env.example) set the defaults; an explicit flag wins.
+    faults, transport = os.environ.get("BR_FAULTS", "on").strip().lower(), os.environ.get("BR_TOOL_TRANSPORT", "mcp").strip().lower()
     p = argparse.ArgumentParser(prog="blastradius", description="Agentic change-safety mesh (HPE Agentic AI Hackathon 2026 PoC)")
     sub = p.add_subparsers(dest="cmd", required=True)
     d = sub.add_parser("demo", help="run the end-to-end story in the terminal")
     d.add_argument("--intent", default=DEFAULT_INTENT)
-    d.add_argument("--faults", choices=["on", "off", "subtle", "backup", "on+backup", "subtle+backup"], default="on",
+    d.add_argument("--faults", choices=["on", "off", "subtle", "backup", "on+backup", "subtle+backup"], default=faults,
                    help="on: canary regression (4x); subtle: 1.3x regression only the statistical judge catches; "
                         "backup: slowdown on every host that a tight fixed threshold would mistake for a regression")
-    d.add_argument("--transport", choices=["mcp", "inproc"], default="mcp")
+    d.add_argument("--transport", choices=["mcp", "inproc"], default=transport)
     d.add_argument("--auto-approve", action="store_true")
     d.add_argument("--reset", action="store_true", help="reset the twin and forget learned incidents first")
     d.set_defaults(fn=cmd_demo)
@@ -240,6 +242,8 @@ def main(argv: list[str] | None = None) -> int:
     rt = sub.add_parser("redteam", help="measure the Verifier against labelled false claims and mutated plans")
     rt.add_argument("--seed", type=int, default=7)
     rt.add_argument("--no-paraphrases", action="store_true")
+    rt.add_argument("--extractor", choices=["offline", "configured"], default="offline",
+                    help="'configured' extracts claims with the configured verifier model")
     rt.add_argument("--json")
     rt.set_defaults(fn=cmd_redteam)
     me = sub.add_parser("memory", help="show or clear the planner's learned rules")
@@ -252,7 +256,7 @@ def main(argv: list[str] | None = None) -> int:
     a2 = sub.add_parser("a2a-serve", help="serve the read-only assess-change skill over A2A (JSON-RPC)")
     a2.add_argument("--host", default="127.0.0.1")
     a2.add_argument("--port", type=int, default=8765)
-    a2.add_argument("--transport", choices=["mcp", "inproc"], default="mcp")
+    a2.add_argument("--transport", choices=["mcp", "inproc"], default=transport)
     a2.set_defaults(fn=cmd_a2a_serve)
     args = p.parse_args(argv)
     return args.fn(args)
