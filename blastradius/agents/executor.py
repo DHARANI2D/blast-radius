@@ -89,13 +89,16 @@ class ExecutorAgent:
                 "migrated_vms": sum(len(a["result"].get("migrated", [])) for a in actions if a["tool"] == "virt.enter_maintenance"),
                 "pre": pre,
                 "dependents": deps,
+                "already_in_maintenance": already,
                 **more,
             }
 
         probes: list[dict] = []
+        ours: list[str] = []     # hosts this wave put into maintenance
+        already: list[str] = []  # hosts someone else had in maintenance (e.g. a repair): they stay there
         try:
             for h in hosts_in_maint:
-                act("virt.enter_maintenance", h, host=h)
+                (already if act("virt.enter_maintenance", h, host=h).get("already") else ours).append(h)
             for sw in switches:
                 act("network.upgrade_switch_os", sw, switch=sw, version=target_versions[sw]["Switch OS"], hold_down=True)
             during, during_ev = (bus.call(self.name, "telemetry.get_golden_signals", assets=deps) if (switches and deps) else ([], None))
@@ -113,7 +116,7 @@ class ExecutorAgent:
             for sw in switches:
                 res, ev = bus.call(self.name, "network.wait_upgrade_complete", switch=sw)
                 actions.append({"tool": "network.wait_upgrade_complete", "asset": sw, "args": {}, "result": {"status": res["status"]}, "evidence": ev})
-            for h in hosts_in_maint:
+            for h in ours:
                 act("virt.exit_maintenance", h, host=h)
 
             soak = int(sv.policy.get("execution.durations_min.soak", 10))
@@ -126,10 +129,9 @@ class ExecutorAgent:
         except (ExecutionHalted, ToolCallError) as exc:
             # Keep the record of what already reached the infrastructure, so it is logged, reported and can be undone.
             done = {a["asset"] for a in actions if a["tool"] == "virt.exit_maintenance"}
-            entered = [a["asset"] for a in actions if a["tool"] == "virt.enter_maintenance"]
             started = [a["asset"] for a in actions if a["tool"] == "network.upgrade_switch_os"]
             waited = {a["asset"] for a in actions if a["tool"] == "network.wait_upgrade_complete"}
-            partial = record(result="halted", halt_reason=str(exc), in_maintenance=[h for h in entered if h not in done],
+            partial = record(result="halted", halt_reason=str(exc), in_maintenance=[h for h in ours if h not in done],
                              switches_rebooting=[s for s in started if s not in waited], probes=probes,
                              evidence={"pre": pre_ev}, series={})
             raise ExecutionHalted(str(exc), partial, tool_error=isinstance(exc, ToolCallError)) from exc

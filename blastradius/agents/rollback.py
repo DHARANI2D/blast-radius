@@ -52,9 +52,13 @@ class RollbackAgent:
         reverted: list[dict] = []
         held = set(wave_exec.get("in_maintenance", []))
         try:
+            # A host already in maintenance before the change (a repair) is not ours to exit; one the halted wave left there is.
+            ours = []
             for h in servers:
                 res, ev = self._write(run_id, "virt.enter_maintenance", h, wave_scope, host=h)
-                held.add(h)
+                if not res.get("already") or h in held:
+                    ours.append(h)
+                    held.add(h)
                 actions.append({"tool": "virt.enter_maintenance", "asset": h, "evidence": ev})
             for c in changes:
                 if c["asset"] in topo.servers:
@@ -63,7 +67,7 @@ class RollbackAgent:
                     res, ev = self._write(run_id, "network.upgrade_switch_os", c["asset"], changed, switch=c["asset"], version=c["from"], hold_down=False)
                 reverted.append(c)
                 actions.append({"tool": "revert", "asset": c["asset"], "component": c["component"], "to": c["from"], "evidence": ev})
-            for h in servers:
+            for h in ours:
                 res, ev = self._write(run_id, "virt.exit_maintenance", h, wave_scope, host=h)
                 held.discard(h)
                 actions.append({"tool": "virt.exit_maintenance", "asset": h, "evidence": ev})

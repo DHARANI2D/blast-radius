@@ -261,3 +261,16 @@ def test_record_incident_is_a_token_gated_write_that_never_overwrites_another_ru
         sv.bus.call("rogue", "knowledge.record_incident", incident=poisoned, run_id="other-run", approval_token=tok)
     assert "cannot be overwritten" in str(exc.value)
     assert sv.kb.learned[0]["kind"] == lesson["kind"]
+
+
+def test_a_host_already_in_maintenance_is_left_in_maintenance(tmp_path):
+    sv = make_services(tmp_path)  # faults on: the canary is executed and then rolled back
+    sv.twin.enter_maintenance("blr-esx-21")  # a repair in progress, set outside BlastRadius
+    r, _ = drive(Engine(sv))
+    st = r["state"]
+    w1 = st["executions"][0]
+    assert "blr-esx-21" in w1["assets"] and w1["already_in_maintenance"] == ["blr-esx-21"]
+    assert ("virt.exit_maintenance", "blr-esx-21") not in [(a["tool"], a["asset"]) for a in w1["actions"]]
+    assert st["status"] == "rolled_back"
+    assert ("virt.exit_maintenance", "blr-esx-21") not in [(a["tool"], a["asset"]) for a in st["rollback"]["actions"]]
+    assert sv.twin.maintenance == {"blr-esx-21"}  # every other canary host was returned to service
