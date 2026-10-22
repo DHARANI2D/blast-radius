@@ -553,7 +553,9 @@ with main:
             if src.exists() and entries:
                 tmp = Path(tempfile.mkdtemp()) / "ledger-copy.sqlite"
                 shutil.copy(src, tmp)
-                led = Ledger(tmp)
+                if Path(f"{src}.anchor").exists():
+                    shutil.copy(f"{src}.anchor", f"{tmp}.anchor")
+                led = Ledger(tmp, sv.settings.signing_key)
                 victim = next((e for e in entries if e["event"] == "approval"), entries[0])
                 led.tamper(victim["seq"], {**victim["payload"], "approver": "mallory"})
                 v = led.verify()

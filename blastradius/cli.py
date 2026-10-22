@@ -113,7 +113,8 @@ def cmd_ledger(args) -> int:
     from .config import Settings
     from .ledger import Ledger
 
-    led = Ledger(Settings().runtime_dir / "ledger.sqlite")
+    settings = Settings()
+    led = Ledger(settings.runtime_dir / "ledger.sqlite", settings.signing_key)
     if args.action == "verify":
         print(json.dumps(led.verify(), indent=2))
     else:

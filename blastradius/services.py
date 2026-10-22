@@ -45,7 +45,7 @@ class Services:
                     scenario=None if explicit_bool else settings.fault_scenario)
         kb = KnowledgeBase(settings.knowledge_dir, settings.runtime_dir)
         authority = ApprovalAuthority(settings.signing_key)
-        ledger = Ledger(ledger_path if ledger_path is not None else settings.runtime_dir / "ledger.sqlite")
+        ledger = Ledger(ledger_path if ledger_path is not None else settings.runtime_dir / "ledger.sqlite", settings.signing_key)
         evidence = EvidenceStore()
         registry = build_registry(ToolContext(twin=twin, kb=kb, authority=authority))
         bus = ToolBus(registry, evidence, transport=settings.tool_transport)

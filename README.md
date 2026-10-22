@@ -131,7 +131,7 @@ The benchmark found and fixed 2 dangerous misses, 3 crashes and 6 false blocks i
 - **Grounding and evaluation:** every claim links to evidence; Unverifiable is the default; contradictions and unverifiable safety claims block. The red-team benchmark measures the gate.
 - **Deterministic guardrails:** redundancy, capacity, cohort coverage, deferral and window rules are code, never prompt text. A write allow-list, approved scope only, a per-wave rate limit and a kill switch back them up.
 - **Honest numbers:** probabilities and dollars are labelled assumption-driven or illustrative wherever they appear, with the assumptions listed.
-- **Auditability:** the ledger stores prompt hashes, model IDs, tool calls, claims, scores, pre-mortem assumptions, approvals, actions and outcomes. `python -m blastradius ledger verify` recomputes the chain.
+- **Auditability:** the ledger stores prompt hashes, model IDs, tool calls, claims, scores, pre-mortem assumptions, approvals, actions and outcomes. `python -m blastradius ledger verify` recomputes the chain, which is keyed with `BR_SIGNING_KEY` (HMAC-SHA256) and checked against a signed head anchor beside the database, so edited, re-chained or deleted newest entries all fail verification.
 - **Data protection:** synthetic data only. Secrets and e-mail addresses are redacted before any prompt. Configure only HPE-approved LLM endpoints.
 
 ## Using an HPE-approved LLM

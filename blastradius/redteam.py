@@ -193,7 +193,7 @@ def _sandbox(sv, extractor: str = "offline") -> Services:
     ev = EvidenceStore()
     bus = ToolBus(build_registry(ToolContext(twin=twin, kb=kb, authority=auth)), ev, transport="inproc")
     vllm = sv.verifier_llm if extractor == "configured" else OfflineLLM("offline-verifier")
-    return Services(st, sv.policy, twin, kb, auth, Ledger(":memory:"), ev, bus, sv.llm, vllm, PolicyGuard(sv.policy))
+    return Services(st, sv.policy, twin, kb, auth, Ledger(":memory:", st.signing_key), ev, bus, sv.llm, vllm, PolicyGuard(sv.policy))
 
 
 # ------------------------------------------------------------- ground truth
