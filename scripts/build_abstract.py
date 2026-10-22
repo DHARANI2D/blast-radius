@@ -2,8 +2,9 @@
 
     python scripts/build_abstract.py      # writes docs/abstract/BlastRadius_Abstract.docx
 
-Edit the CONTENT section below and re-run; the template's styles, header and
-footer are kept as they are.
+Edit the CONTENT section below and re-run. The template's headings, styles, header,
+footer and placeholder lines keep its exact format; only its instructions and empty
+spacer paragraphs are removed (to stay within 4 pages).
 """
 
 from __future__ import annotations
@@ -29,9 +30,6 @@ REPO = "https://github.com/DHARANI2D/blast-radius"
 
 # ============================================================== CONTENT
 TITLE = "BlastRadius: Agentic Change-Safety Mesh for HPE Hybrid Infrastructure"
-TEAM = "[Name, business unit, email for each member (up to 5)]"
-TRACK = ("**Track 3: Autonomous Infrastructure Optimization** (pre/during/post upgrade validation) · "
-         "*Know what breaks before you break it.*")
 
 ABSTRACT = (
     "Configuration and change-management failures cause 41% of major network-related outages and 51% of major IT "
@@ -136,15 +134,12 @@ STACK = [
     "pure-Python statistics, annealing and Monte Carlo, Pydantic, YAML policy, SQLite ledger, Streamlit, Docker; 203 pytest tests.",
 ]
 
-RAI = [
-    "**Human in the loop:** analysis is automatic, canary needs one signer, fleet waves two distinct signers; nothing is "
-    "written unsigned. The A2A endpoint and Ask BlastRadius are read-only.",
-    "**Grounding:** every claim links to evidence or defaults to Unverifiable; contradictions block; Verifier error "
-    "rates are published with Wilson intervals.",
-    "**Guardrails in code:** write allow-list, approved scope only, per-wave rate limit, kill switch.",
-    "**Audit and data protection:** hash-chained ledger of prompt hashes, models, tool calls, claims, approvals and "
-    "outcomes (tamper-evident); synthetic data; secrets redacted before prompts.",
-]
+RAI = (
+    "**Responsible AI and governance:** one signer for the canary and two distinct signers for the fleet, nothing written "
+    "unsigned; every claim links to evidence or defaults to Unverifiable, contradictions block; write allow-list, approved "
+    "scope, rate limit and kill switch in code; tamper-evident hash-chained ledger; synthetic data, secrets redacted before "
+    "prompts; the A2A endpoint and Ask BlastRadius are read-only."
+)
 
 DEMO = [
     f"**Code:** {REPO} · **Video:** [Brightidea link]",
@@ -287,15 +282,8 @@ def build() -> Path:
     d = docx.Document(str(TEMPLATE))
     nums = _numbering(d)
 
-    # title, team, track
+    # title (the Team Members line is left exactly as the template has it, for the team to fill in)
     _set_text(d.paragraphs[0], TITLE)
-    sub = d.paragraphs[1]
-    for r in sub.runs[1:]:
-        r._r.getparent().remove(r._r)
-    sub.add_run(" ")
-    tr = sub.add_run(TEAM)
-    tr.font.color.rgb = RGBColor(0x80, 0x80, 0x80)
-    _write(sub, [TRACK], space_after=4)
 
     # abstract
     hint = find(d, "Summarise the entire proposal")
@@ -303,8 +291,6 @@ def build() -> Path:
     _delete(hint)
 
     # 1. problem statement
-    h1 = find(d, "Problem Statement", "Heading 1")
-    _set_text(h1, "1. Problem Statement")
     _delete(find(d, "Describe the real HPE business"))
     p = find(d, "Describe the current process")
     _write(p, CONTEXT)
@@ -329,8 +315,8 @@ def build() -> Path:
 
     # 3. implementation
     _delete(find(d, "Detail the technical design"))
-    ta = find(d, "Technical Architecture")
-    ta.style = "Heading 2"
+    # the template formats this sub-heading by hand (a Normal paragraph), so it keeps that formatting
+    find(d, "Technical Architecture").paragraph_format.keep_with_next = True
     p = find(d, "Outline the data flow")
     pic = _new_par_after(p, "Normal")
     pic.alignment = WD_ALIGN_PARAGRAPH.CENTER
@@ -348,16 +334,10 @@ def build() -> Path:
     _write(p, HOW, num_id=nums["steps2"])
     _delete(p)
     p = find(d, "List your LLMs/models")
-    _write(p, STACK, num_id=nums["bullet"])
+    # the template has no Responsible AI section, so it is the last Technology Stack bullet
+    _write(p, STACK + [RAI], num_id=nums["bullet"])
     _delete(p)
 
-    # Responsible AI (judged at 5%) goes right before the demo section
-    demo_h = find(d, "Demo/Proof of Concept", "Heading 2")
-    rai_h = _new_par_after(demo_h, "Heading 2")
-    rai_h.add_run("Responsible AI & Governance")
-    # move the RAI heading before the demo heading
-    demo_h._p.addprevious(rai_h._p)
-    _write(rai_h, RAI, num_id=nums["bullet"])
     p = find(d, "Provide links to your GitHub")
     _write(p, DEMO, num_id=nums["bullet"])
     _delete(p)
@@ -365,8 +345,14 @@ def build() -> Path:
 
     # 4. references
     _delete(find(d, "List papers, tools, datasets"))
+    # same paragraph format as the template's "• [Reference N]" lines
     refs = [p for p in d.paragraphs if p.text.startswith("\u2022 [Reference")]
-    _write(refs[-1], REFERENCES, num_id=nums["bullet"])
+    last = refs[-1]
+    for t in REFERENCES:
+        new = copy.deepcopy(refs[0]._p)
+        last._p.addnext(new)
+        last = docx.text.paragraph.Paragraph(new, last._parent)
+        _set_text(last, "\u2022 " + t)
     for p in refs:
         _delete(p)
 
@@ -374,11 +360,6 @@ def build() -> Path:
     for p in list(d.paragraphs):
         if not p.text.strip() and not p._p.findall(".//" + qn("w:drawing")):
             _delete(p)
-    # headings that started with blank lines in the template
-    for p in d.paragraphs:
-        if p.style.name.startswith("Heading") and p.text.startswith("\n"):
-            _set_text(p, p.text.strip())
-
     # never strand a heading at the bottom of a page
     for p in d.paragraphs:
         if p.style.name.startswith("Heading"):
