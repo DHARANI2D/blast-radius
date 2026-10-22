@@ -28,7 +28,7 @@ class Settings:
     llm_api_key: str = field(default_factory=lambda: _env("BR_LLM_API_KEY"))
     llm_model: str = field(default_factory=lambda: _env("BR_LLM_MODEL", "approved-model"))
     llm_api_version: str = field(default_factory=lambda: _env("BR_LLM_API_VERSION", "2024-10-21"))
-    llm_timeout_s: float = field(default_factory=lambda: float(_env("BR_LLM_TIMEOUT_S", "60")))
+    llm_timeout_s: float = field(default_factory=lambda: float(_env("BR_LLM_TIMEOUT_S", "180")))
     # The Verifier should not share the Planner's blind spots: point it at a
     # different model when one is available. Defaults to the planner model
     # with a separate prompt and temperature 0.

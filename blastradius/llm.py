@@ -14,6 +14,7 @@ and every call is summarised (model, role, prompt hash, latency) for the ledger.
 from __future__ import annotations
 
 import hashlib
+import http.client
 import json
 import re
 import time
@@ -105,7 +106,15 @@ def _extract_json(text: str, validate: Callable[[Any], Any] = lambda v: v) -> An
     return json.loads(text)  # raises the JSONDecodeError the repair prompt quotes
 
 
+# Rate limits and gateway hiccups are retried; anything else (and a timeout, which a retry would
+# only repeat) surfaces as LLMError so the caller's deterministic fallback takes over.
+RETRY_STATUS = {429, 500, 502, 503, 504}
+
+
 class OpenAICompatClient(LLMClient):
+    retries = 2
+    retry_backoff_s = 1.0
+
     def __init__(self, base_url: str, api_key: str, model: str, api_style: str, api_version: str,
                  timeout_s: float, redact: Callable[[str], str]):
         super().__init__(model=model, mode=api_style)
@@ -119,7 +128,15 @@ class OpenAICompatClient(LLMClient):
 
     def _post(self, messages: list[dict], temperature: float) -> str:
         msg = self._request({"messages": messages, "temperature": temperature, "response_format": {"type": "json_object"}})
-        return msg["content"]
+        content = msg.get("content")
+        # Reasoning models can return content null; an empty reply goes through the repair loop.
+        return content if isinstance(content, str) else ""
+
+    def _backoff(self, attempt: int, retry_after: str | None) -> float:
+        try:
+            return min(30.0, float(retry_after))
+        except (TypeError, ValueError):
+            return self.retry_backoff_s * 2 ** attempt
 
     def _request(self, body: dict[str, Any]) -> dict:
         """POST a chat-completions request and return ``choices[0].message``."""
@@ -132,14 +149,31 @@ class OpenAICompatClient(LLMClient):
             body["model"] = self.model
             if self.api_key:
                 headers["Authorization"] = f"Bearer {self.api_key}"
-        req = urllib.request.Request(url, data=json.dumps(body).encode(), headers=headers, method="POST")
+        payload = json.dumps(body).encode()
+        for attempt in range(self.retries + 1):
+            req = urllib.request.Request(url, data=payload, headers=headers, method="POST")
+            try:
+                with urllib.request.urlopen(req, timeout=self.timeout_s) as resp:
+                    raw = resp.read()
+                break
+            except urllib.error.HTTPError as e:
+                if e.code in RETRY_STATUS and attempt < self.retries:
+                    time.sleep(self._backoff(attempt, e.headers.get("Retry-After") if e.headers else None))
+                    continue
+                raise LLMError(f"LLM endpoint returned HTTP {e.code}: {e.read()[:300]!r}") from e
+            except urllib.error.URLError as e:
+                raise LLMError(f"LLM endpoint unreachable: {e.reason}") from e
+            except (ConnectionError, http.client.HTTPException) as e:  # dropped connection: retry
+                if attempt < self.retries:
+                    time.sleep(self._backoff(attempt, None))
+                    continue
+                raise LLMError(f"LLM endpoint failed: {type(e).__name__}: {e}") from e
+            except OSError as e:  # TimeoutError while waiting for the reply, and other socket errors
+                raise LLMError(f"LLM endpoint failed: {type(e).__name__}: {e}") from e
         try:
-            with urllib.request.urlopen(req, timeout=self.timeout_s) as resp:
-                data = json.loads(resp.read().decode())
-        except urllib.error.HTTPError as e:
-            raise LLMError(f"LLM endpoint returned HTTP {e.code}: {e.read()[:300]!r}") from e
-        except urllib.error.URLError as e:
-            raise LLMError(f"LLM endpoint unreachable: {e.reason}") from e
+            data = json.loads(raw.decode())
+        except ValueError as e:  # an HTML login page from a gateway, a truncated body
+            raise LLMError(f"LLM endpoint returned a non-JSON body: {raw[:200]!r}") from e
         try:
             msg = data["choices"][0]["message"]
         except (KeyError, IndexError, TypeError) as e:
