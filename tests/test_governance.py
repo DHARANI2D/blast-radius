@@ -116,3 +116,56 @@ def test_policy_allow_list(sv):
 def test_redaction_removes_secrets(sv):
     out = sv.policy.redact("api_key=abc123 contact ops@example.com")
     assert "abc123" not in out and "ops@example.com" not in out
+
+
+def test_kill_switch_mid_wave_keeps_the_record_of_applied_writes(tmp_path, monkeypatch):
+    sv = make_services(tmp_path, faults=False)
+    monkeypatch.delenv("BR_KILL_SWITCH", raising=False)
+    real = sv.bus.call
+
+    def spy(agent, key, **args):
+        res = real(agent, key, **args)
+        if key == "compute.apply_firmware":
+            monkeypatch.setenv("BR_KILL_SWITCH", "on")  # the operator hits the kill switch after the first flash
+        return res
+
+    sv.bus.call = spy
+    r, _ = drive(Engine(sv))
+    st, rep = r["state"], r["state"]["report"]
+    assert st["status"] == "halted" and "kill switch" in st["halt_reason"]
+    part = st["executions"][-1]
+    assert part["result"] == "halted" and len(part["firmware_changes"]) == 1
+    host = part["firmware_changes"][0]["asset"]
+    assert sorted(part["in_maintenance"]) == sorted(sv.twin.maintenance)  # nothing could write, so the hosts stay put
+    halted = [e["payload"] for e in sv.ledger.entries(r["run_id"]) if e["event"] == "halted"][0]
+    assert halted["firmware_changes"] == part["firmware_changes"] and len(halted["actions"]) == len(part["actions"])
+    assert rep["halt_reason"] == st["halt_reason"] and rep["partial_wave"]["firmware_changes"] == part["firmware_changes"]
+    assert rep["waves"][0]["result"] == "halted"
+    steps = rep["manual_steps"]
+    assert any(s.startswith(f"{host}: revert iLO 6") for s in steps)
+    assert all(any(s.startswith(f"{h}: exit maintenance") for s in steps) for h in part["in_maintenance"])
+
+
+def test_tool_error_mid_wave_rolls_back_the_partial_wave(tmp_path, monkeypatch):
+    sv = make_services(tmp_path, faults=False)
+    monkeypatch.delenv("BR_KILL_SWITCH", raising=False)
+    before = {h: dict(s["firmware"]) for h, s in sv.twin.servers.items()}
+    real = sv.twin.apply_firmware
+    flashed = []
+
+    def flaky(server, component, version):
+        if flashed and server != flashed[0]:
+            raise RuntimeError("iLO did not answer")  # the second host's first flash fails
+        flashed.append(server)
+        return real(server, component, version)
+
+    sv.twin.apply_firmware = flaky
+    r, _ = drive(Engine(sv))
+    st = r["state"]
+    assert st["status"] == "rolled_back" and "iLO did not answer" in st["halt_reason"]
+    part = st["executions"][-1]
+    assert part["result"] == "halted" and {c["asset"] for c in part["firmware_changes"]} == {flashed[0]}
+    assert {x["asset"] for x in st["rollback"]["reverted"]} == {flashed[0]}
+    assert sv.twin.servers[flashed[0]]["firmware"] == before[flashed[0]]
+    assert sv.twin.maintenance == set()  # the partial wave's hosts were returned to service
+    assert st["report"]["halt_reason"] == st["halt_reason"] and st["report"]["manual_steps"] == []

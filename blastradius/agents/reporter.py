@@ -204,6 +204,9 @@ class ReporterAgent:
             "regressed_assets": sorted({r["asset"] for r in reg}),
             "regression_summary": "; ".join(r["message"] for r in reg[:2]),
             "lesson": (state.get("lesson") or {}).get("symptom", ""),
+            "halt_reason": state.get("halt_reason", ""),
+            "halted_wave": state.get("current_wave"),
+            "manual_steps": len(state.get("manual_steps") or []),
         }
         out: _ReportOut = sv.llm.complete_json("report", load_prompt("report"), json.dumps(ctx), _ReportOut, context=ctx, temperature=0.1)
         verify = sv.ledger.verify()
@@ -222,6 +225,11 @@ class ReporterAgent:
             "approvals": [{k: a[k] for k in ("scope", "approver", "decision", "signature")} for a in state.get("approvals", [])],
             "waves": [{"index": w["index"], "name": w["name"], "result": w.get("result"), "assets": len(w["assets"]),
                        "regressions": w.get("regressions", [])} for w in waves],
+            "halt_reason": state.get("halt_reason"),
+            "partial_wave": next(({"index": w["index"], "name": w["name"], "actions": [f"{a['tool']} {a['asset']}" for a in w["actions"]],
+                                   "firmware_changes": w["firmware_changes"], "in_maintenance": w["in_maintenance"]}
+                                  for w in waves if w.get("result") == "halted"), None),
+            "manual_steps": state.get("manual_steps") or [],
             "rollback": {"reverted": (state.get("rollback") or {}).get("reverted", []),
                          "recovered": (state.get("rollback") or {}).get("recovered")} if state.get("rollback") else None,
             "deferred": (state.get("risk") or {}).get("deferred", []),
@@ -262,6 +270,15 @@ class ReporterAgent:
         for w in r["waves"]:
             lines.append(f"- {w['name']}: **{w['result']}** ({w['assets']} assets)"
                          + ("".join(f"\n  - {x['asset']}: {x['message']}" for x in w["regressions"]) if w["regressions"] else ""))
+        if r.get("halt_reason"):
+            lines += ["", "## Halt", f"Reason: {r['halt_reason']}"]
+            pw = r.get("partial_wave")
+            if pw:
+                lines += [f"{pw['name']} stopped part-way after {len(pw['actions'])} write action(s):"]
+                lines += [f"- {x['asset']} {x['component']}: {x['from']} -> {x['to']}" for x in pw["firmware_changes"]]
+                lines += [f"- {h} was in maintenance when the wave stopped" for h in pw["in_maintenance"]]
+        if r.get("manual_steps"):
+            lines += ["", "## Manual steps (writes are blocked)"] + [f"{i}. {x}" for i, x in enumerate(r["manual_steps"], 1)]
         if r.get("rollback"):
             lines += ["", "## Rollback", f"Recovered: {r['rollback']['recovered']}"]
             lines += [f"- {x['asset']} {x['component']} -> {x['to']}" for x in r["rollback"]["reverted"]]

@@ -9,12 +9,25 @@ that the MCP server verifies.
 
 from __future__ import annotations
 
+from ..mcp_layer import ToolCallError
 from ..policy import PolicyViolation
 from ..topology import Topology
 
 
 class ExecutionHalted(RuntimeError):
-    pass
+    """A wave stopped before it finished. ``partial`` records the writes it had already made."""
+
+    def __init__(self, message: str, partial: dict | None = None, tool_error: bool = False):
+        super().__init__(message)
+        self.partial = partial
+        self.tool_error = tool_error  # an MCP call failed (writes are still allowed), not a policy stop
+
+
+def firmware_changes(actions: list[dict]) -> list[dict]:
+    return [
+        {"asset": a["asset"], "component": a["result"].get("component", "Switch OS"), "from": a["result"]["previous"], "to": a["result"]["current"]}
+        for a in actions if a["tool"] in ("compute.apply_firmware", "network.upgrade_switch_os")
+    ]
 
 
 class ExecutorAgent:
@@ -64,53 +77,61 @@ class ExecutorAgent:
             actions.append({"tool": tool, "asset": asset, "args": {k: v for k, v in args.items()}, "result": res, "evidence": ev})
             return res
 
-        for h in hosts_in_maint:
-            act("virt.enter_maintenance", h, host=h)
-        for sw in switches:
-            act("network.upgrade_switch_os", sw, switch=sw, version=target_versions[sw]["Switch OS"], hold_down=True)
-        during, during_ev = (bus.call(self.name, "telemetry.get_golden_signals", assets=deps) if (switches and deps) else ([], None))
-        # Canary only: probe the host after each component while it is still in maintenance,
-        # so a regression can be attributed to one component instead of the whole bundle.
-        probe = index == 1 and bool(sv.policy.get("execution.canary_component_probe", True))
-        probes: list[dict] = []
-        for h in servers:
-            for comp in order:
-                if comp in components and comp in target_versions.get(h, {}):
-                    act("compute.apply_firmware", h, server=h, component=comp, version=target_versions[h][comp])
-                    if probe:
-                        sig, ev = bus.call(self.name, "telemetry.get_golden_signals", assets=[h])
-                        probes.append({"host": h, "component": comp, "version": target_versions[h][comp],
-                                       "signals": sig[0], "evidence": ev})
-        for sw in switches:
-            res, ev = bus.call(self.name, "network.wait_upgrade_complete", switch=sw)
-            actions.append({"tool": "network.wait_upgrade_complete", "asset": sw, "args": {}, "result": {"status": res["status"]}, "evidence": ev})
-        for h in hosts_in_maint:
-            act("virt.exit_maintenance", h, host=h)
+        def record(**more) -> dict:
+            return {
+                "index": index,
+                "name": wave.get("name", f"Wave {index}"),
+                "assets": wave["assets"],
+                "evacuate": wave.get("evacuate", []),
+                "t_start_min": t0,
+                "actions": [{k: v for k, v in a.items() if k != "result"} | {"status": "ok"} for a in actions],
+                "firmware_changes": firmware_changes(actions),
+                "migrated_vms": sum(len(a["result"].get("migrated", [])) for a in actions if a["tool"] == "virt.enter_maintenance"),
+                "pre": pre,
+                "dependents": deps,
+                **more,
+            }
 
-        soak = int(sv.policy.get("execution.durations_min.soak", 10))
-        bus.call(self.name, "telemetry.advance_clock", minutes=soak)
-        post, post_ev = bus.call(self.name, "telemetry.get_golden_signals", assets=own + deps)
-        clock, _ = bus.call(self.name, "telemetry.get_clock")
-        window = clock["t_min"] - t0 + 10
-        series = {s: bus.call(self.name, "telemetry.get_metric_series", asset=s, metric="nic_latency_ms", minutes=window)[0]
-                  for s in servers}
-        firmware_changes = [
-            {"asset": a["asset"], "component": a["result"].get("component", "Switch OS"), "from": a["result"]["previous"], "to": a["result"]["current"]}
-            for a in actions if a["tool"] in ("compute.apply_firmware", "network.upgrade_switch_os")
-        ]
-        return {
-            "index": index,
-            "name": wave.get("name", f"Wave {index}"),
-            "assets": wave["assets"],
-            "evacuate": wave.get("evacuate", []),
-            "t_start_min": t0,
-            "t_end_min": clock["t_min"],
-            "actions": [{k: v for k, v in a.items() if k != "result"} | {"status": "ok"} for a in actions],
-            "firmware_changes": firmware_changes,
-            "migrated_vms": sum(len(a["result"].get("migrated", [])) for a in actions if a["tool"] == "virt.enter_maintenance"),
-            "pre": pre, "during": during, "post": post,
-            "evidence": {"pre": pre_ev, "during": during_ev, "post": post_ev},
-            "series": series,
-            "dependents": deps,
-            "probes": probes,
-        }
+        probes: list[dict] = []
+        try:
+            for h in hosts_in_maint:
+                act("virt.enter_maintenance", h, host=h)
+            for sw in switches:
+                act("network.upgrade_switch_os", sw, switch=sw, version=target_versions[sw]["Switch OS"], hold_down=True)
+            during, during_ev = (bus.call(self.name, "telemetry.get_golden_signals", assets=deps) if (switches and deps) else ([], None))
+            # Canary only: probe the host after each component while it is still in maintenance,
+            # so a regression can be attributed to one component instead of the whole bundle.
+            probe = index == 1 and bool(sv.policy.get("execution.canary_component_probe", True))
+            for h in servers:
+                for comp in order:
+                    if comp in components and comp in target_versions.get(h, {}):
+                        act("compute.apply_firmware", h, server=h, component=comp, version=target_versions[h][comp])
+                        if probe:
+                            sig, ev = bus.call(self.name, "telemetry.get_golden_signals", assets=[h])
+                            probes.append({"host": h, "component": comp, "version": target_versions[h][comp],
+                                           "signals": sig[0], "evidence": ev})
+            for sw in switches:
+                res, ev = bus.call(self.name, "network.wait_upgrade_complete", switch=sw)
+                actions.append({"tool": "network.wait_upgrade_complete", "asset": sw, "args": {}, "result": {"status": res["status"]}, "evidence": ev})
+            for h in hosts_in_maint:
+                act("virt.exit_maintenance", h, host=h)
+
+            soak = int(sv.policy.get("execution.durations_min.soak", 10))
+            bus.call(self.name, "telemetry.advance_clock", minutes=soak)
+            post, post_ev = bus.call(self.name, "telemetry.get_golden_signals", assets=own + deps)
+            clock, _ = bus.call(self.name, "telemetry.get_clock")
+            window = clock["t_min"] - t0 + 10
+            series = {s: bus.call(self.name, "telemetry.get_metric_series", asset=s, metric="nic_latency_ms", minutes=window)[0]
+                      for s in servers}
+        except (ExecutionHalted, ToolCallError) as exc:
+            # Keep the record of what already reached the infrastructure, so it is logged, reported and can be undone.
+            done = {a["asset"] for a in actions if a["tool"] == "virt.exit_maintenance"}
+            entered = [a["asset"] for a in actions if a["tool"] == "virt.enter_maintenance"]
+            started = [a["asset"] for a in actions if a["tool"] == "network.upgrade_switch_os"]
+            waited = {a["asset"] for a in actions if a["tool"] == "network.wait_upgrade_complete"}
+            partial = record(result="halted", halt_reason=str(exc), in_maintenance=[h for h in entered if h not in done],
+                             switches_rebooting=[s for s in started if s not in waited], probes=probes,
+                             evidence={"pre": pre_ev}, series={})
+            raise ExecutionHalted(str(exc), partial, tool_error=isinstance(exc, ToolCallError)) from exc
+        return record(t_end_min=clock["t_min"], post=post, during=during,
+                      evidence={"pre": pre_ev, "during": during_ev, "post": post_ev}, series=series, probes=probes)

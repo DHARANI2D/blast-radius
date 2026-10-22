@@ -14,7 +14,10 @@
                                report
 
 Human approvals are LangGraph interrupts; the graph is checkpointed, so the UI or
-CLI resumes it with ``Command(resume=...)`` after a person decides.
+CLI resumes it with ``Command(resume=...)`` after a person decides. A wave halted
+mid-way keeps the record of its writes: a failed MCP call rolls the partial wave
+back; a policy stop (kill switch, scope, rate limit) goes to the report, which lists
+what is left and the manual steps.
 """
 
 from __future__ import annotations
@@ -31,6 +34,7 @@ from langgraph.types import Command, interrupt
 from .agents import (ExecutorAgent, IntakeAgent, PlannerAgent, PostValidationAgent, ReporterAgent, RiskAgent,
                      RollbackAgent, TopologyAgent, VerifierAgent)
 from .agents.executor import ExecutionHalted
+from .agents.rollback import manual_steps
 from .agents.reporter import plan_hash
 from .canary_stats import analyse_wave, changed_assets, params as stat_params, summary as stat_summary
 from .cohorts import build as build_cohorts, coverage, risk_ranked_canary
@@ -64,6 +68,7 @@ class RunState(TypedDict, total=False):
     fleet_approved: bool
     status: str
     halt_reason: str
+    manual_steps: list
     rollback: dict
     lesson: dict
     counterfactual: dict
@@ -402,9 +407,24 @@ def build_graph(sv):
             res = exec_a.run_wave(state["run_id"], i, wave, state["change_request"]["components"], tv, topo_of(state))
         except (ExecutionHalted, ToolCallError) as exc:
             sv.authority.revoke_run(state["run_id"])
-            log(state, "agent:executor", "halted", {"wave": i, "reason": str(exc)})
-            return {"status": "halted", "halt_reason": str(exc),
-                    "timeline": _t("executor", "halted", f"wave {i} halted: {exc}", "error")}
+            part = getattr(exc, "partial", None)
+            touched = bool(part and (part["firmware_changes"] or part["in_maintenance"]))
+            # A failed MCP call leaves writes possible, so the partial wave is rolled back. A policy stop (kill
+            # switch, scope, rate limit) leaves the clean-up to a person: the report lists what is left and how.
+            undo = touched and getattr(exc, "tool_error", isinstance(exc, ToolCallError))
+            log(state, "agent:executor", "halted", {"wave": i, "reason": str(exc), "rollback": undo, **({
+                "actions": [{k: a[k] for k in ("tool", "asset", "evidence")} for a in part["actions"]],
+                "firmware_changes": part["firmware_changes"], "in_maintenance": part["in_maintenance"]} if part else {})})
+            upd: dict[str, Any] = {"status": "rolling_back" if undo else "halted", "halt_reason": str(exc)}
+            detail = f"wave {i} halted: {exc}"
+            if part:
+                upd["executions"] = list(state.get("executions", [])) + [part]
+                detail += (f" after {len(part['actions'])} write action(s), {len(part['firmware_changes'])} firmware change(s); "
+                           + ("rolling back the partial wave" if undo else f"{len(part['in_maintenance'])} host(s) left in maintenance - manual clean-up"))
+                if not undo:
+                    upd["manual_steps"] = manual_steps(part["firmware_changes"], part["in_maintenance"], part["switches_rebooting"])
+            upd["timeline"] = _t("executor", "halted", detail, "error")
+            return upd
         log(state, "agent:executor", "wave_executed", {"wave": i, "actions": [{k: a[k] for k in ("tool", "asset", "evidence")} for a in res["actions"]],
                                                        "firmware_changes": res["firmware_changes"]})
         return {"executions": list(state.get("executions", [])) + [res],
@@ -412,7 +432,7 @@ def build_graph(sv):
                                                         f"{res['migrated_vms']} VMs live-migrated")}
 
     def after_execute(state: RunState) -> str:
-        return "report" if state.get("status") == "halted" else "postcheck"
+        return {"halted": "report", "rolling_back": "rollback"}.get(state.get("status"), "postcheck")
 
     def postcheck(state: RunState):
         execs = list(state["executions"])
@@ -466,7 +486,7 @@ def build_graph(sv):
         for c in cur["firmware_changes"]:
             versions.setdefault(c["asset"], []).append(c["from"])
         sv.authority.reinstate_run(state["run_id"])
-        _grant_writes(state["run_id"], sorted(a for a in versions if a in topo.servers), versions)
+        _grant_writes(state["run_id"], sorted({a for a in versions if a in topo.servers} | set(cur.get("in_maintenance", []))), versions)
         try:
             rb = rb_a.run(state["run_id"], cur, topo)
         finally:
@@ -476,7 +496,7 @@ def build_graph(sv):
         rb["recovered"] = check["passed"]
         log(state, "agent:rollback", "rolled_back", {"reverted": rb["reverted"], "recovered": check["passed"], "evidence": rb["evidence"]})
         base, _ = sv.bus.call("reporter", "compute.get_firmware_baseline", name="latest")
-        lesson = rep_a.lesson_from_rollback(state["run_id"], cur, cur["regressions"], topo, base["components"])
+        lesson = rep_a.lesson_from_rollback(state["run_id"], cur, cur.get("regressions", []), topo, base["components"])
         tl = _t("rollback", "reverted", f"{len(rb['reverted'])} firmware change(s) reverted; signals "
                                         + ("recovered" if check["passed"] else "NOT recovered - page on-call"), "success" if check["passed"] else "error")
         upd: dict[str, Any] = {"rollback": rb, "status": "rolled_back"}
@@ -542,7 +562,7 @@ def build_graph(sv):
     g.add_edge("escalate", "report")
     g.add_conditional_edges("approve_canary", after_canary_approval, ["execute", "report"])
     g.add_conditional_edges("approve_fleet", after_fleet, ["execute", "approve_fleet", "report"])
-    g.add_conditional_edges("execute", after_execute, ["postcheck", "report"])
+    g.add_conditional_edges("execute", after_execute, ["postcheck", "rollback", "report"])
     g.add_conditional_edges("postcheck", after_postcheck, ["rollback", "report", "execute", "approve_fleet"])
     g.add_edge("rollback", "report")
     g.add_edge("report", END)

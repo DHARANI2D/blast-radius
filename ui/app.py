@@ -5,6 +5,7 @@
 
 from __future__ import annotations
 
+import html
 import json
 import os
 import shutil
@@ -417,12 +418,18 @@ with main:
                     s = "⏸ not run" if state.get("status") in ("rolled_back", "halted", "rejected", "stopped_after_canary") else "⏳ pending"
                 elif ex.get("result") == "passed":
                     s = "✅ passed"
+                elif ex.get("result") == "halted":
+                    s = "↩️ halted, rolled back" if state.get("rollback") else "⛔ halted part-way"
                 else:
                     s = "↩️ rolled back" if state.get("rollback") else "❌ regression"
                 status_rows.append({"wave": w["name"], "assets": len(w["assets"]), "status": s,
                                     "actions": len(ex["actions"]) if ex else 0, "VMs migrated": ex["migrated_vms"] if ex else 0})
             st.dataframe(pd.DataFrame(status_rows), hide_index=True, width="stretch")
-            if execs:
+            if state.get("halt_reason"):
+                st.markdown(f"<div class='br-banner-red'><b>Halted:</b> {html.escape(state['halt_reason'])}</div>", unsafe_allow_html=True)
+                if state.get("manual_steps"):
+                    st.markdown("**Manual clean-up (writes are blocked)**\n" + "\n".join(f"{i}. {x}" for i, x in enumerate(state["manual_steps"], 1)))
+            if execs and any(e.get("series") for e in execs):
                 ex = execs[0] if not state.get("rollback") else execs[-1]
                 st.markdown(f"##### Live golden signals · {ex['name']} · NIC latency (ms)")
                 st.caption("Gaps = host in maintenance (evacuated, flashing, rebooting). Threshold: 2x the pre-change baseline.")

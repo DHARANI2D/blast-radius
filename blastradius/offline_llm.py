@@ -295,7 +295,15 @@ def report(ctx: dict) -> dict:
     outcome = ctx["outcome"]
     done = ctx["waves_completed"]
     total = ctx["waves_total"]
-    if outcome == "rolled_back":
+    if ctx.get("halt_reason"):
+        executed = ctx["waves_executed"]
+        s = (f"Change halted in wave {ctx['halted_wave']}: {ctx['halt_reason']}. "
+             + ("The partial wave was rolled back to the previous versions and signals "
+                f"{'recovered' if ctx['recovered'] else 'did NOT recover (escalated to on-call)'}. " if outcome == "rolled_back" else
+                f"Writes were blocked, so {ctx['manual_steps']} manual clean-up step(s) are listed in the report. " if ctx.get("manual_steps") else "")
+             + f"{total - executed} remaining wave(s) were not executed.")
+        lessons = []
+    elif outcome == "rolled_back":
         executed = ctx["waves_executed"]
         s = (f"Change halted in wave {executed}: post-checks on {', '.join(ctx['regressed_assets'])} showed "
              f"{ctx['regression_summary']}. The wave was rolled back to the previous versions and signals "

@@ -5,6 +5,16 @@ from __future__ import annotations
 from ..topology import Topology
 
 
+def manual_steps(changes: list[dict], in_maintenance: list[str], rebooting: list[str] = ()) -> list[str]:
+    """The clean-up a person must do when writes are blocked: the rollback the agent could not run."""
+    steps = [f"{s}: confirm the switch finished rebooting before touching its hosts" for s in rebooting]
+    for c in reversed(changes):
+        how = "" if c["asset"] in in_maintenance or c["component"] == "Switch OS" else " (enter maintenance first)"
+        steps.append(f"{c['asset']}: revert {c['component']} {c['to']} -> {c['from']}, the version captured before the wave{how}")
+    steps += [f"{h}: exit maintenance once its firmware is confirmed" for h in in_maintenance]
+    return steps
+
+
 class RollbackAgent:
     name = "rollback"
 
@@ -20,7 +30,8 @@ class RollbackAgent:
         actions = []
         t0 = bus.call(self.name, "telemetry.get_clock")[0]["t_min"]
         changes = list(reversed(wave_exec["firmware_changes"]))
-        servers = sorted({c["asset"] for c in changes if c["asset"] in topo.servers})
+        # A wave halted mid-way may also have left hosts in maintenance with nothing flashed yet.
+        servers = sorted({c["asset"] for c in changes if c["asset"] in topo.servers} | set(wave_exec.get("in_maintenance", [])))
         switches = sorted({c["asset"] for c in changes if c["asset"] in topo.switches})
         for h in servers:
             res, ev = self._write(run_id, "virt.enter_maintenance", h, host=h)
