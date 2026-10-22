@@ -491,6 +491,15 @@ def build_graph(sv):
             rb = rb_a.run(state["run_id"], cur, topo)
         finally:
             sv.authority.revoke_run(state["run_id"])
+        if rb.get("blocked"):
+            # The guard stopped the rollback (kill switch, scope, rate limit) or a write failed: a person takes over.
+            steps = manual_steps(rb["pending"], rb["in_maintenance"], rb["rebooting"])
+            log(state, "agent:rollback", "rollback_blocked", {k: rb[k] for k in ("blocked", "reverted", "pending", "in_maintenance")}
+                | {"actions": [{k: a[k] for k in ("tool", "asset", "evidence")} for a in rb["actions"]]})
+            return {"rollback": rb, "status": "halted", "halt_reason": f"rollback blocked: {rb['blocked']}; manual action required",
+                    "manual_steps": steps,
+                    "timeline": _t("rollback", "blocked", f"rollback blocked ({rb['blocked']}) after {len(rb['reverted'])} of "
+                                                          f"{len(cur['firmware_changes'])} revert(s); {len(steps)} manual step(s) in the report", "error")}
         assets = {s["asset"] for s in rb["after"]}
         check = post_a.compare([s for s in cur["pre"] if s["asset"] in assets], rb["after"])
         rb["recovered"] = check["passed"]

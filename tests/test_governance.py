@@ -194,3 +194,28 @@ def test_rollback_of_a_switch_wave_re_evacuates_the_hosts_the_wave_evacuated(tmp
     assert evacuated_at_revert == [True] and host not in sv.twin.maintenance
     assert [(a["tool"], a["asset"]) for a in rb["actions"]] == [("virt.enter_maintenance", host), ("revert", sw),
                                                                 ("virt.exit_maintenance", host)]
+
+
+def test_rollback_writes_pass_the_policy_guard_and_honour_the_kill_switch(tmp_path, monkeypatch):
+    sv = make_services(tmp_path)  # faults on: the canary regresses and needs a rollback
+    monkeypatch.delenv("BR_KILL_SWITCH", raising=False)
+    real = ExecutorAgent.run_wave
+
+    def run_wave(self, *a, **k):
+        out = real(self, *a, **k)
+        monkeypatch.setenv("BR_KILL_SWITCH", "on")  # engaged after the canary ran, before its rollback
+        return out
+
+    monkeypatch.setattr(ExecutorAgent, "run_wave", run_wave)
+    writes = []
+    call = sv.bus.call
+    sv.bus.call = lambda agent, key, **a: (writes.append(key) if agent == "rollback" and "approval_token" in a else None) or call(agent, key, **a)
+    r, _ = drive(Engine(sv))
+    st = r["state"]
+    assert writes == []  # not one rollback write while the kill switch is engaged
+    assert st["status"] == "halted" and st["halt_reason"].startswith("rollback blocked: kill switch engaged")
+    assert st["rollback"]["reverted"] == [] and "lesson" not in st
+    changes = st["executions"][0]["firmware_changes"]
+    steps = st["report"]["manual_steps"]
+    assert len(steps) == len(changes) and all(f"revert {c['component']} {c['to']} -> {c['from']}" in " ".join(steps) for c in changes)
+    assert "rollback_blocked" in [e["event"] for e in sv.ledger.entries(r["run_id"])]

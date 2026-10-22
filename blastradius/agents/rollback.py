@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from ..mcp_layer import ToolCallError
+from ..policy import PolicyViolation
 from ..topology import Topology
 
 
@@ -21,7 +23,9 @@ class RollbackAgent:
     def __init__(self, sv):
         self.sv = sv
 
-    def _write(self, run_id: str, tool: str, asset: str, **args):
+    def _write(self, run_id: str, tool: str, asset: str, scope: set[str], **args):
+        # Rollback writes pass the same PolicyGuard as forward ones: kill switch, allow-list, scope, rate limit.
+        self.sv.guard.check(tool, asset, scope)
         token = self.sv.authority.token(run_id, asset, tool, args.get("version", ""))
         return self.sv.bus.call(self.name, tool, run_id=run_id, approval_token=token, **args)
 
@@ -37,23 +41,40 @@ class RollbackAgent:
 
     def run(self, run_id: str, wave_exec: dict, topo: Topology) -> dict:
         bus = self.sv.bus
+        self.sv.guard.new_wave()
         actions = []
         t0 = bus.call(self.name, "telemetry.get_clock")[0]["t_min"]
         changes = list(reversed(wave_exec["firmware_changes"]))
         servers = self.hosts(wave_exec, topo)
         switches = sorted({c["asset"] for c in changes if c["asset"] in topo.switches})
-        for h in servers:
-            res, ev = self._write(run_id, "virt.enter_maintenance", h, host=h)
-            actions.append({"tool": "virt.enter_maintenance", "asset": h, "evidence": ev})
-        for c in changes:
-            if c["asset"] in topo.servers:
-                res, ev = self._write(run_id, "compute.apply_firmware", c["asset"], server=c["asset"], component=c["component"], version=c["from"])
-            else:
-                res, ev = self._write(run_id, "network.upgrade_switch_os", c["asset"], switch=c["asset"], version=c["from"], hold_down=False)
-            actions.append({"tool": "revert", "asset": c["asset"], "component": c["component"], "to": c["from"], "evidence": ev})
-        for h in servers:
-            res, ev = self._write(run_id, "virt.exit_maintenance", h, host=h)
-            actions.append({"tool": "virt.exit_maintenance", "asset": h, "evidence": ev})
+        # Scope: maintenance only on the wave's own hosts, reverts only on what the wave changed.
+        wave_scope, changed = set(wave_exec["assets"]) | set(wave_exec.get("evacuate", [])), {c["asset"] for c in changes}
+        reverted: list[dict] = []
+        held = set(wave_exec.get("in_maintenance", []))
+        try:
+            for h in servers:
+                res, ev = self._write(run_id, "virt.enter_maintenance", h, wave_scope, host=h)
+                held.add(h)
+                actions.append({"tool": "virt.enter_maintenance", "asset": h, "evidence": ev})
+            for c in changes:
+                if c["asset"] in topo.servers:
+                    res, ev = self._write(run_id, "compute.apply_firmware", c["asset"], changed, server=c["asset"], component=c["component"], version=c["from"])
+                else:
+                    res, ev = self._write(run_id, "network.upgrade_switch_os", c["asset"], changed, switch=c["asset"], version=c["from"], hold_down=False)
+                reverted.append(c)
+                actions.append({"tool": "revert", "asset": c["asset"], "component": c["component"], "to": c["from"], "evidence": ev})
+            for h in servers:
+                res, ev = self._write(run_id, "virt.exit_maintenance", h, wave_scope, host=h)
+                held.discard(h)
+                actions.append({"tool": "virt.exit_maintenance", "asset": h, "evidence": ev})
+        except (PolicyViolation, ToolCallError) as exc:
+            # Stop at once (the kill switch means no more writes); a person finishes the rollback.
+            done = {c["asset"] for c in reverted}
+            return {"actions": actions, "blocked": str(exc), "recovered": False,
+                    "reverted": [{"asset": c["asset"], "component": c["component"], "to": c["from"]} for c in reverted],
+                    "pending": [c for c in wave_exec["firmware_changes"] if c not in reverted],
+                    "in_maintenance": sorted(held), "rebooting": [s for s in wave_exec.get("switches_rebooting", []) if s not in done],
+                    "after": [], "evidence": None, "series": {}}
         soak = int(self.sv.policy.get("execution.durations_min.soak", 10))
         bus.call(self.name, "telemetry.advance_clock", minutes=soak)
         after, after_ev = bus.call(self.name, "telemetry.get_golden_signals", assets=servers + switches)

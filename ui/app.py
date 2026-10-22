@@ -412,6 +412,7 @@ with main:
             st.info("Nothing executed yet.")
         else:
             status_rows = []
+            rolled_back = bool(state.get("rollback")) and not state["rollback"].get("blocked")
             for i, w in enumerate(plan["waves"], 1):
                 ex = next((e for e in execs if e["index"] == i), None)
                 if ex is None:
@@ -419,9 +420,9 @@ with main:
                 elif ex.get("result") == "passed":
                     s = "✅ passed"
                 elif ex.get("result") == "halted":
-                    s = "↩️ halted, rolled back" if state.get("rollback") else "⛔ halted part-way"
+                    s = "↩️ halted, rolled back" if rolled_back else "⛔ halted part-way"
                 else:
-                    s = "↩️ rolled back" if state.get("rollback") else "❌ regression"
+                    s = "↩️ rolled back" if rolled_back else "❌ regression"
                 status_rows.append({"wave": w["name"], "assets": len(w["assets"]), "status": s,
                                     "actions": len(ex["actions"]) if ex else 0, "VMs migrated": ex["migrated_vms"] if ex else 0})
             st.dataframe(pd.DataFrame(status_rows), hide_index=True, width="stretch")
@@ -452,7 +453,10 @@ with main:
                 if regs:
                     st.markdown("<div class='br-banner-red'><b>Auto-halt.</b> " + "; ".join(f"{r['asset']}: {r['message']}" for r in regs)
                                 + ". Remaining waves cancelled; write access revoked.</div>", unsafe_allow_html=True)
-                if state.get("rollback"):
+                if state.get("rollback") and state["rollback"].get("blocked"):
+                    st.markdown(f"<div class='br-banner-red'><b>Rollback blocked:</b> {html.escape(state['rollback']['blocked'])}. "
+                                "Manual clean-up steps are listed above.</div>", unsafe_allow_html=True)
+                elif state.get("rollback"):
                     rb = state["rollback"]
                     st.markdown(f"<div class='{'br-banner-green' if rb['recovered'] else 'br-banner-red'}'><b>Rollback:</b> "
                                 + ", ".join(f"{x['asset']} {x['component']} → {x['to']}" for x in rb["reverted"])

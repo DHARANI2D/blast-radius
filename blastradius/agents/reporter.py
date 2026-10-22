@@ -231,7 +231,8 @@ class ReporterAgent:
                                   for w in waves if w.get("result") == "halted"), None),
             "manual_steps": state.get("manual_steps") or [],
             "rollback": {"reverted": (state.get("rollback") or {}).get("reverted", []),
-                         "recovered": (state.get("rollback") or {}).get("recovered")} if state.get("rollback") else None,
+                         "recovered": (state.get("rollback") or {}).get("recovered"),
+                         "blocked": (state.get("rollback") or {}).get("blocked")} if state.get("rollback") else None,
             "deferred": (state.get("risk") or {}).get("deferred", []),
             "learned_incident": (state.get("lesson") or {}).get("id"),
             "diagnosis": (state.get("lesson") or {}).get("diagnosis"),
@@ -280,7 +281,8 @@ class ReporterAgent:
         if r.get("manual_steps"):
             lines += ["", "## Manual steps (writes are blocked)"] + [f"{i}. {x}" for i, x in enumerate(r["manual_steps"], 1)]
         if r.get("rollback"):
-            lines += ["", "## Rollback", f"Recovered: {r['rollback']['recovered']}"]
+            lines += ["", "## Rollback", f"Recovered: {r['rollback']['recovered']}"
+                      + (f" (blocked: {r['rollback']['blocked']})" if r["rollback"].get("blocked") else "")]
             lines += [f"- {x['asset']} {x['component']} -> {x['to']}" for x in r["rollback"]["reverted"]]
         if r.get("deferred"):
             lines += ["", "## Deferred assets"] + [f"- {d['asset']}: {d['reason']}" for d in r["deferred"]]
