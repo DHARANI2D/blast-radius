@@ -31,6 +31,38 @@ CVE_RE = re.compile(r"(?:SYN-)?CVE-\d{4}-\d+", re.I)
 TRAILING_CITE = re.compile(r"\.\s*(\[EV-\d{4}(?:,\s*EV-\d{4})*\])")
 
 
+TOOL_RESULT_CHARS = 6000
+
+
+def _fit(payload: dict, hint: str, limit: int = TOOL_RESULT_CHARS) -> str:
+    """A tool message as valid JSON of at most ``limit`` characters that says what it left out.
+
+    A long list (the result, or the longest list inside a dict result) keeps as many leading items
+    as fit, plus the count omitted and a hint to narrow the call, so the model never counts hosts
+    or uplinks from a silently cut list.
+    """
+    text = json.dumps(payload, default=str)
+    if len(text) <= limit:
+        return text
+    res = payload.get("result")
+    key = max((k for k, v in res.items() if isinstance(v, list)), key=lambda k: len(res[k]), default=None) if isinstance(res, dict) else None
+    items = res if isinstance(res, list) else res[key] if key else None
+    if items is None:
+        return json.dumps({**{k: v for k, v in payload.items() if k != "result"}, "result": None, "truncated": True,
+                           "result_chars": len(text), "hint": hint}, default=str)
+
+    def cut(n: int) -> str:
+        shown = items[:n] if key is None else {**res, key: items[:n]}
+        return json.dumps({**payload, "result": shown, "truncated": True, "total_items": len(items),
+                           "omitted_items": len(items) - n, "hint": hint}, default=str)
+
+    lo, hi = 0, len(items)
+    while lo < hi:  # the most leading items that fit
+        mid = (lo + hi + 1) // 2
+        lo, hi = (mid, hi) if len(cut(mid)) <= limit else (lo, mid - 1)
+    return cut(lo)
+
+
 def _json_type(ann) -> dict:
     args = [a for a in typing.get_args(ann) if a is not type(None)]
     if args and type(None) in typing.get_args(ann):  # Optional[X] -> X
@@ -152,7 +184,9 @@ class InvestigatorAgent:
                 except Exception as exc:  # noqa: BLE001 - the model sees the error and can recover
                     payload, ev = {"error": str(exc)}, None
                 steps.append({"tool": key, "args": c["arguments"], "evidence": ev})
-                messages.append({"role": "tool", "tool_call_id": c["id"], "content": json.dumps(payload, default=str)[:6000]})
+                params = list(inspect.signature(self.sv.bus.registry[key].fn).parameters) if key in self.sv.bus.registry else []
+                hint = "result cut to fit; " + (f"narrow the call with its arguments ({', '.join(params)})" if params else "ask a narrower question")
+                messages.append({"role": "tool", "tool_call_id": c["id"], "content": _fit(payload, hint)})
         messages.append({"role": "user", "content": "Tool budget exhausted. Answer now with what the evidence shows."})
         turn = self.sv.llm.chat_tools("investigator", messages, [])
         return {"answer": turn["content"] or "", "steps": steps, "mode": f"llm:{self.sv.llm.model}"}

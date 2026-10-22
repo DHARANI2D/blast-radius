@@ -192,3 +192,19 @@ def test_live_model_gets_the_run_facts_the_offline_router_uses(tmp_path):
     assert ctx["executions"][0]["result"] == "regression" and ctx["executions"][0]["regressions"][0]["asset"] == "blr-esx-01"
     assert ctx["rollback"]["recovered"] is True and ctx["lesson"]["id"] == st["lesson"]["id"]
     assert len(rec.seen[0][1]["content"]) < 8000
+
+
+def test_long_tool_results_stay_valid_json_and_say_what_was_left_out(sv):
+    from blastradius.agents.investigator import _fit
+
+    lldp, ev = sv.bus.call("investigator", "network.get_lldp_neighbors")
+    assert len(json.dumps(lldp)) > 6000
+    out = json.loads(_fit({"evidence_id": ev, "result": lldp}, "narrow the call with its arguments (switch)"))
+    assert out["evidence_id"] == ev and out["truncated"] and out["total_items"] == len(lldp)
+    assert out["omitted_items"] == len(lldp) - len(out["result"]) > 0 and out["result"] == lldp[:len(out["result"])]
+    assert "switch" in out["hint"] and len(_fit({"evidence_id": ev, "result": lldp}, "h")) <= 6000
+    nested = json.loads(_fit({"evidence_id": ev, "result": {"switch": "tor-r1-a", "ports": lldp}}, "h"))
+    assert nested["result"]["switch"] == "tor-r1-a" and nested["omitted_items"] > 0
+    assert json.loads(_fit({"evidence_id": ev, "result": "x" * 9000}, "h"))["result_chars"] > 9000
+    small = {"evidence_id": ev, "result": lldp[:2]}
+    assert json.loads(_fit(small, "h")) == small
