@@ -87,6 +87,8 @@ def cmd_demo(args) -> int:
         payload = {"decision": verdict, "approver": names[0], "approvers": names}
         r = eng.resume(r["run_id"], payload)
         shown = _print_timeline(r["state"]["timeline"], shown)
+        if r["interrupt"] and r["state"].get("approval_error"):
+            print(f"\n  Not signed: {r['state']['approval_error']}")
     st = r["state"]
     print(f"\nOutcome: {st.get('status')}")
     if st.get("business_impact"):

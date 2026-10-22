@@ -377,6 +377,8 @@ with main:
             with st.expander("Claims and evidence"):
                 for c in card["claims"]:
                     st.markdown(f"{LABEL_ICON[c['label']]} {c['text']} <span class='br-tag'>({', '.join(c['evidence'])})</span>", unsafe_allow_html=True)
+            if state.get("approval_error"):
+                st.error(f"Not signed: {state['approval_error']}")
             with st.form(f"approve_{card['scope']}"):
                 names = [st.text_input(f"Approver {i + 1}", value=["asha.ops", "ravi.net"][i] if i < 2 else "")
                          for i in range(card["required_approvers"])]

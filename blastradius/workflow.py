@@ -63,6 +63,7 @@ class RunState(TypedDict, total=False):
     verification: dict
     constraints: dict
     approvals: list
+    approval_error: str
     executions: list
     current_wave: int
     fleet_approved: bool
@@ -355,42 +356,59 @@ def build_graph(sv):
         _grant_writes(state["run_id"], maint, versions)
         return sorted(set(maint) | set(versions))
 
+    def _identity(name: str) -> str:
+        """Approver identity for distinctness: case and whitespace do not make a second person."""
+        return "".join((name or "").split()).casefold()
+
+    def _invalid(msg: str) -> dict:
+        # Nothing is signed or granted; the gate asks again and the UI / CLI show the reason next to the form.
+        return {"approval_error": msg, "timeline": _t("supervisor", "approval_invalid", msg, "warn")}
+
     def approve_canary(state: RunState):
         decision = interrupt(card(state, "canary"))
-        approver = (decision.get("approver") or "").strip() or "unknown"
+        approver = (decision.get("approver") or "").strip()
         verdict = "approve" if decision.get("decision") == "approve" else "reject"
+        if verdict == "approve" and not approver:
+            return _invalid("the canary needs a named approver; nothing was signed or executed")
+        approver = approver or "unknown"
         rec = sv.authority.sign_approval(state["run_id"], state["plan_hash"], "canary", approver, verdict, decision.get("comment", ""))
         log(state, f"human:{approver}", "approval", rec)
         approvals = list(state.get("approvals", [])) + [rec]
         if verdict == "reject":
-            return {"approvals": approvals, "status": "rejected",
+            return {"approvals": approvals, "status": "rejected", "approval_error": "",
                     "timeline": _t("human", "rejected", f"{approver} rejected the plan; nothing executed", "warn")}
         assets = _grant(state, state["plan"]["waves"][:1])
         log(state, "code:authority", "write_grant", {"waves": [1], "assets": assets, "actions": WRITE_ACTIONS})
-        return {"approvals": approvals, "current_wave": 1, "status": "executing",
+        return {"approvals": approvals, "current_wave": 1, "status": "executing", "approval_error": "",
                 "timeline": _t("human", "approved", f"{approver} approved plan {state['plan_hash'][:12]} and the canary (signature {rec['signature'][:12]})", "success")}
 
     def after_canary_approval(state: RunState) -> str:
+        if state.get("approval_error"):
+            return "approve_canary"
         return "report" if state["status"] == "rejected" else "execute"
 
     def approve_fleet(state: RunState):
         decision = interrupt(card(state, "fleet"))
         need = int(pol.get("approval.fleet.approvers", 2))
-        approvers = [a.strip() for a in decision.get("approvers", []) if a and a.strip()]
+        approvers: list[str] = []
+        for a in decision.get("approvers", []):
+            if (a or "").strip() and _identity(a) not in {_identity(x) for x in approvers}:
+                approvers.append(a.strip())
         verdict = "approve" if decision.get("decision") == "approve" else "reject"
-        if verdict == "approve" and len(set(approvers)) < need:
-            return {"timeline": _t("supervisor", "approval_invalid", f"fleet waves need {need} distinct approvers; got {len(set(approvers))}", "warn")}
+        if verdict == "approve" and len(approvers) < need:
+            return _invalid(f"fleet waves need {need} distinct approvers; got {len(approvers)} "
+                            "(names are compared ignoring case and spaces); nothing was signed or executed")
         approvals = list(state.get("approvals", []))
         for a in (approvers or ["unknown"]):
             rec = sv.authority.sign_approval(state["run_id"], state["plan_hash"], "fleet", a, verdict, decision.get("comment", ""))
             log(state, f"human:{a}", "approval", rec)
             approvals.append(rec)
         if verdict == "reject":
-            return {"approvals": approvals, "status": "stopped_after_canary",
+            return {"approvals": approvals, "status": "stopped_after_canary", "approval_error": "",
                     "timeline": _t("human", "rejected", "fleet waves rejected after the canary", "warn")}
         assets = _grant(state, state["plan"]["waves"][1:])
         log(state, "code:authority", "write_grant", {"waves": list(range(2, len(state["plan"]["waves"]) + 1)), "assets": assets})
-        return {"approvals": approvals, "fleet_approved": True,
+        return {"approvals": approvals, "fleet_approved": True, "approval_error": "",
                 "timeline": _t("human", "approved", f"dual approval by {' and '.join(approvers)} for {len(state['plan']['waves']) - 1} fleet waves", "success")}
 
     def after_fleet(state: RunState) -> str:
@@ -575,7 +593,7 @@ def build_graph(sv):
     g.add_edge("optimise", "verify")
     g.add_conditional_edges("verify", after_verify, ["approve_canary", "plan", "escalate"])
     g.add_edge("escalate", "report")
-    g.add_conditional_edges("approve_canary", after_canary_approval, ["execute", "report"])
+    g.add_conditional_edges("approve_canary", after_canary_approval, ["execute", "approve_canary", "report"])
     g.add_conditional_edges("approve_fleet", after_fleet, ["execute", "approve_fleet", "report"])
     g.add_conditional_edges("execute", after_execute, ["postcheck", "rollback", "report"])
     g.add_conditional_edges("postcheck", after_postcheck, ["rollback", "report", "execute", "approve_fleet"])

@@ -83,13 +83,21 @@ def test_clean_run_needs_dual_approval_for_fleet(tmp_path):
     eng = Engine(sv)
     r = eng.start(INTENT)
     assert r["interrupt"]["scope"] == "canary"
+    # an approval with no approver name is not signed and nothing runs: the gate asks again and says why
+    r = eng.resume(r["run_id"], {"decision": "approve", "approver": "   "})
+    assert r["interrupt"]["scope"] == "canary" and "named approver" in r["state"]["approval_error"]
+    assert r["state"]["approvals"] == [] and r["state"]["executions"] == [] and sv.twin.maintenance == set()
     r = eng.resume(r["run_id"], {"decision": "approve", "approver": "asha.ops"})
     assert r["interrupt"]["scope"] == "fleet" and r["interrupt"]["canary_result"]["result"] == "passed"
-    # one approver twice is not two approvers: the gate asks again
-    r = eng.resume(r["run_id"], {"decision": "approve", "approvers": ["asha.ops", "asha.ops"]})
-    assert r["interrupt"]["scope"] == "fleet"
-    r = eng.resume(r["run_id"], {"decision": "approve", "approvers": ["asha.ops", "ravi.net"]})
+    assert r["state"]["approval_error"] == ""
+    # one approver twice, in any case or spacing, is not two approvers: the gate asks again and says why
+    for names in (["asha.ops", "asha.ops"], ["asha.ops", " ASHA.OPS "], ["asha.ops", "   "]):
+        r = eng.resume(r["run_id"], {"decision": "approve", "approvers": names})
+        assert r["interrupt"]["scope"] == "fleet" and "2 distinct approvers; got 1" in r["state"]["approval_error"]
+        assert len(r["state"]["executions"]) == 1
+    r = eng.resume(r["run_id"], {"decision": "approve", "approvers": [" asha.ops", "ravi.net"]})
     st = r["state"]
+    assert st["approval_error"] == "" and [a["approver"] for a in st["approvals"]] == ["asha.ops", "asha.ops", "ravi.net"]
     assert st["status"] == "completed"
     assert all(e["result"] == "passed" for e in st["executions"])
     assert {s["firmware"]["iLO 6"] for s in sv.twin.servers.values()} == {"1.64"}
