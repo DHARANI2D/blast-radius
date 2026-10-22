@@ -71,15 +71,38 @@ def _sha(text: str) -> str:
     return hashlib.sha256(text.encode()).hexdigest()
 
 
-def _extract_json(text: str) -> Any:
-    text = text.strip()
-    fence = re.search(r"```(?:json)?\s*(.*?)```", text, re.S)
-    if fence:
-        text = fence.group(1)
-    start = min([i for i in (text.find("{"), text.find("[")) if i >= 0], default=-1)
-    if start > 0:
-        text = text[start:]
-    return json.loads(text)
+_THINK = re.compile(r"<think>.*?</think>", re.S | re.I)
+_FENCE = re.compile(r"```(json)?[ \t]*\n?(.*?)```", re.S | re.I)
+
+
+def _extract_json(text: str, validate: Callable[[Any], Any] = lambda v: v) -> Any:
+    """The first JSON value in a model reply that decodes and passes ``validate``.
+
+    Models wrap JSON in <think> blocks, several fences (a draft, then the answer), and prose
+    or citation brackets ("Based on [EV-0042] ...") before and after it. Fenced blocks are
+    tried first, the last ```json fence before the others; within each candidate every
+    '{' / '[' is tried with raw_decode, which ignores whatever text follows the value.
+    """
+    text = _THINK.sub("", text or "").strip()
+    fences = _FENCE.findall(text)
+    candidates = ([b for tag, b in reversed(fences) if tag] + [b for tag, b in reversed(fences) if not tag] + [text])
+    decoder = json.JSONDecoder()
+    first_err: Exception | None = None
+    for cand in candidates:
+        for i, ch in enumerate(cand):
+            if ch not in "{[":
+                continue
+            try:
+                value, _ = decoder.raw_decode(cand, i)
+            except json.JSONDecodeError:
+                continue
+            try:
+                return validate(value)
+            except ValidationError as e:
+                first_err = first_err or e
+    if first_err is not None:
+        raise first_err
+    return json.loads(text)  # raises the JSONDecodeError the repair prompt quotes
 
 
 class OpenAICompatClient(LLMClient):
@@ -149,7 +172,7 @@ class OpenAICompatClient(LLMClient):
         for attempt in range(3):
             raw = self._post(messages, temperature)
             try:
-                out = schema.model_validate(_extract_json(raw))
+                out = _extract_json(raw, schema.model_validate)
                 self.history.append(CallRecord(role, self.model, _sha(system + user), int((time.time() - t0) * 1000), True,
                                                f"attempt {attempt + 1}"))
                 return out

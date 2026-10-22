@@ -495,9 +495,13 @@ def build_graph(sv):
         if atts:
             sv.memory.record_run(state["run_id"], bool(atts[0].get("passed")), len(atts), len(atts[0].get("memory_rules", [])))
         rep = rep_a.run(dict(state))
-        log(state, "agent:reporter", "report_signed", {"signature": rep["signature"], "outcome": rep["outcome"], "path": rep["path"]})
-        return {"report": rep, "timeline": _t("reporter", "report", f"signed post-change report ({rep['outcome']}): {rep['summary']}",
-                                              "success" if rep["outcome"] == "completed" else "info")}
+        log(state, "agent:reporter", "report_signed", {"signature": rep["signature"], "outcome": rep["outcome"], "path": rep["path"],
+                                                       "summary_source": rep["summary_source"], "llm": rep["summary_llm"]})
+        failed = rep["summary_llm"].get("ok") is False
+        tl = _t("reporter", "llm_fallback", f"report model call failed ({rep['summary_llm'].get('note')}); deterministic summary signed instead",
+                "warn") if failed else []
+        return {"report": rep, "timeline": tl + _t("reporter", "report", f"signed post-change report ({rep['outcome']}): {rep['summary']}",
+                                                   "success" if rep["outcome"] == "completed" else "info")}
 
     g = StateGraph(RunState)
     for name, fn in [("intake", intake), ("discover", discover), ("assess", assess), ("plan", plan), ("optimise", optimise),

@@ -66,3 +66,28 @@ def test_azure_url_scheme(server):
     client(server, style="azure").complete_json("planner", "s", "u", Plan, context={})
     assert SEEN[0]["path"].startswith("/v1/openai/deployments/nemotron-test/chat/completions?api-version=")
     assert SEEN[0]["headers"]["api-key"] == "k"
+
+
+def test_extract_json_tolerates_prose_think_blocks_citations_and_fences():
+    from pydantic import BaseModel
+
+    from blastradius.llm import _extract_json
+
+    class Summary(BaseModel):
+        summary: str
+
+    def get(text):
+        return _extract_json(text, Summary.model_validate).summary
+
+    assert get('{"summary": "ok"}\n\nI hope this helps the CAB.') == "ok"
+    assert get('Based on [EV-0042], my judgement is: {"summary": "cited"}') == "cited"
+    assert get('<think>The plan is {roughly} fine</think>\n{"summary": "thought"}') == "thought"
+    assert get('Draft:\n```\n{"summary": "draft"}\n```\nFinal:\n```json\n{"summary": "final"}\n```') == "final"
+    with pytest.raises(json.JSONDecodeError):
+        get("no json here")
+
+
+def test_trailing_prose_needs_no_repair_round_trip(server):
+    _Handler.replies = [GOOD + "\n\nLet me know if the CAB needs more detail."]
+    out = client(server).complete_json("planner", "s", "u", Plan, context={})
+    assert out.rationale == "r" and len(SEEN) == 1

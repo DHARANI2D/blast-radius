@@ -89,3 +89,31 @@ def test_rejection_executes_nothing(engine, sv):
     r, _ = drive(engine, canary="reject")
     assert r["state"]["status"] == "rejected"
     assert sv.twin.snapshot()["firmware"] == before["firmware"]
+
+
+def _failing_llm(sv, roles):
+    """Make the planner model raise LLMError for these roles, as a live endpoint does when it is down."""
+    from blastradius.llm import LLMError
+
+    orig = sv.llm.complete_json
+
+    def complete_json(role, *a, **k):
+        if role in roles:
+            raise LLMError(f"simulated {role} outage")
+        return orig(role, *a, **k)
+
+    sv.llm.complete_json = complete_json
+
+
+def test_report_llm_failure_still_signs_the_report(tmp_path):
+    sv = make_services(tmp_path)
+    _failing_llm(sv, {"report"})
+    r, _ = drive(Engine(sv))
+    st = r["state"]
+    assert st["status"] == "rolled_back" and len(sv.twin.firmware_history) > 0
+    rep = st["report"]
+    assert rep["summary"].startswith("Change halted in wave 1") and rep["signature"]
+    assert rep["summary_source"] == "deterministic summary (LLM failed: simulated report outage)"
+    events = [e["event"] for e in sv.ledger.entries(r["run_id"])]
+    assert events[-2:] == ["llm_fallback", "report_signed"]
+    assert any(t["event"] == "llm_fallback" for t in st["timeline"])

@@ -18,7 +18,7 @@ from pathlib import Path
 from pydantic import BaseModel
 
 from ..ledger import canonical
-from ..llm import load_prompt
+from ..llm import LLMError, load_prompt
 from ..topology import Topology
 
 
@@ -205,7 +205,20 @@ class ReporterAgent:
             "regression_summary": "; ".join(r["message"] for r in reg[:2]),
             "lesson": (state.get("lesson") or {}).get("symptom", ""),
         }
-        out: _ReportOut = sv.llm.complete_json("report", load_prompt("report"), json.dumps(ctx), _ReportOut, context=ctx, temperature=0.1)
+        try:
+            out: _ReportOut = sv.llm.complete_json("report", load_prompt("report"), json.dumps(ctx), _ReportOut, context=ctx, temperature=0.1)
+            source = "offline stand-in (templated summary)" if sv.settings.offline else f"llm:{sv.llm.model}"
+            llm_rec = sv.llm.last()
+        except LLMError as exc:
+            # The writes have happened: the signed report is due whatever the model does.
+            from ..offline_llm import report as deterministic_report
+
+            out = _ReportOut.model_validate(deterministic_report(ctx))
+            llm_error = str(exc)[:300]
+            source = f"deterministic summary (LLM failed: {llm_error})"
+            llm_rec = {"role": "report", "model": sv.llm.model, "ok": False, "note": llm_error}
+            sv.ledger.append(state["run_id"], "agent:reporter", "llm_fallback",
+                             {"role": "report", "error": llm_error, "fallback": "deterministic summary"})
         verify = sv.ledger.verify()
         body = {
             "run_id": state["run_id"],
@@ -214,6 +227,8 @@ class ReporterAgent:
             "change_request": state.get("change_request"),
             "outcome": outcome,
             "summary": out.summary,
+            "summary_source": source,
+            "summary_llm": llm_rec,
             "lessons": out.lessons,
             "plan_hash": state.get("plan_hash"),
             "plan_provenance": state.get("plan_provenance"),
@@ -256,6 +271,8 @@ class ReporterAgent:
             "",
             "## Summary",
             r["summary"],
+            "",
+            f"_Summary: {r.get('summary_source') or 'n/a'}_",
             "",
             "## Waves",
         ]
