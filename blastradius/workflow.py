@@ -90,15 +90,21 @@ def build_graph(sv):
     def log(state, actor, event, payload=None):
         sv.ledger.append(state["run_id"], actor, event, payload or {})
 
+    def fallback(state, agent: str, fb: dict, **extra) -> list[dict]:
+        """Ledger and timeline record of a failed model call and the deterministic stand-in used instead."""
+        log(state, f"agent:{agent}", "llm_fallback", {**extra, **fb})
+        return _t(agent, "llm_fallback", f"{fb['role']} model call failed ({fb['error']}); fallback: {fb['fallback']}", "warn")
+
     # ----------------------------------------------------------- analysis
     def intake(state: RunState):
         out = intake_a.run(state["intent"])
+        tl = fallback(state, "intake", out["llm_fallback"]) if out["llm_fallback"] else []
         log(state, "agent:intake", "change_request", {"change_request": out["change_request"], "llm": out["llm"], "evidence": out["evidence"]})
         t = out["targets"]
         cr = out["change_request"]
         return {"change_request": cr, "targets": t, "status": "analysing", "attempts": [], "approvals": [], "executions": [],
-                "timeline": _t("intake", "parsed", f"{cr['summary']}: {len(t['servers'])} servers, {len(t['switches'])} switches; "
-                               f"window {cr['window']['day']} {cr['window']['start']} for {cr['window']['duration_minutes']} min")}
+                "timeline": tl + _t("intake", "parsed", f"{cr['summary']}: {len(t['servers'])} servers, {len(t['switches'])} switches; "
+                                    f"window {cr['window']['day']} {cr['window']['start']} for {cr['window']['duration_minutes']} min")}
 
     def discover(state: RunState):
         topo, summary = topo_a.run()
@@ -177,6 +183,7 @@ def build_graph(sv):
                        time_budget_s=float(pol.get("optimizer.time_budget_s", 2.0)))
         summary = {k: res[k] for k in ("status", "improved", "before", "after", "changes", "stats", "weights")}
         cur["optimization"] = summary
+        tl: list[dict] = []
         if res["improved"]:
             new_plan = res["plan"]
             new_cons = check_plan(new_plan, topo, targets["servers"] + targets["switches"], cr["components"], pol,
@@ -186,8 +193,15 @@ def build_graph(sv):
             else:
                 # The planner's sentences described the old ordering; it re-explains the waves that will run,
                 # and the Verifier checks that explanation.
-                exp = planner_a.explain(new_plan["waves"], cr, targets, risk, topo, new_cons["total_duration_min"])
-                new_plan = {**new_plan, "rationale": exp["rationale"], "self_confidence": exp["self_confidence"]}
+                try:
+                    exp = planner_a.explain(new_plan["waves"], cr, targets, risk, topo, new_cons["total_duration_min"])
+                    new_plan = {**new_plan, "rationale": exp["rationale"], "self_confidence": exp["self_confidence"]}
+                except LLMError as exc:
+                    # Keep the better waves; their rationale is rebuilt from the waves themselves (and still verified).
+                    new_plan = {**regrounded(new_plan, topo, targets, pol, cr["components"], risk["deferred"]), "self_confidence": None}
+                    cur["provenance"] += "; rationale: deterministic re-explanation (planner_explain failed)"
+                    tl = fallback(state, "planner", {"role": "planner_explain", "error": str(exc)[:300],
+                                                     "fallback": "deterministic grounded rationale"}, attempt=cur["attempt"])
             cur["plan_before_optimization"] = cur["plan"]
             cur["plan"] = new_plan
             cur["constraints"] = new_cons
@@ -196,8 +210,8 @@ def build_graph(sv):
             {"attempt": cur["attempt"], "plan_hash": plan_hash(cur["plan"]), "before": res["before"], "after": res["after"],
              "moves": len(res.get("moves", [])), "stats": res["stats"]})
         return {"attempts": attempts,
-                "timeline": _t("optimizer", "optimized" if res["improved"] else "kept", describe_optimization(res),
-                               "success" if res["improved"] else "info")}
+                "timeline": tl + _t("optimizer", "optimized" if res["improved"] else "kept", describe_optimization(res),
+                                    "success" if res["improved"] else "info")}
 
     def verify(state: RunState):
         attempts = list(state["attempts"])
@@ -213,14 +227,15 @@ def build_graph(sv):
             "unverifiable_claims": [c["text"] for c in ver["claims"] if c["label"] == "Unverifiable"],
         }
         attempts[-1] = cur
+        tl = [e for fb in ver["llm_fallbacks"] for e in fallback(state, "verifier", fb, attempt=cur["attempt"])]
         log(state, "agent:verifier", "verification", {"attempt": cur["attempt"], "trust_score": ver["trust_score"],
                                                       "self_confidence": ver["self_confidence"], "counts": ver["counts"],
                                                       "claims": [{k: c[k] for k in ("text", "type", "label", "evidence")} for c in ver["claims"]],
-                                                      "verifier_model": ver["verifier_model"]})
+                                                      "verifier_model": ver["verifier_model"], "extractor": ver["extractor"]})
         c = ver["counts"]
         detail = (f"Trust Score {ver['trust_score']:.0f} (planner self-confidence {ver['self_confidence']}); "
                   f"{c.get('Supported', 0)} supported, {c.get('Contradicted', 0)} contradicted, {c.get('Unverifiable', 0)} unverifiable")
-        tl = _t("verifier", "scored", detail, "success" if ver["passed"] else "error")
+        tl += _t("verifier", "scored", detail, "success" if ver["passed"] else "error")
         for cl in [x for x in ver["claims"] if x["label"] == "Contradicted"][:3]:
             tl += _t("verifier", "contradicted", f"\"{cl['text']}\" - {cl['explanation']}", "error")
         if not passed and pol.get("memory.enabled", True):

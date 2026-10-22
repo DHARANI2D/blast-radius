@@ -19,7 +19,7 @@ from collections import Counter
 
 from ..cohorts import build as build_cohorts, coverage
 from ..constraints import impact_kwargs, wave_duration
-from ..llm import load_prompt
+from ..llm import LLMError, load_prompt
 from ..mcp_layer import ToolCallError
 from ..models import ClaimList, Judgement
 from ..topology import Topology
@@ -43,6 +43,7 @@ class VerifierAgent:
     def __init__(self, sv):
         self.sv = sv
         self._cache: dict = {}
+        self._judge_errors: list[tuple[str, str]] = []
 
     # ------------------------------------------------------------ helpers
     def call(self, tool: str, **args):
@@ -331,11 +332,15 @@ class VerifierAgent:
         cited_ids = [x for x in dict.fromkeys(re.findall(r"EV-\d{4}", claim["text"])) if self.sv.evidence.get(x)]
         evidence = cited_ids + [e]
         user = json.dumps({"claim": claim["text"], "evidence": [self.sv.evidence.summary(x, 3000 if x in cited_ids else 1200) for x in evidence]})
-        j: Judgement = self.sv.verifier_llm.complete_json(
-            "verifier_judge", load_prompt("verifier_judge"), user, Judgement,
-            context={"claim": claim["text"], "hits": hits,
-                     "cited": [{"id": x, "result": json.dumps(self.sv.evidence.get(x)["result"], default=str)} for x in cited_ids]},
-            temperature=0.0)
+        try:
+            j: Judgement = self.sv.verifier_llm.complete_json(
+                "verifier_judge", load_prompt("verifier_judge"), user, Judgement,
+                context={"claim": claim["text"], "hits": hits,
+                         "cited": [{"id": x, "result": json.dumps(self.sv.evidence.get(x)["result"], default=str)} for x in cited_ids]},
+                temperature=0.0)
+        except LLMError as exc:  # fail closed: no judgement is no support
+            self._judge_errors.append((claim["text"], str(exc)[:300]))
+            return "Unverifiable", f"judge unavailable (LLM failed: {str(exc)[:200]}).", evidence
         cited = [x for x in j.evidence if self.sv.evidence.get(x)]
         if j.label != "Unverifiable" and not cited:
             return "Unverifiable", f"judge answered {j.label} without citing evidence; downgraded.", evidence
@@ -344,11 +349,24 @@ class VerifierAgent:
     # -------------------------------------------------------------- run
     def run(self, plan: dict, cr: dict, topo: Topology, risk: dict) -> dict:
         self._cache.clear()
+        self._judge_errors = []
         pol = self.sv.policy
         user = json.dumps({"rationale": plan["rationale"], "switches": list(topo.switches), "clusters": list(topo.clusters)})
-        extracted: ClaimList = self.sv.verifier_llm.complete_json(
-            "verifier_extract", load_prompt("verifier_extract"), user, ClaimList,
-            context={"rationale": plan["rationale"], "switch_names": list(topo.switches)}, temperature=0.0)
+        ext_ctx = {"rationale": plan["rationale"], "switch_names": list(topo.switches)}
+        fallbacks = []
+        extractor = "offline stand-in (rule-based)" if self.sv.settings.offline else f"llm:{self.sv.verifier_llm.model}"
+        try:
+            extracted: ClaimList = self.sv.verifier_llm.complete_json(
+                "verifier_extract", load_prompt("verifier_extract"), user, ClaimList, context=ext_ctx, temperature=0.0)
+        except LLMError as exc:
+            # The rule-based extractor still types every sentence it recognises; the rest stay freeform and
+            # go to the judge, so the gate keeps checking the rationale instead of crashing.
+            from ..offline_llm import extract_claims
+
+            extracted = ClaimList.model_validate(extract_claims(ext_ctx))
+            err = str(exc)[:300]
+            extractor = f"extractor fallback: rule-based extractor (LLM failed: {err})"
+            fallbacks.append({"role": "verifier_extract", "error": err, "fallback": "rule-based extractor"})
         ctx = {"plan": plan, "cr": cr, "topo": topo, "target_versions": risk["target_versions"]}
         weights = pol.get("verification.claim_weights", {})
         values = pol.get("verification.label_values", {})
@@ -359,6 +377,10 @@ class VerifierAgent:
             cat = CATEGORY.get(cd["type"], "informational")
             claims.append({"id": f"C{i}", **cd, "category": cat, "weight": weights.get(cat, 1), "label": label,
                            "explanation": why, "evidence": ev})
+        if self._judge_errors:
+            fallbacks.append({"role": "verifier_judge", "error": self._judge_errors[0][1],
+                              "fallback": f"{len(self._judge_errors)} claim(s) marked Unverifiable (judge unavailable)",
+                              "claims": [t for t, _ in self._judge_errors]})
         tw = sum(c["weight"] for c in claims)
         share = (sum(c["weight"] * values.get(c["label"], 0) for c in claims) / tw) if tw else 0.5
         n_contra = sum(1 for c in claims if c["label"] == "Contradicted")
@@ -385,4 +407,6 @@ class VerifierAgent:
             "blocked_by": blocked_by,
             "verifier_model": self.sv.verifier_llm.model,
             "independent_model": self.sv.verifier_llm.model != self.sv.llm.model,
+            "extractor": extractor,
+            "llm_fallbacks": fallbacks,
         }

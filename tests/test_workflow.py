@@ -1,5 +1,6 @@
 import json
 
+import pytest
 from conftest import INTENT, drive, make_services
 
 from blastradius.workflow import Engine
@@ -92,17 +93,16 @@ def test_rejection_executes_nothing(engine, sv):
 
 
 def _failing_llm(sv, roles):
-    """Make the planner model raise LLMError for these roles, as a live endpoint does when it is down."""
+    """Make both models raise LLMError for these roles, as a live endpoint does when it is down."""
     from blastradius.llm import LLMError
 
-    orig = sv.llm.complete_json
+    for client in (sv.llm, sv.verifier_llm):
+        def complete_json(role, *a, _orig=client.complete_json, **k):
+            if role in roles:
+                raise LLMError(f"simulated {role} outage")
+            return _orig(role, *a, **k)
 
-    def complete_json(role, *a, **k):
-        if role in roles:
-            raise LLMError(f"simulated {role} outage")
-        return orig(role, *a, **k)
-
-    sv.llm.complete_json = complete_json
+        client.complete_json = complete_json
 
 
 def test_report_llm_failure_still_signs_the_report(tmp_path):
@@ -117,3 +117,32 @@ def test_report_llm_failure_still_signs_the_report(tmp_path):
     events = [e["event"] for e in sv.ledger.entries(r["run_id"])]
     assert events[-2:] == ["llm_fallback", "report_signed"]
     assert any(t["event"] == "llm_fallback" for t in st["timeline"])
+
+
+@pytest.mark.parametrize("role", ["intake", "planner_explain", "verifier_extract", "verifier_judge"])
+def test_a_model_failure_in_any_node_degrades_instead_of_crashing(tmp_path, role):
+    from dataclasses import replace
+
+    sv = make_services(tmp_path)
+    sv.settings = replace(sv.settings, llm_mode="openai")  # live-model provenance, so the optimiser asks for a re-explanation
+    _failing_llm(sv, {role})
+    r, gates = drive(Engine(sv))
+    st = r["state"]
+    assert st["status"] == "rolled_back" and st["report"]["signature"] and [g["scope"] for g in gates] == ["canary"]
+    fallbacks = [e["payload"] for e in sv.ledger.entries(r["run_id"]) if e["event"] == "llm_fallback"]
+    assert fallbacks and all(f["role"] == role and f["error"] == f"simulated {role} outage" for f in fallbacks)
+    assert any(t["event"] == "llm_fallback" and role in t["detail"] for t in st["timeline"])
+    accepted = st["attempts"][-1]
+    if role == "intake":
+        assert any("deterministic intake parser" in n for n in st["change_request"]["notes"])
+        assert len(st["targets"]["servers"]) == 40 and st["targets"]["switches"] == ["tor-r1-a", "tor-r1-b"]
+    elif role == "planner_explain":  # the optimised waves stay, with the deterministic grounded rationale
+        assert accepted["plan_before_optimization"] != accepted["plan"]
+        assert "deterministic re-explanation" in st["plan_provenance"] and st["plan"]["self_confidence"] is None
+        assert "Saturday-night" not in st["plan"]["rationale"]
+    elif role == "verifier_extract":
+        assert accepted["verification"]["extractor"].startswith("extractor fallback: rule-based extractor")
+        assert accepted["verification"]["counts"]["Supported"] >= 5
+    else:  # the judge fails closed for the one freeform sentence
+        judged = [c for c in accepted["verification"]["claims"] if c["type"] == "freeform"]
+        assert judged and all(c["label"] == "Unverifiable" and c["explanation"].startswith("judge unavailable") for c in judged)

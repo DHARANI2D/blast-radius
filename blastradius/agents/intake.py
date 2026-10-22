@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 
-from ..llm import load_prompt
+from ..llm import LLMError, load_prompt
 from ..models import ChangeRequest
 
 
@@ -38,8 +38,21 @@ class IntakeAgent:
     def run(self, intent: str) -> dict:
         inv, evidence = self.inventory()
         user = json.dumps({"intent": intent, "inventory": {k: inv[k] for k in ("clusters", "servers", "switches", "cluster_tor_pairs")}})
-        cr: ChangeRequest = self.sv.llm.complete_json(
-            "intake", load_prompt("intake"), user, ChangeRequest, context={"intent": intent, "inventory": inv}, temperature=0.0)
+        ctx = {"intent": intent, "inventory": inv}
+        fallback = None
+        try:
+            cr: ChangeRequest = self.sv.llm.complete_json("intake", load_prompt("intake"), user, ChangeRequest, context=ctx, temperature=0.0)
+            llm_rec = self.sv.llm.last()
+        except LLMError as exc:
+            # A model outage must not stop the run before it starts: the deterministic parser reads the
+            # intent instead, and the inventory check below still applies to what it finds.
+            from ..offline_llm import intake as parse_intent
+
+            cr = ChangeRequest.model_validate(parse_intent(ctx))
+            err = str(exc)[:300]
+            cr.notes.append(f"Parsed by the deterministic intake parser: the model call failed ({err}).")
+            llm_rec = {"role": "intake", "model": self.sv.llm.model, "ok": False, "note": err}
+            fallback = {"role": "intake", "error": err, "fallback": "deterministic intake parser"}
 
         # Never trust names from the model: keep only inventory assets.
         notes = list(cr.notes)
@@ -60,5 +73,6 @@ class IntakeAgent:
             "change_request": cr.model_dump(),
             "targets": {"servers": sorted(servers), "switches": sorted(cr.target_switches)},
             "evidence": evidence,
-            "llm": self.sv.llm.last(),
+            "llm": llm_rec,
+            "llm_fallback": fallback,
         }
