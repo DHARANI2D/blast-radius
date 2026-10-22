@@ -67,10 +67,10 @@ export BR_GL_MCP_TIMEOUT_S=60
 
 # 4. Check readiness: local checks only, no network call
 python -m blastradius greenlake doctor
-#    until that CLI command is wired in:
-python -c "import json; from blastradius.config import Settings; from blastradius.greenlake import doctor; print(json.dumps(doctor(Settings()), indent=2))"
 
 # 5. The real call: lists devices (read-only GET /devices/v1/devices through gl-mcp)
+python -m blastradius greenlake devices
+#    or, as JSON:
 python -c "import json; from blastradius.config import Settings; from blastradius.greenlake import list_devices; r = list_devices(Settings()); r['devices'] = r.get('devices', [])[:5]; print(json.dumps(r, indent=2))"
 ```
 

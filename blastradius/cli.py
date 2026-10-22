@@ -183,6 +183,9 @@ def cmd_greenlake(args) -> int:
         print(json.dumps(rep, indent=2))
         return 0 if rep.get("ready") else 1
     r = list_devices(s)  # the one real network call
+    if not r.get("enabled"):
+        print(r.get("note") or "gl-mcp not configured")
+        return 1
     for d in r.get("devices", [])[:50]:
         print(f"{d.get('serial', ''):<16} {d.get('model', ''):<34} {d.get('device_type', ''):<10} subs={len(d.get('subscriptions') or [])}")
     print(f"pages={r.get('pages')} total_reported={r.get('total_reported')} truncated={r.get('truncated')} ok={r.get('ok')}"

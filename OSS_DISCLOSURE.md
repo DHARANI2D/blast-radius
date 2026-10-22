@@ -30,6 +30,6 @@ The OpenAI-compatible and Azure OpenAI LLM client (`blastradius/llm.py`, includi
 ## External services and data
 
 - **LLM endpoints:** none are bundled. Configure an HPE-approved endpoint (see README). The default offline mode makes no network calls.
-- **HPE GreenLake MCP servers (`HewlettPackard/gl-mcp`, Apache-2.0):** optional, read-only, not bundled and not vendored. BlastRadius calls only the devices server's `getdevicesv1` tool, and only if `BR_GL_MCP_URL` or `BR_GL_MCP_CMD` is set (see docs/GREENLAKE_MCP.md).
+- **HPE GreenLake MCP servers (`HewlettPackard/gl-mcp`, Apache-2.0):** optional, read-only, not bundled and not vendored. BlastRadius calls only the devices server's `getdevicesv1` tool (or `invoke_dynamic_tool` for it when the server runs in dynamic mode), and only if `BR_GL_MCP_URL` or `BR_GL_MCP_CMD` is set (see docs/GREENLAKE_MCP.md).
 - **Agent2Agent (A2A) protocol:** `blastradius/a2a_server.py` implements the JSON-RPC methods and agent card from the public specification; no A2A SDK is used.
 - **Data:** all twin, release-note, advisory and incident data in `data/` is synthetic and was created for this project.

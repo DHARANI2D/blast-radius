@@ -253,3 +253,12 @@ if __name__ == "__main__" and sys.argv[1:] == ["serve-fake"]:
     else:
         server = fake_devices_server(fail={"success": False, "httpStatusCode": 401, "message": "missing GREENLAKE_* env"})
     server.run("stdio")
+
+
+def test_cli_devices_says_why_nothing_was_listed(monkeypatch, capsys):
+    from blastradius.cli import main
+
+    for k in ("BR_GL_MCP_URL", "BR_GL_MCP_CMD"):
+        monkeypatch.delenv(k, raising=False)
+    assert main(["greenlake", "devices"]) == 1
+    assert "gl-mcp not configured" in capsys.readouterr().out
