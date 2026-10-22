@@ -204,14 +204,14 @@ class OpenAICompatClient(LLMClient):
 
     def complete_json(self, role, system, user, schema, context, temperature=0.2):
         messages = [{"role": "system", "content": self.redact(system)}, {"role": "user", "content": self.redact(user)}]
+        sent = _sha(messages[0]["content"] + messages[1]["content"])  # the prompt that left the process, after redaction
         t0 = time.time()
         last_err = ""
         for attempt in range(3):
             raw = self._post(messages, temperature)
             try:
                 out = _extract_json(raw, schema.model_validate)
-                self.history.append(CallRecord(role, self.model, _sha(system + user), int((time.time() - t0) * 1000), True,
-                                               f"attempt {attempt + 1}"))
+                self.history.append(CallRecord(role, self.model, sent, int((time.time() - t0) * 1000), True, f"attempt {attempt + 1}"))
                 return out
             except (json.JSONDecodeError, ValidationError) as e:
                 last_err = str(e)[:500]
@@ -220,7 +220,7 @@ class OpenAICompatClient(LLMClient):
                     {"role": "user", "content": f"That output did not match the required JSON schema: {last_err}\n"
                                                 "Return only corrected JSON."},
                 ]
-        self.history.append(CallRecord(role, self.model, _sha(system + user), int((time.time() - t0) * 1000), False, last_err))
+        self.history.append(CallRecord(role, self.model, sent, int((time.time() - t0) * 1000), False, last_err))
         raise LLMError(f"{role}: model output failed schema validation 3 times: {last_err}")
 
 

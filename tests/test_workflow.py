@@ -146,3 +146,20 @@ def test_a_model_failure_in_any_node_degrades_instead_of_crashing(tmp_path, role
     else:  # the judge fails closed for the one freeform sentence
         judged = [c for c in accepted["verification"]["claims"] if c["type"] == "freeform"]
         assert judged and all(c["label"] == "Unverifiable" and c["explanation"].startswith("judge unavailable") for c in judged)
+
+
+def test_every_model_call_behind_the_approval_and_the_report_is_in_the_ledger(tmp_path):
+    from dataclasses import replace
+
+    sv = make_services(tmp_path)
+    sv.settings = replace(sv.settings, llm_mode="openai")  # live-model provenance, so the optimiser asks for a re-explanation
+    r, _ = drive(Engine(sv))
+    seen: dict[str, set] = {}
+    for e in sv.ledger.entries(r["run_id"]):
+        recs = e["payload"].get("llm") or []
+        for rec in recs if isinstance(recs, list) else [recs]:
+            assert rec["model"] and rec["prompt_sha256"] and rec["ok"]
+            seen.setdefault(rec["role"], set()).add(e["event"])
+    assert seen == {"intake": {"change_request"}, "planner": {"plan_proposed"}, "planner_explain": {"plan_optimized"},
+                    "verifier_extract": {"verification"}, "verifier_judge": {"verification"}, "report": {"report_signed"}}
+    assert r["state"]["attempts"][-1]["explain_llm"]["role"] == "planner_explain"

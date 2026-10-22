@@ -43,6 +43,7 @@ class IntakeAgent:
         try:
             cr: ChangeRequest = self.sv.llm.complete_json("intake", load_prompt("intake"), user, ChangeRequest, context=ctx, temperature=0.0)
             llm_rec = self.sv.llm.last()
+            provenance = "offline stand-in (rule-based parser)" if self.sv.settings.offline else f"llm:{self.sv.llm.model}"
         except LLMError as exc:
             # A model outage must not stop the run before it starts: the deterministic parser reads the
             # intent instead, and the inventory check below still applies to what it finds.
@@ -53,6 +54,7 @@ class IntakeAgent:
             cr.notes.append(f"Parsed by the deterministic intake parser: the model call failed ({err}).")
             llm_rec = {"role": "intake", "model": self.sv.llm.model, "ok": False, "note": err}
             fallback = {"role": "intake", "error": err, "fallback": "deterministic intake parser"}
+            provenance = f"deterministic intake parser (LLM failed: {err})"
 
         # Never trust names from the model: keep only inventory assets.
         notes = list(cr.notes)
@@ -74,5 +76,6 @@ class IntakeAgent:
             "targets": {"servers": sorted(servers), "switches": sorted(cr.target_switches)},
             "evidence": evidence,
             "llm": llm_rec,
+            "provenance": provenance,
             "llm_fallback": fallback,
         }

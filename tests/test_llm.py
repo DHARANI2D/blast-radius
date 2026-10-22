@@ -182,3 +182,14 @@ def test_planner_explain_asks_only_for_the_rationale(server, tmp_path):
     out = PlannerAgent(sv).explain([{"name": "w1", "assets": ["blr-esx-03"]}], cr["change_request"], cr["targets"], risk, topo, 60)
     assert out["rationale"] == "Wave 1 is a canary of blr-esx-03." and out["self_confidence"] == 90 and len(SEEN) == 1
     assert '"waves"' not in load_prompt("planner_explain")
+
+
+def test_prompt_hash_is_of_the_redacted_prompt_that_was_sent(server):
+    import hashlib
+
+    _Handler.replies = [GOOD]
+    c = client(server)
+    c.complete_json("planner", "system SECRET", "user SECRET", Plan, context={})
+    sent = SEEN[0]["body"]["messages"]
+    assert "SECRET" not in json.dumps(sent)
+    assert c.last()["prompt_sha256"] == hashlib.sha256((sent[0]["content"] + sent[1]["content"]).encode()).hexdigest()

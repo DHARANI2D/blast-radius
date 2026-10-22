@@ -44,6 +44,7 @@ class VerifierAgent:
         self.sv = sv
         self._cache: dict = {}
         self._judge_errors: list[tuple[str, str]] = []
+        self._llm_calls: list[dict] = []
 
     # ------------------------------------------------------------ helpers
     def call(self, tool: str, **args):
@@ -341,6 +342,7 @@ class VerifierAgent:
         except LLMError as exc:  # fail closed: no judgement is no support
             self._judge_errors.append((claim["text"], str(exc)[:300]))
             return "Unverifiable", f"judge unavailable (LLM failed: {str(exc)[:200]}).", evidence
+        self._llm_calls.append(self.sv.verifier_llm.last())
         cited = [x for x in j.evidence if self.sv.evidence.get(x)]
         if j.label != "Unverifiable" and not cited:
             return "Unverifiable", f"judge answered {j.label} without citing evidence; downgraded.", evidence
@@ -349,7 +351,7 @@ class VerifierAgent:
     # -------------------------------------------------------------- run
     def run(self, plan: dict, cr: dict, topo: Topology, risk: dict) -> dict:
         self._cache.clear()
-        self._judge_errors = []
+        self._judge_errors, self._llm_calls = [], []
         pol = self.sv.policy
         user = json.dumps({"rationale": plan["rationale"], "switches": list(topo.switches), "clusters": list(topo.clusters)})
         ext_ctx = {"rationale": plan["rationale"], "switch_names": list(topo.switches)}
@@ -358,6 +360,7 @@ class VerifierAgent:
         try:
             extracted: ClaimList = self.sv.verifier_llm.complete_json(
                 "verifier_extract", load_prompt("verifier_extract"), user, ClaimList, context=ext_ctx, temperature=0.0)
+            self._llm_calls.append(self.sv.verifier_llm.last())
         except LLMError as exc:
             # The rule-based extractor still types every sentence it recognises; the rest stay freeform and
             # go to the judge, so the gate keeps checking the rationale instead of crashing.
@@ -409,4 +412,5 @@ class VerifierAgent:
             "independent_model": self.sv.verifier_llm.model != self.sv.llm.model,
             "extractor": extractor,
             "llm_fallbacks": fallbacks,
+            "llm_calls": list(self._llm_calls),
         }

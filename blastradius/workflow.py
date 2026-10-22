@@ -99,7 +99,8 @@ def build_graph(sv):
     def intake(state: RunState):
         out = intake_a.run(state["intent"])
         tl = fallback(state, "intake", out["llm_fallback"]) if out["llm_fallback"] else []
-        log(state, "agent:intake", "change_request", {"change_request": out["change_request"], "llm": out["llm"], "evidence": out["evidence"]})
+        log(state, "agent:intake", "change_request", {"change_request": out["change_request"], "provenance": out["provenance"],
+                                                      "llm": out["llm"], "evidence": out["evidence"]})
         t = out["targets"]
         cr = out["change_request"]
         return {"change_request": cr, "targets": t, "status": "analysing", "attempts": [], "approvals": [], "executions": [],
@@ -196,6 +197,7 @@ def build_graph(sv):
                 try:
                     exp = planner_a.explain(new_plan["waves"], cr, targets, risk, topo, new_cons["total_duration_min"])
                     new_plan = {**new_plan, "rationale": exp["rationale"], "self_confidence": exp["self_confidence"]}
+                    cur["explain_llm"] = exp["llm"]
                 except LLMError as exc:
                     # Keep the better waves; their rationale is rebuilt from the waves themselves (and still verified).
                     new_plan = {**regrounded(new_plan, topo, targets, pol, cr["components"], risk["deferred"]), "self_confidence": None}
@@ -208,7 +210,8 @@ def build_graph(sv):
         attempts[-1] = cur
         log(state, "code:optimizer", "plan_optimized" if res["improved"] else "plan_not_improved",
             {"attempt": cur["attempt"], "plan_hash": plan_hash(cur["plan"]), "before": res["before"], "after": res["after"],
-             "moves": len(res.get("moves", [])), "stats": res["stats"]})
+             "moves": len(res.get("moves", [])), "stats": res["stats"], "provenance": cur["provenance"],
+             "llm": cur.get("explain_llm") if res["improved"] else None})
         return {"attempts": attempts,
                 "timeline": tl + _t("optimizer", "optimized" if res["improved"] else "kept", describe_optimization(res),
                                     "success" if res["improved"] else "info")}
@@ -231,7 +234,8 @@ def build_graph(sv):
         log(state, "agent:verifier", "verification", {"attempt": cur["attempt"], "trust_score": ver["trust_score"],
                                                       "self_confidence": ver["self_confidence"], "counts": ver["counts"],
                                                       "claims": [{k: c[k] for k in ("text", "type", "label", "evidence")} for c in ver["claims"]],
-                                                      "verifier_model": ver["verifier_model"], "extractor": ver["extractor"]})
+                                                      "verifier_model": ver["verifier_model"], "extractor": ver["extractor"],
+                                                      "llm": ver["llm_calls"]})
         c = ver["counts"]
         detail = (f"Trust Score {ver['trust_score']:.0f} (planner self-confidence {ver['self_confidence']}); "
                   f"{c.get('Supported', 0)} supported, {c.get('Contradicted', 0)} contradicted, {c.get('Unverifiable', 0)} unverifiable")
