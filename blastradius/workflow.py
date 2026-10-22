@@ -486,7 +486,7 @@ def build_graph(sv):
         for c in cur["firmware_changes"]:
             versions.setdefault(c["asset"], []).append(c["from"])
         sv.authority.reinstate_run(state["run_id"])
-        _grant_writes(state["run_id"], sorted({a for a in versions if a in topo.servers} | set(cur.get("in_maintenance", []))), versions)
+        _grant_writes(state["run_id"], rb_a.hosts(cur, topo), versions)
         try:
             rb = rb_a.run(state["run_id"], cur, topo)
         finally:

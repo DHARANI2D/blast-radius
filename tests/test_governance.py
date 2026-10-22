@@ -1,9 +1,11 @@
 import pytest
 from conftest import INTENT, drive, make_services
 
+from blastradius.agents import TopologyAgent
 from blastradius.agents.executor import ExecutionHalted, ExecutorAgent
+from blastradius.agents.rollback import RollbackAgent
 from blastradius.mcp_layer import ToolCallError
-from blastradius.workflow import Engine
+from blastradius.workflow import MAINTENANCE_ACTIONS, Engine
 
 
 def test_write_tool_refuses_without_approval(sv):
@@ -169,3 +171,26 @@ def test_tool_error_mid_wave_rolls_back_the_partial_wave(tmp_path, monkeypatch):
     assert sv.twin.servers[flashed[0]]["firmware"] == before[flashed[0]]
     assert sv.twin.maintenance == set()  # the partial wave's hosts were returned to service
     assert st["report"]["halt_reason"] == st["halt_reason"] and st["report"]["manual_steps"] == []
+
+
+def test_rollback_of_a_switch_wave_re_evacuates_the_hosts_the_wave_evacuated(tmp_path):
+    sv = make_services(tmp_path, faults=False)
+    topo, _ = TopologyAgent(sv).run()
+    host, sw = "blr-esx-07", "tor-r1-a"  # blr-esx-07 is single-homed to tor-r1-a
+    sv.authority.grant("r1", [host], MAINTENANCE_ACTIONS)
+    sv.authority.grant("r1", [sw], ["network.upgrade_switch_os"], {sw: ["10.14.1000"]})
+    ex = ExecutorAgent(sv).run_wave("r1", 2, {"name": "w", "assets": [sw], "evacuate": [host]}, ["Switch OS"],
+                                    {sw: {"Switch OS": "10.14.1000"}}, topo)
+    sv.authority.grant("r1", [sw], ["network.upgrade_switch_os"], {sw: [ex["firmware_changes"][0]["from"]]})
+    evacuated_at_revert = []
+    real = sv.twin.upgrade_switch_os
+
+    def spy(switch, version, hold_down=True):
+        evacuated_at_revert.append(host in sv.twin.maintenance)
+        return real(switch, version, hold_down=hold_down)
+
+    sv.twin.upgrade_switch_os = spy
+    rb = RollbackAgent(sv).run("r1", ex, topo)
+    assert evacuated_at_revert == [True] and host not in sv.twin.maintenance
+    assert [(a["tool"], a["asset"]) for a in rb["actions"]] == [("virt.enter_maintenance", host), ("revert", sw),
+                                                                ("virt.exit_maintenance", host)]

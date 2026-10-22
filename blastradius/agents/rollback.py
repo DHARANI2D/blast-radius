@@ -25,13 +25,22 @@ class RollbackAgent:
         token = self.sv.authority.token(run_id, asset, tool, args.get("version", ""))
         return self.sv.bus.call(self.name, tool, run_id=run_id, approval_token=token, **args)
 
+    @staticmethod
+    def hosts(wave_exec: dict, topo: Topology) -> list[str]:
+        """Hosts the rollback puts in maintenance: the reverted servers, any the wave left there, and when a switch
+        reverts (a reboot), every host the forward wave evacuated and its own hosts, as the plan required."""
+        changed = {c["asset"] for c in wave_exec["firmware_changes"]}
+        hosts = {a for a in changed if a in topo.servers} | set(wave_exec.get("in_maintenance", []))
+        if any(a in topo.switches for a in changed):
+            hosts |= {a for a in wave_exec["assets"] + wave_exec.get("evacuate", []) if a in topo.servers}
+        return sorted(hosts)
+
     def run(self, run_id: str, wave_exec: dict, topo: Topology) -> dict:
         bus = self.sv.bus
         actions = []
         t0 = bus.call(self.name, "telemetry.get_clock")[0]["t_min"]
         changes = list(reversed(wave_exec["firmware_changes"]))
-        # A wave halted mid-way may also have left hosts in maintenance with nothing flashed yet.
-        servers = sorted({c["asset"] for c in changes if c["asset"] in topo.servers} | set(wave_exec.get("in_maintenance", [])))
+        servers = self.hosts(wave_exec, topo)
         switches = sorted({c["asset"] for c in changes if c["asset"] in topo.switches})
         for h in servers:
             res, ev = self._write(run_id, "virt.enter_maintenance", h, host=h)
