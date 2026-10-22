@@ -88,6 +88,13 @@ def check_plan(plan: dict, topo: Topology, targets: list[str], components: list[
         impacts.append({"wave": i, "name": w.get("name", f"Wave {i}"), "duration_min": dur, **imp})
 
         sw = [a for a in assets if a in topo.switches]
+        # An evacuated host must be a server the change upgrades, or single-homed to a switch this wave reboots.
+        # DEFERRED is about firmware writes: a deferred host may still be evacuated for its switch.
+        stray = [e for e in evac if (e in topo.servers or e in topo.switches) and not (
+            e in topo.servers and (e in set(targets) - deferred or (len(topo.links_of(e)) < 2 and set(topo.links_of(e)) & set(sw))))]
+        if stray:
+            v("COVERAGE", f"wave {i} evacuates {stray}, outside the change scope: an evacuated host must be a scheduled target "
+              "or single-homed to a switch upgraded in the same wave", i, stray)
         for a in sw:
             p = topo.peer_of(a)
             if p in sw and a < p:

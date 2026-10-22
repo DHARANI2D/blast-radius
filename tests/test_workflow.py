@@ -53,8 +53,21 @@ def test_learned_regression_defers_matching_hosts(tmp_path):
     sv = make_services(tmp_path)
     drive(Engine(sv))
     sv.reset_lab(forget_lessons=False)
+    probes = []
+    call = sv.bus.call
+
+    def spy(agent, key, **args):
+        if agent == "executor" and key == "virt.enter_maintenance" and args["host"] == "blr-esx-07":
+            # blr-esx-07 is deferred and only evacuated for its switch: maintenance is granted, firmware never is
+            run_id, tv = args["run_id"], sv.authority
+            probes.append([tv.check(tv.token(run_id, "blr-esx-07", "compute.apply_firmware", v), run_id, "blr-esx-07",
+                                    "compute.apply_firmware", v)[0] for v in ("1.64", "U54 v2.32")])
+        return call(agent, key, **args)
+
+    sv.bus.call = spy
     r, gates = drive(Engine(sv))
     st = r["state"]
+    assert any("blr-esx-07" in w.get("evacuate", []) for w in st["plan"]["waves"]) and probes == [[False, False]]
     deferred = {d["asset"] for d in st["risk"]["deferred"]}
     # only DL380s still on NIC 229.x are deferred; the four DL380s on NIC 230.x proceed
     assert len(deferred) == 16

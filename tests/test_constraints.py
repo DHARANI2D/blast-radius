@@ -60,3 +60,28 @@ def test_coverage(topo, sv):
                      ["blr-esx-03", "blr-esx-04"], COMPS, sv.policy, 480)
     msgs = " ".join(v["message"] for v in res["violations"] if v["code"] == "COVERAGE")
     assert "more than once" in msgs and "not scheduled" in msgs
+
+
+def test_evacuate_holds_only_scheduled_targets_or_hosts_single_homed_to_the_waves_switch(topo, sv):
+    deferred = ["blr-esx-07", "blr-esx-01"]  # blr-esx-07 is single-homed to tor-r1-a; blr-esx-01 is dual-homed
+    waves = solve([s for s in SERVERS if s not in deferred], SWITCHES, topo, {}, sv.policy, COMPS, 480)
+    res = check_plan({"waves": waves}, topo, SERVERS + SWITCHES, COMPS, sv.policy, 480, deferred)
+    assert res["ok"], res["violations"]  # a deferred host may still be evacuated for its switch
+    k = next(i for i, w in enumerate(waves) if "tor-r1-a" in w["assets"])
+    assert "blr-esx-07" in waves[k]["evacuate"]
+
+    def stray(edit):
+        plan = [dict(w, evacuate=list(w["evacuate"])) for w in waves]
+        edit(plan)
+        res = check_plan({"waves": plan}, topo, SERVERS + SWITCHES, COMPS, sv.policy, 480, deferred)
+        return [a for x in res["violations"] if x["code"] == "COVERAGE" and "evacuates" in x["message"] for a in x["assets"]]
+
+    assert stray(lambda p: p[k]["evacuate"].append("blr-esx-01")) == ["blr-esx-01"]  # deferred, not needed for the switch
+    other = next(i for i in range(1, len(waves)) if i != k and "tor-r1-a" not in waves[i]["assets"])
+    assert stray(lambda p: (p[k]["evacuate"].remove("blr-esx-07"), p[other]["evacuate"].append("blr-esx-07"))) == ["blr-esx-07"]
+    # a host outside the change request
+    servers = SERVERS[:20]
+    waves = solve(servers, [], topo, {}, sv.policy, COMPS, 480)
+    waves[1]["evacuate"] = ["blr-esx-21"]
+    res = check_plan({"waves": waves}, topo, servers, COMPS, sv.policy, 480)
+    assert [v["assets"] for v in res["violations"] if v["code"] == "COVERAGE"] == [["blr-esx-21"]]
