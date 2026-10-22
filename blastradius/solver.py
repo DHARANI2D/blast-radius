@@ -6,6 +6,8 @@ always satisfies ``constraints.check_plan`` for feasible inputs:
 
 1. Canary: one lowest-risk, dual-homed host with no critical workloads from each
    configuration cohort (model + untouched firmware), up to ``canary_max_assets``.
+   With no such host, a one-asset canary: a switch (one without single-homed hosts
+   first) or else the lowest-risk host.
 2. Members of each redundant switch pair go into different waves.
 3. Hosts that are single-homed to a switch are scheduled (or evacuated) in that
    switch's wave, so they are already empty when it reboots.
@@ -14,7 +16,7 @@ always satisfies ``constraints.check_plan`` for feasible inputs:
 
 from __future__ import annotations
 
-from .cohorts import build as build_cohorts, required as required_cohorts, risk_ranked_canary, select_canary
+from .cohorts import build as build_cohorts, eligible, required as required_cohorts, risk_ranked_canary, select_canary
 from .constraints import check_plan
 from .policy import Policy
 from .topology import Topology
@@ -83,6 +85,20 @@ def solve(target_servers: list[str], target_switches: list[str], topo: Topology,
 
     for w in body:
         waves.append({"name": "", "assets": w["assets"], "evacuate": w["evacuate"]})
+    if not canary and waves:
+        # No eligible canary host: one asset goes first on its own, with the hosts single-homed to it evacuated.
+        hosted = {sw: [s for s, ups in single.items() if sw in ups] for sw in target_switches}
+        first = (sorted(target_switches, key=lambda sw: (len(hosted[sw]), sw))[:1]
+                 or sorted(target_servers, key=lambda s: (risk.get(s, 0), s))[:1])
+        if first:
+            c = first[0]
+            evac = hosted.get(c, [])
+            for w in waves:
+                w["assets"] = [a for a in w["assets"] if a != c]
+                if c in topo.switches:
+                    w["evacuate"] = [e for e in w["evacuate"] if e not in evac]
+            waves = [{"name": "", "assets": [c], "evacuate": evac}] + [w for w in waves if w["assets"] or w["evacuate"]]
+            canary = [c]
 
     # Safety net: split any wave that still violates a per-wave constraint.
     targets = target_servers + target_switches
@@ -118,6 +134,9 @@ def plan_facts(topo: Topology, targets: dict, policy: Policy, components: list[s
     tgt_sw = set(targets["switches"])
     return {
         "redundant_target_pairs": [p for p in topo.redundant_pairs() if p[0] in tgt_sw and p[1] in tgt_sw],
+        "no_eligible_canary": not any(eligible(s, topo, policy) for s in scheduled),
+        "_low_tier_servers": [s for s in scheduled if (topo.most_critical_tier(s) is None
+                                                       or topo.most_critical_tier(s) >= int(policy.get("planning.canary_max_tier", 2)))],
         "single_homed": topo.single_homed(),
         "single_homed_on_targets": [s for s in topo.single_homed() if set(s["up_links"]) & tgt_sw],
         "cluster_limits": limits,
@@ -130,7 +149,8 @@ def plan_facts(topo: Topology, targets: dict, policy: Policy, components: list[s
 
 def grounded_rationale(waves: list[dict], facts: dict, components: list[str], duration_min: int) -> str:
     s = []
-    if waves:
+    # Only what is true of this plan: a one-asset fallback canary on a switch or a tier-0/1 host is not called low-tier.
+    if waves and set(waves[0]["assets"]) <= set(facts.get("_low_tier_servers", [])):
         s.append(f"Wave 1 is a canary of {' and '.join(waves[0]['assets'])} with no tier-0 or tier-1 workloads.")
     full = facts.get("_cohorts_full") or []
     req = {c["id"] for c in facts.get("cohorts", []) if c["required_in_canary"]}

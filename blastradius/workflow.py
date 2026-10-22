@@ -340,7 +340,8 @@ def build_graph(sv):
             "premortem": state.get("premortem"),
             "premortem_compare": state.get("premortem_compare"),
             "risk_ranked_coverage": _risk_ranked_coverage(state),
-            "warnings": list(state.get("intake_warnings") or []),
+            "warnings": list(state.get("intake_warnings") or [])
+            + ([f"no eligible low-tier canary; canary is {cons['canary_fallback']}"] if cons.get("canary_fallback") else []),
             "optimizer_stopped_by": (next((a for a in reversed(state["attempts"]) if a.get("passed")), {})
                                      .get("optimization") or {}).get("stats", {}).get("stopped_by"),
         }

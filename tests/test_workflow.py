@@ -155,3 +155,13 @@ def test_go_no_go_card_carries_the_intake_assumption(engine):
     card = r["interrupt"]
     assert card["scope"] == "canary" and any(w.startswith("Assumption: 'the ToR switch pair' is ambiguous") for w in card["warnings"])
     assert any(e["event"] == "warning" and e["agent"] == "intake" for e in r["state"]["timeline"])
+
+
+def test_switch_only_change_is_planned_with_a_one_asset_canary_and_a_warning(tmp_path):
+    sv = make_services(tmp_path, faults=False)
+    r, gates = drive(Engine(sv), "Upgrade switch OS on tor-r1-a and tor-r1-b to the latest baseline this Saturday 10pm")
+    st = r["state"]
+    assert [g["scope"] for g in gates] == ["canary", "fleet"] and st["status"] == "completed"
+    assert st["plan"]["waves"][0]["assets"] == ["tor-r1-b"]
+    assert "no eligible low-tier canary; canary is tor-r1-b" in gates[0]["warnings"]
+    assert sv.twin.switches["tor-r1-a"]["firmware"] == sv.twin.switches["tor-r1-b"]["firmware"] == "10.14.1000"

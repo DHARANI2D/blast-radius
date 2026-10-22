@@ -94,3 +94,27 @@ def test_empty_plan_and_empty_wave_are_rejected(topo, sv):
     plan = {"waves": [{"name": "c", "assets": ["blr-esx-03"]}, {"name": "gap", "assets": []}]}
     res = check_plan(plan, topo, ["blr-esx-03"], COMPS, sv.policy, 480)
     assert not res["ok"] and codes(res) == {"EMPTY_WAVE"}
+
+
+def test_no_eligible_canary_host_gets_a_one_asset_canary(topo, sv):
+    """Switch-only, single tier-0 host, or tier-0 hosts with their switches: no low-tier dual-homed canary exists."""
+    from blastradius.solver import grounded_rationale, plan_facts
+
+    for servers, switches, canary in (([], SWITCHES, ["tor-r1-b"]), ([], ["tor-r2-a"], ["tor-r2-a"]),
+                                      (["blr-esx-07"], [], ["blr-esx-07"]), (["blr-esx-07"], SWITCHES, ["tor-r1-b"])):
+        waves = solve(servers, switches, topo, {}, sv.policy, COMPS, 480)
+        res = check_plan({"waves": waves}, topo, servers + switches, COMPS, sv.policy, 480)
+        assert res["ok"], (servers, switches, res["violations"])
+        assert waves[0]["assets"] == canary and res["canary_fallback"] == canary[0]
+        facts = plan_facts(topo, {"servers": servers, "switches": switches}, sv.policy, COMPS)
+        assert facts["no_eligible_canary"]
+        assert "no tier-0 or tier-1 workloads" not in grounded_rationale(waves, facts, COMPS, res["total_duration_min"])
+    # still one asset only: both members of the pair, or a switch plus a host, is not a canary
+    for wave1 in (SWITCHES, ["tor-r1-b", "blr-esx-07"]):
+        res = check_plan({"waves": [{"name": "c", "assets": wave1, "evacuate": []}]}, topo, wave1, COMPS, sv.policy, 480)
+        assert any(v["code"] == "CANARY_FIRST" and "one-asset canary" in v["message"] for v in res["violations"])
+    # with an eligible host the usual rule holds and the rationale's canary sentence is true
+    waves = solve(SERVERS, SWITCHES, topo, {}, sv.policy, COMPS, 480)
+    facts = plan_facts(topo, {"servers": SERVERS, "switches": SWITCHES}, sv.policy, COMPS)
+    assert not facts["no_eligible_canary"] and check_plan({"waves": waves}, topo, SERVERS + SWITCHES, COMPS, sv.policy, 480)["canary_fallback"] is None
+    assert "no tier-0 or tier-1 workloads" in grounded_rationale(waves, facts, COMPS, 165)
