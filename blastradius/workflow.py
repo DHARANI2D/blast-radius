@@ -550,12 +550,9 @@ def build_graph(sv):
             upd["counterfactual"] = cf
             log(state, "agent:reporter", "counterfactual", cf)
             if not cf["risk_ranked_would_catch"] and cf["exposed_hosts"]:
-                t0 = cf["exposed_tier0_vms"]
                 tl += _t("reporter", "counterfactual",
                          f"A risk-ranked canary of the same size ({', '.join(cf['risk_ranked_canary'])}; {cf['risk_ranked_cohorts']} cohorts) "
-                         f"has no affected host and would have passed. Wave {cf['first_exposed_wave']} would then have started flashing "
-                         f"{len(cf['exposed_hosts'])} affected hosts running {cf['exposed_vms']} VMs"
-                         + (f", {len(t0)} of them tier-0 ({', '.join(t0[:3])})" if t0 else "") + ".", "warn")
+                         f"has no affected host and would have passed. {cf['sentence']}", "warn")
         if lesson:
             comps = state["change_request"]["components"]
             biz = counterfactual_impact(lesson, baseline, topo, pol, comps, risk=state["risk"], actual_exec=cur)

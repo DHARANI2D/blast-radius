@@ -55,6 +55,13 @@ def test_counterfactual_replays_the_risk_ranked_canary(canon):
     assert cf["detected_at_min"] == sum(wave_duration(x["assets"], [], topo, comps, sv.policy) for x in w[:2])
     assert [r["status"] for r in cf["waves"][2:]] == ["not started: rollout halted"] * (len(w) - 2)
     assert cf["rollback_complete_min"] > cf["detected_at_min"]
+    # one counterfactual, one count: the Reporter's sentence uses the hosts and VMs the replay prices
+    rc = st["counterfactual"]
+    assert rc["exposed_hosts"] == cf["if_undetected"]["hosts"] and rc["exposed_vms"] == cf["if_undetected"]["vms"]
+    assert rc["first_exposed_wave"] == cf["detected_wave"] and len(rc["first_wave_hosts"]) == cf["hosts_exposed"]
+    assert len(rc["first_wave_hosts"]) <= int(sv.policy.get("planning.max_assets_per_wave"))
+    assert (f"Wave 2 would then have flashed {cf['hosts_exposed']} affected host(s)" in rc["sentence"]
+            and f"{len(rc['exposed_hosts'])} affected hosts running {rc['exposed_vms']} VMs in all" in rc["sentence"])
 
 
 def test_exposure_is_placement_times_minutes(canon):

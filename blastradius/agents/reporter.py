@@ -158,31 +158,45 @@ class ReporterAgent:
         }
 
     def counterfactual(self, lesson: dict, plan: dict, risk: dict, topo: Topology, components: list[str]) -> dict:
-        """Would a conventional risk-ranked canary of the same size have caught this regression?"""
+        """Would a conventional risk-ranked canary of the same size have caught this regression?
+
+        The fleet is the plan with that canary as wave 1 (``business.baseline_waves``) and hosts match the lesson as
+        in ``business.matcher``, so these counts are the ones the business-impact replay prices."""
+        from ..business import baseline_waves, matcher
         from ..cohorts import build, coverage, risk_ranked_canary
 
         pol = self.sv.policy
         scheduled = [a for w in plan["waves"] for a in w["assets"] if a in topo.servers]
         scores = {a: r["score"] for a, r in risk["assets"].items()}
         naive = risk_ranked_canary(scheduled, topo, scores, pol)
-        conds = (lesson.get("conditions") or {}).get("firmware_prefix", {})
-
-        def affected(h: str) -> bool:
-            s = topo.servers[h]
-            return s["model"] in lesson["models"] and all(s["firmware"].get(c, "").startswith(p) for c, p in conds.items())
-
-        later = [(i, h) for i, w in enumerate(plan["waves"][1:], start=2) for h in w["assets"] if h in topo.servers and affected(h)]
+        affected = matcher(lesson, topo, components, risk.get("target_versions"))
+        fleet = baseline_waves(plan, naive, topo)[1:]
+        later = [(i, h) for i, w in enumerate(fleet, start=2) for h in w["assets"] if h in topo.servers and affected(h)]
         hosts = [h for _, h in later]
         vms = [v for h in hosts for v in topo.vms_on(h)]
+        tier0 = sorted(v["name"] for v in vms if v["tier"] == 0)
         cov = coverage(naive, build(scheduled, topo.servers, components), topo, pol)
+        first = later[0][0] if later else None
+        first_hosts = [h for i, h in later if i == first]
+        last = later[-1][0] if later else None
+        sentence = ""
+        if later:
+            sentence = (f"Wave {first} would then have flashed {len(first_hosts)} affected host(s)"
+                        + (f"; had its post-check missed it too, waves {first + 1}-{last} would have flashed "
+                           f"{len(hosts) - len(first_hosts)} more" if last > first else "")
+                        + f" ({len(hosts)} affected hosts running {len(vms)} VMs in all"
+                        + (f", {len(tier0)} of them tier-0: {', '.join(tier0[:3])}" if tier0 else "") + ").")
         return {
             "risk_ranked_canary": naive,
             "risk_ranked_would_catch": any(affected(h) for h in naive),
             "risk_ranked_cohorts": f"{cov['covered']}/{cov['total']}",
-            "first_exposed_wave": later[0][0] if later else None,
+            "first_exposed_wave": first,
+            "first_wave_hosts": first_hosts,
+            "last_exposed_wave": last,
             "exposed_hosts": hosts,
             "exposed_vms": len(vms),
-            "exposed_tier0_vms": sorted(v["name"] for v in vms if v["tier"] == 0),
+            "exposed_tier0_vms": tier0,
+            "sentence": sentence,
         }
 
     def learn(self, run_id: str, incident: dict) -> str:
@@ -299,8 +313,9 @@ class ReporterAgent:
             lines += ["", "## Counterfactual: risk-ranked canary",
                       f"- Canary {', '.join(cf['risk_ranked_canary'])} covers {cf['risk_ranked_cohorts']} configuration cohorts; "
                       f"would have caught the regression: {cf['risk_ranked_would_catch']}",
-                      f"- Affected hosts in later waves: {len(cf['exposed_hosts'])} ({cf['exposed_vms']} VMs, "
-                      f"{len(cf['exposed_tier0_vms'])} tier-0), first in wave {cf['first_exposed_wave']}"]
+                      f"- Affected hosts in the fleet waves: {len(cf['exposed_hosts'])} ({cf['exposed_vms']} VMs, "
+                      f"{len(cf['exposed_tier0_vms'])} tier-0); {len(cf.get('first_wave_hosts', []))} in wave {cf['first_exposed_wave']}, "
+                      f"the rest by wave {cf.get('last_exposed_wave')}"]
         if r.get("business_impact"):
             from ..business import markdown as business_md
 

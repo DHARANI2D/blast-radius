@@ -526,12 +526,9 @@ with main:
                                 "Press <b>New run</b> and analyse again: affected hosts are now deferred.</div>", unsafe_allow_html=True)
                 cf = state.get("counterfactual")
                 if cf and not cf["risk_ranked_would_catch"] and cf["exposed_hosts"]:
-                    t0 = cf["exposed_tier0_vms"]
                     st.markdown(f"<div class='br-banner-red'><b>Counterfactual:</b> a risk-ranked canary of the same size "
                                 f"({', '.join(cf['risk_ranked_canary'])}; {cf['risk_ranked_cohorts']} cohorts) has no affected host and "
-                                f"would have passed. Wave {cf['first_exposed_wave']} would then have started flashing "
-                                f"{len(cf['exposed_hosts'])} affected hosts running {cf['exposed_vms']} VMs"
-                                + (f", including tier-0 {', '.join(t0[:3])}" if t0 else "") + ".</div>", unsafe_allow_html=True)
+                                f"would have passed. {cf['sentence']}</div>", unsafe_allow_html=True)
 
     # --------------------------------------------------------------- audit
     with tabs[4]:
