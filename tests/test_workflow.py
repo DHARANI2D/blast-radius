@@ -125,3 +125,33 @@ def test_report_lists_each_section_once(engine, sv):
     heads = [ln for ln in md.splitlines() if ln.startswith("## ")]
     assert len(heads) == len(set(heads))
     assert any(h.startswith("## Business impact") for h in heads)
+
+
+def test_intent_with_no_known_target_stops_at_intake(engine, sv):
+    before = sv.twin.snapshot()["firmware"]
+    for intent in ("hello", "Upgrade System ROM on PROD-BLR-99 this Saturday 10pm", "Execute approved plan 123"):
+        r, gates = drive(engine, intent)
+        st = r["state"]
+        assert gates == [] and st["status"] == "escalated" and st["outcome_reason"].startswith("no recognised targets")
+        assert not st.get("plan") and not st["attempts"] and not st["approvals"] and not st["executions"]
+        assert st["report"]["outcome"] == "escalated" and "No change was planned or executed" in st["report"]["summary"]
+    assert sv.twin.snapshot()["firmware"] == before and sv.memory.stats()["runs"] == 0
+
+
+def test_every_target_deferred_is_nothing_to_do(tmp_path):
+    sv = make_services(tmp_path)
+    eng = Engine(sv)
+    drive(eng)  # learns the NIC 229.x regression on blr-esx-01
+    sv.reset_lab(forget_lessons=False)
+    r, gates = drive(eng, "Upgrade iLO 6 and System ROM on blr-esx-01 and blr-esx-02 to the latest baseline this Saturday 10pm")
+    st = r["state"]
+    assert gates == [] and st["status"] == "nothing_to_do" and not st["attempts"] and not st["executions"]
+    assert st["outcome_reason"].startswith("nothing to do: all 2 target(s) deferred by INC-BR-")
+    assert st["report"]["outcome"] == "nothing_to_do"
+
+
+def test_go_no_go_card_carries_the_intake_assumption(engine):
+    r = engine.start(INTENT)
+    card = r["interrupt"]
+    assert card["scope"] == "canary" and any(w.startswith("Assumption: 'the ToR switch pair' is ambiguous") for w in card["warnings"])
+    assert any(e["event"] == "warning" and e["agent"] == "intake" for e in r["state"]["timeline"])

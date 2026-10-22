@@ -85,3 +85,12 @@ def test_evacuate_holds_only_scheduled_targets_or_hosts_single_homed_to_the_wave
     waves[1]["evacuate"] = ["blr-esx-21"]
     res = check_plan({"waves": waves}, topo, servers, COMPS, sv.policy, 480)
     assert [v["assets"] for v in res["violations"] if v["code"] == "COVERAGE"] == [["blr-esx-21"]]
+
+
+def test_empty_plan_and_empty_wave_are_rejected(topo, sv):
+    for plan in ({"waves": []}, {"waves": [{"name": "w1", "assets": []}]}):
+        res = check_plan(plan, topo, [], COMPS, sv.policy, 480)
+        assert not res["ok"] and "EMPTY_PLAN" in codes(res)
+    plan = {"waves": [{"name": "c", "assets": ["blr-esx-03"]}, {"name": "gap", "assets": []}]}
+    res = check_plan(plan, topo, ["blr-esx-03"], COMPS, sv.policy, 480)
+    assert not res["ok"] and codes(res) == {"EMPTY_WAVE"}

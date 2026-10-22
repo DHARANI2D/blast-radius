@@ -222,6 +222,7 @@ class ReporterAgent:
             "regression_summary": "; ".join(r["message"] for r in reg[:2]),
             "lesson": (state.get("lesson") or {}).get("symptom", ""),
             "halt_reason": state.get("halt_reason", ""),
+            "outcome_reason": state.get("outcome_reason", ""),
             "halted_wave": state.get("current_wave"),
             "manual_steps": len(state.get("manual_steps") or []),
         }
@@ -233,6 +234,7 @@ class ReporterAgent:
             "intent": state.get("intent"),
             "change_request": state.get("change_request"),
             "outcome": outcome,
+            "outcome_reason": state.get("outcome_reason"),
             "summary": out.summary,
             "lessons": out.lessons,
             "plan_hash": state.get("plan_hash"),
@@ -275,10 +277,10 @@ class ReporterAgent:
         lines = [
             f"# BlastRadius post-change report: {r['run_id']}",
             "",
-            f"**Outcome:** {r['outcome']}  ",
+            f"**Outcome:** {r['outcome']}" + (f" ({r['outcome_reason']})" if r.get("outcome_reason") else "") + "  ",
             f"**Intent:** {r['intent']}  ",
-            f"**Plan:** {r['plan_provenance']} (hash `{(r['plan_hash'] or '')[:16]}`), Trust Score {r['trust_score']}, "
-            f"planner self-confidence {r['planner_self_confidence']}",
+            (f"**Plan:** {r['plan_provenance']} (hash `{(r['plan_hash'] or '')[:16]}`), Trust Score {r['trust_score']}, "
+             f"planner self-confidence {r['planner_self_confidence']}" if r.get("plan_hash") else "**Plan:** none"),
             "",
             "## Summary",
             r["summary"],

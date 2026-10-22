@@ -43,6 +43,8 @@ def _card(card: dict) -> None:
     if card.get("canary_result"):
         cr = card["canary_result"]
         print(f"  │ Canary {', '.join(cr['assets'])}: {cr['result']} ({cr['checked']} signal sets checked)")
+    for w in card.get("warnings") or []:
+        print(f"  │ Warning: {w}")
     if card.get("optimizer_stopped_by") == "time_budget":
         print("  │ Optimiser stopped by its time cap, not its iteration count: this plan depends on machine speed")
     if card["deferred"]:

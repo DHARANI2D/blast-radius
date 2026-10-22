@@ -334,6 +334,8 @@ with main:
             k[1].metric("Max BRS", f"{card['max_brs']:.0f}")
             k[2].metric("Duration", f"{card['total_duration_min']} min")
             k[3].metric("Deferred", len(card["deferred"]))
+            for w in card.get("warnings") or []:
+                st.markdown(f"<div class='br-banner-amber'><b>Warning:</b> {w}</div>", unsafe_allow_html=True)
             cov, rr = card.get("canary_coverage"), card.get("risk_ranked_coverage")
             if cov and card["scope"] == "canary":
                 canary = card["waves"][0]["assets"] if card["waves"] else []

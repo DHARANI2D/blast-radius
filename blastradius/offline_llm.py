@@ -41,13 +41,12 @@ def intake(ctx: dict) -> dict:
     servers = [s for s in inv["servers"] if re.search(rf"\b{re.escape(s)}\b", low)]
     switches = [s for s in inv["switches"] if re.search(rf"\b{re.escape(s)}\b", low)]
     notes = []
-    if not switches and re.search(r"\b(tor|top[- ]of[- ]rack)\b", low):
-        for c in clusters:
-            pair = inv["cluster_tor_pairs"].get(c, [])
-            if pair:
-                switches = pair
-                notes.append(f"'ToR switch pair' resolved to {', '.join(pair)} (rack of {c}).")
-                break
+    from .agents.intake import resolve_tor_pair  # the same deterministic rule the Intake agent applies to a live model
+
+    tor = resolve_tor_pair(text, clusters, inv)
+    if tor is not None:
+        switches, note = tor
+        notes.append(note)
     comps = []
     if "ilo" in low:
         comps.append("iLO 6")
@@ -295,7 +294,10 @@ def report(ctx: dict) -> dict:
     outcome = ctx["outcome"]
     done = ctx["waves_completed"]
     total = ctx["waves_total"]
-    if ctx.get("halt_reason"):
+    if ctx.get("outcome_reason"):
+        s = f"{ctx['outcome_reason'][:1].upper()}{ctx['outcome_reason'][1:]}. No change was planned or executed."
+        lessons = []
+    elif ctx.get("halt_reason"):
         executed = ctx["waves_executed"]
         s = (f"Change halted in wave {ctx['halted_wave']}: {ctx['halt_reason']}. "
              + ("The partial wave was rolled back to the previous versions and signals "

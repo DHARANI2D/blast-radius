@@ -7,7 +7,8 @@ A plan is rejected if any wave:
   * is larger than the policy wave size (WAVE_SIZE)
   * has a canary that is too big or hosts critical workloads (CANARY_FIRST)
   * has a canary that leaves a required configuration cohort untested (CANARY_COVERAGE)
-or the plan as a whole misses/duplicates targets (COVERAGE) or overruns the window (WINDOW).
+or the plan as a whole misses/duplicates targets (COVERAGE) or overruns the window (WINDOW). A plan that
+schedules nothing (EMPTY_PLAN) or has a wave with nothing in it (EMPTY_WAVE) is rejected too.
 """
 
 from __future__ import annotations
@@ -76,8 +77,12 @@ def check_plan(plan: dict, topo: Topology, targets: list[str], components: list[
 
     total = 0
     seen: Counter = Counter()
+    if not any(w["assets"] for w in plan["waves"]):
+        v("EMPTY_PLAN", f"plan schedules no asset ({len(plan['waves'])} wave(s)); there is nothing to approve", None, [])
     for i, w in enumerate(plan["waves"], start=1):
         assets, evac = w["assets"], w.get("evacuate", [])
+        if not assets and not evac:
+            v("EMPTY_WAVE", f"wave {i} has no assets and no evacuations", i, [])
         unknown = [a for a in assets + evac if a not in topo.servers and a not in topo.switches]
         if unknown:
             v("UNKNOWN_ASSET", f"wave {i} references unknown assets {unknown}", i, unknown)

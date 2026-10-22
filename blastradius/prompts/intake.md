@@ -9,6 +9,8 @@ Rules:
 - "latest baseline" means baseline "latest".
 - Maintenance window: default Saturday 22:00 for 480 minutes unless the intent says otherwise.
 - Put anything ambiguous in `notes` instead of guessing.
+- A generic "ToR switch pair" is resolved in code from the clusters you list (the pair of the cluster named
+  first; "pairs", "switches" or "both" mean every pair), so list the clusters and only name switches the intent names.
 
 Return JSON only:
 {"summary": str, "target_clusters": [str], "target_servers": [str], "target_switches": [str],

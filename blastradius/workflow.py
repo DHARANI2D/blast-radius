@@ -1,6 +1,8 @@
 """LangGraph supervisor: the BlastRadius state machine.
 
     intake -> discover -> assess -> plan -> verify --(gate fails)--> plan (retry with feedback)
+      |                    |
+      +--------------------+--(no recognised target / every target deferred)--> report
                                               |                     \\-> escalate (human)
                                               v
                                        approve_canary (HITL, 1 approver)
@@ -23,6 +25,7 @@ what is left and the manual steps.
 from __future__ import annotations
 
 import operator
+import re
 import time
 import uuid
 from typing import Annotated, Any, TypedDict
@@ -53,6 +56,8 @@ class RunState(TypedDict, total=False):
     run_id: str
     intent: str
     change_request: dict
+    intake_warnings: list
+    outcome_reason: str
     targets: dict
     topology: dict
     risk: dict
@@ -103,9 +108,22 @@ def build_graph(sv):
         log(state, "agent:intake", "change_request", {"change_request": out["change_request"], "llm": out["llm"], "evidence": out["evidence"]})
         t = out["targets"]
         cr = out["change_request"]
-        return {"change_request": cr, "targets": t, "status": "analysing", "attempts": [], "approvals": [], "executions": [],
-                "timeline": _t("intake", "parsed", f"{cr['summary']}: {len(t['servers'])} servers, {len(t['switches'])} switches; "
-                               f"window {cr['window']['day']} {cr['window']['start']} for {cr['window']['duration_minutes']} min")}
+        tl = _t("intake", "parsed", f"{cr['summary']}: {len(t['servers'])} servers, {len(t['switches'])} switches; "
+                                    f"window {cr['window']['day']} {cr['window']['start']} for {cr['window']['duration_minutes']} min")
+        tl += [e for w in out["warnings"] for e in _t("intake", "warning", w, "warn")]
+        upd = {"change_request": cr, "targets": t, "intake_warnings": out["warnings"], "status": "analysing", "attempts": [],
+               "approvals": [], "executions": []}
+        if not t["servers"] and not t["switches"]:
+            # Nothing to plan: stop here, before any plan, approval or write.
+            reason = ("no recognised targets: the intent names no cluster, server or switch in the inventory"
+                      + (f" ({'; '.join(w for w in out['warnings'] if w.startswith('Dropped'))})"
+                         if any(w.startswith("Dropped") for w in out["warnings"]) else ""))
+            log(state, "agent:intake", "no_targets", {"reason": reason})
+            return {**upd, "status": "escalated", "outcome_reason": reason, "timeline": tl + _t("supervisor", "escalated", reason, "error")}
+        return {**upd, "timeline": tl}
+
+    def after_intake(state: RunState) -> str:
+        return "report" if state["status"] == "escalated" else "discover"
 
     def discover(state: RunState):
         topo, summary = topo_a.run()
@@ -129,7 +147,17 @@ def build_graph(sv):
         tl = _t("risk", "scored", "highest risk: " + ", ".join(f"{r['asset']} {r['score']}" for r in top[:3]))
         if risk["deferred"]:
             tl += _t("risk", "deferred", f"{len(risk['deferred'])} asset(s) deferred: {risk['deferred'][0]['reason']}", "warn")
+        t = state["targets"]
+        if not set(t["servers"] + t["switches"]) - {d["asset"] for d in risk["deferred"]}:
+            by = sorted({(re.search(r"\bINC-[\w-]+", d["reason"]) or [d["reason"]])[0] for d in risk["deferred"]})
+            reason = f"nothing to do: all {len(risk['deferred'])} target(s) deferred by {', '.join(by)}"
+            log(state, "agent:risk", "nothing_to_do", {"reason": reason})
+            return {"risk": risk, "status": "nothing_to_do", "outcome_reason": reason,
+                    "timeline": tl + _t("supervisor", "nothing_to_do", reason, "warn")}
         return {"risk": risk, "timeline": tl}
+
+    def after_assess(state: RunState) -> str:
+        return "report" if state["status"] == "nothing_to_do" else "plan"
 
     # -------------------------------------------------------------- plan
     def plan(state: RunState):
@@ -312,6 +340,7 @@ def build_graph(sv):
             "premortem": state.get("premortem"),
             "premortem_compare": state.get("premortem_compare"),
             "risk_ranked_coverage": _risk_ranked_coverage(state),
+            "warnings": list(state.get("intake_warnings") or []),
             "optimizer_stopped_by": (next((a for a in reversed(state["attempts"]) if a.get("passed")), {})
                                      .get("optimization") or {}).get("stats", {}).get("stopped_by"),
         }
@@ -589,9 +618,9 @@ def build_graph(sv):
                      ("execute", execute), ("postcheck", postcheck), ("rollback", rollback), ("report", report)]:
         g.add_node(name, fn)
     g.add_edge(START, "intake")
-    g.add_edge("intake", "discover")
+    g.add_conditional_edges("intake", after_intake, ["discover", "report"])
     g.add_edge("discover", "assess")
-    g.add_edge("assess", "plan")
+    g.add_conditional_edges("assess", after_assess, ["plan", "report"])
     g.add_edge("plan", "optimise")
     g.add_edge("optimise", "verify")
     g.add_conditional_edges("verify", after_verify, ["approve_canary", "plan", "escalate"])
