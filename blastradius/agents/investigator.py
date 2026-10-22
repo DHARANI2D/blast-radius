@@ -26,6 +26,7 @@ from ..offline_llm import _sentences
 from .verifier import VerifierAgent
 
 EXCLUDE = {"telemetry.advance_clock", "knowledge.record_incident", "network.wait_upgrade_complete"}
+METRIC = {"nic_latency_ms": "NIC latency (ms)", "rx_drop_rate": "rx drop rate", "crc_errors_per_min": "CRC errors per minute"}
 CVE_RE = re.compile(r"(?:SYN-)?CVE-\d{4}-\d+", re.I)
 TRAILING_CITE = re.compile(r"\.\s*(\[EV-\d{4}(?:,\s*EV-\d{4})*\])")
 
@@ -193,8 +194,41 @@ class InvestigatorAgent:
                     say(f"{rn['component']} {rn['version']} fixes {cve}", rev)
             if not advs and not any(cve in r.get("security_fixes", []) for r in self.sv.kb.release_notes):
                 say(f"The knowledge base has no release note or advisory for {cve}", aev)
+        execs = state.get("executions") or []
+        about_attempts = bool(re.search(r"\b(attempts?|drafts?|plans?|reject\w*|block\w*)\b", q))
+        about_run = bool(re.search(r"\b(fail\w*|wrong|regress\w*|roll ?back\w*|rolled back|halt\w*|happened|lesson|incident)\b", q))
+        if about_run and not about_attempts and (execs or state.get("halt_reason")):
+            # What the change did: post-check regressions, the halt and rollback, and the lesson it recorded.
+            if "canary" in q and execs and execs[0].get("result") == "passed":
+                say(f"The canary ({', '.join(execs[0]['assets'])}) passed its signal checks", (execs[0].get("evidence") or {}).get("post"))
+            for ex in [x for x in execs if x.get("result") == "regression"]:
+                ev = ex.get("evidence") or {}
+                say(f"{'The canary' if ex['index'] == 1 else ex['name']} ({', '.join(ex['assets'])}) regressed on "
+                    + ", ".join(sorted({r["asset"] for r in ex["regressions"]})), ev.get("post"))
+                for r in ex["regressions"][:3]:
+                    if r.get("check") == "statistical":
+                        series = [e for e in (ex.get("canary_stats") or {}).get("evidence", [])
+                                  if (self.sv.evidence.get(e) or {}).get("args", {}).get("asset") == r["asset"]]
+                        say(f"Against un-upgraded peers, {r['asset']} {r['message']}", *series[:2])
+                    else:
+                        say(f"{r['asset']} {METRIC.get(r['metric'], r['metric'])} went from {r['pre']} to {r['post']}", ev.get("pre"), ev.get("post"))
+            if state.get("halt_reason"):
+                say(f"Execution halted: {state['halt_reason'].rstrip('.')}")
+            rb = state.get("rollback")
+            if rb:
+                hosts = sorted({c["asset"] for c in rb["reverted"]})
+                say(f"BlastRadius halted the remaining waves and reverted {len(rb['reverted'])} firmware change(s) on {', '.join(hosts)}; "
+                    f"their signals {'recovered' if rb.get('recovered') else 'did NOT recover'}", rb.get("evidence"))
+            lesson = state.get("lesson")
+            if lesson:
+                _, iev = call("knowledge.list_incidents", component=lesson["component"], version=lesson["version"])
+                say(f"The lesson was recorded as {lesson['id']}: {lesson['symptom'].rstrip('.')}", iev)
+                for part in _sentences(lesson["lesson"]):
+                    say(part.rstrip("."), iev)
+        elif about_run and not about_attempts and "canary" in q:
+            say("The canary has not run yet in this change, so there is no canary result to explain")
         attempts = state.get("attempts") or []
-        if attempts and re.search(r"\b(attempts?|reject\w*|block\w*|fail\w*|drafts?)\b", q):
+        if attempts and (about_attempts or (about_run and not execs and "canary" not in q)):
             m = re.search(r"\b(?:attempt|draft)\s*#?(\d+)", q)
             pick = ([a for a in attempts if m and a["attempt"] == int(m.group(1))]
                     or [a for a in attempts if not a["passed"]][:1] or attempts[-1:])

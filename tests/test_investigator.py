@@ -42,6 +42,33 @@ def test_offline_router_explains_a_rejected_attempt_and_the_canary(tmp_path):
     assert "Risk agent" not in InvestigatorAgent(sv).ask("Why?", st, topo)["answer"]
 
 
+def test_offline_router_explains_the_canary_regression_from_the_execution(tmp_path):
+    from conftest import INTENT, make_services
+
+    from blastradius.workflow import Engine
+
+    sv = make_services(tmp_path)
+    eng = Engine(sv)
+    r = eng.start(INTENT)
+    st, topo = r["state"], sv.runs[r["run_id"]]["topo"]
+    before = InvestigatorAgent(sv).ask("Why did the canary fail?", st, topo)["answer"]
+    assert before.startswith("The canary has not run yet") and "Attempt 1" not in before
+    r = eng.resume(r["run_id"], {"decision": "approve", "approver": "asha.ops"})
+    st = r["state"]
+    assert st["status"] == "rolled_back"
+    for q in ("Why did the canary fail?", "What went wrong?"):
+        out = InvestigatorAgent(sv).ask(q, st, topo)
+        ans = out["answer"]
+        assert ans.startswith("The canary (blr-esx-21, blr-esx-01, blr-esx-03) regressed on blr-esx-01 [EV-")
+        assert "NIC latency (ms) went from" in ans and "reverted 6 firmware change(s)" in ans and "recovered" in ans
+        assert f"recorded as {st['lesson']['id']}" in ans and "System ROM U54 v2.32 with NIC BCM57414 229.x" in ans
+        assert "Attempt 1" not in ans
+        counts = out["verification"]["counts"]
+        assert "Contradicted" not in counts and out["verification"]["trust_score"] >= 90
+    # questions about the plan attempts keep their own route
+    assert InvestigatorAgent(sv).ask("Why was attempt 1 rejected?", st, topo)["answer"].startswith("Attempt 1 was rejected")
+
+
 def test_investigator_never_calls_write_tools(sv):
     names = {t["function"]["name"] for t in InvestigatorAgent(sv).tool_specs()}
     assert "compute__apply_firmware" not in names and "virt__enter_maintenance" not in names
