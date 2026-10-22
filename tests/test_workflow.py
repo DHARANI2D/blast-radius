@@ -20,6 +20,9 @@ def test_full_story_with_canary_regression(engine, sv):
     # the cohort canary includes a DL380 on NIC 229.x (regresses) and a DL380 on NIC 230.x (control)
     assert {"blr-esx-01", "blr-esx-03"} <= set(st["plan"]["waves"][0]["assets"])
     assert {r["asset"] for r in st["executions"][0]["regressions"]} == {"blr-esx-01"}
+    # inventory-02 is moved onto a canary host that is evacuated later: 56 migrations, 55 distinct VMs
+    assert (st["executions"][0]["migrations"], st["executions"][0]["migrated_vms"]) == (56, 55)
+    assert "55 VMs live-migrated" in " ".join(e["detail"] for e in st["timeline"])
     for c in st["executions"][0]["firmware_changes"]:
         assert sv.twin.servers[c["asset"]]["firmware"][c["component"]] == c["from"]
     # lesson: the per-component probe blames ROM and exonerates iLO on the regressed host itself;

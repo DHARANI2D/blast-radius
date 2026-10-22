@@ -86,7 +86,9 @@ class ExecutorAgent:
                 "t_start_min": t0,
                 "actions": [{k: v for k, v in a.items() if k != "result"} | {"status": "ok"} for a in actions],
                 "firmware_changes": firmware_changes(actions),
-                "migrated_vms": sum(len(a["result"].get("migrated", [])) for a in actions if a["tool"] == "virt.enter_maintenance"),
+                # Distinct VMs: one moved onto a host the wave evacuates later is migrated twice but counted once.
+                "migrated_vms": len({m["vm"] for a in actions if a["tool"] == "virt.enter_maintenance" for m in a["result"].get("migrated", [])}),
+                "migrations": sum(len(a["result"].get("migrated", [])) for a in actions if a["tool"] == "virt.enter_maintenance"),
                 "pre": pre,
                 "dependents": deps,
                 "already_in_maintenance": already,
