@@ -93,6 +93,10 @@ def test_clean_run_needs_dual_approval_for_fleet(tmp_path):
     r = eng.resume(r["run_id"], {"decision": "approve", "approver": "asha.ops"})
     assert r["interrupt"]["scope"] == "fleet" and r["interrupt"]["canary_result"]["result"] == "passed"
     assert r["state"]["approval_error"] == ""
+    # the fleet card's duration and max BRS cover the waves still to run, not the canary that already ran
+    fc = r["interrupt"]
+    assert fc["total_duration_min"] == sum(w["duration_min"] for w in fc["waves"]) < r["state"]["constraints"]["total_duration_min"]
+    assert fc["max_brs"] == max(w["brs"] for w in fc["waves"])
     # one approver twice, in any case or spacing, is not two approvers: the gate asks again and says why
     for names in (["asha.ops", "asha.ops"], ["asha.ops", " ASHA.OPS "], ["asha.ops", "   "]):
         r = eng.resume(r["run_id"], {"decision": "approve", "approvers": names})

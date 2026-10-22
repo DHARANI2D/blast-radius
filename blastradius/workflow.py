@@ -320,7 +320,10 @@ def build_graph(sv):
             cs = canary.get("canary_stats")
             if cs:
                 c["canary_result"]["statistical"] = {"verdict": cs["verdict"], "score": cs["score"], "summary": stat_summary(cs)}
+            # The fleet gate covers only the waves still to run; the canary has already run.
             c["waves"] = c["waves"][1:]
+            c["total_duration_min"] = sum(w["duration_min"] for w in c["waves"])
+            c["max_brs"] = max((w["brs"] for w in c["waves"]), default=0.0)
         return c
 
     def _risk_ranked_coverage(state) -> dict | None:
