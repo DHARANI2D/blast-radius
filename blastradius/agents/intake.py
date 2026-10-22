@@ -3,9 +3,49 @@
 from __future__ import annotations
 
 import json
+import re
 
 from ..llm import LLMError, load_prompt
 from ..models import ChangeRequest
+
+_TOR = r"(?:tor|top[- ]of[- ]rack)"
+_TOR_ALL = re.compile(rf"\b(?:all|both|every|each)\s+(?:of\s+)?(?:the\s+)?{_TOR}\b|\b{_TOR}\s+(?:switch\s+)?pairs\b|\b{_TOR}\s+switches\b")
+
+
+def resolve_tor_pair(intent: str, clusters: list[str], inventory: dict) -> tuple[list[str], str] | None:
+    """Deterministic reading of a generic "ToR switch pair" in the intent (offline and live intake agree on it).
+
+    Returns None when the intent does not mention ToR switches generically (or names a switch itself). Otherwise
+    the ToR pair(s) serving the named clusters and a note. "pairs", "switches" or "all/both" mean every pair; a
+    single "pair" with clusters behind different pairs takes the pair of the cluster named first, and the note
+    says which pair was chosen, which was not, and why.
+    """
+    low = intent.lower()
+    if any(re.search(rf"\b{re.escape(s.lower())}\b", low) for s in inventory["switches"]):
+        return None
+    if not re.search(rf"\b{_TOR}\b", low):
+        return None
+    order = sorted(clusters, key=lambda c: (low.find(c.lower()) if c.lower() in low else len(low), clusters.index(c)))
+    pairs: list[tuple[str, list[str]]] = []
+    for c in order:
+        pair = inventory["cluster_tor_pairs"].get(c, [])
+        if pair and pair not in [p for _, p in pairs]:
+            pairs.append((c, pair))
+    if not pairs:
+        return [], "The intent mentions a ToR switch pair but names no cluster to locate it; no switch was added."
+    if len(pairs) == 1:
+        c, pair = pairs[0]
+        return list(pair), f"'ToR switch pair' resolved to {', '.join(pair)} (rack of {c})."
+    if _TOR_ALL.search(low):
+        return (sorted(a for _, p in pairs for a in p),
+                "ToR switches resolved to every pair serving the named clusters: "
+                + "; ".join(f"{'/'.join(p)} ({c})" for c, p in pairs) + ".")
+    (c, pair), rest = pairs[0], pairs[1:]
+    return list(pair), (
+        "Assumption: 'the ToR switch pair' is ambiguous, because the named clusters sit behind different pairs ("
+        + "; ".join(f"{x} behind {'/'.join(p)}" for x, p in pairs) + f"). Chose {'/'.join(pair)}, the pair of {c}, "
+        "the cluster named first; not included: " + ", ".join(f"{'/'.join(p)} ({x})" for x, p in rest)
+        + ". Name the switches to change this.")
 
 
 class IntakeAgent:
@@ -56,17 +96,39 @@ class IntakeAgent:
             fallback = {"role": "intake", "error": err, "fallback": "deterministic intake parser"}
             provenance = f"deterministic intake parser (LLM failed: {err})"
 
-        # Never trust names from the model: keep only inventory assets.
-        notes = list(cr.notes)
+        # Never trust names from the model: keep only inventory assets, matched ignoring case and written as the
+        # inventory spells them. Dropped names are warnings on the timeline and the go/no-go card.
+        notes, warnings, changed = list(cr.notes), [], False
         for field, known in (("target_clusters", inv["clusters"]), ("target_servers", inv["servers"]), ("target_switches", inv["switches"])):
-            vals = getattr(cr, field)
-            bad = [v for v in vals if v not in known]
+            canon = {k.lower(): k for k in known}
+            keep, bad = [], []
+            for v in getattr(cr, field):
+                c = canon.get(str(v).strip().lower())
+                if c is None:
+                    bad.append(v)
+                elif c not in keep:
+                    keep.append(c)
             if bad:
-                notes.append(f"Dropped unknown {field.replace('target_', '')}: {bad}")
-                setattr(cr, field, [v for v in vals if v in known])
+                warnings.append(f"Dropped unknown {field.replace('target_', '')}: {bad}")
+            changed |= keep != getattr(cr, field)
+            setattr(cr, field, keep)
+        tor = resolve_tor_pair(intent, cr.target_clusters, inv)
+        if tor is not None:
+            switches, note = tor
+            changed |= sorted(switches) != sorted(cr.target_switches)
+            cr.target_switches = switches
+            if note.startswith("Assumption") or not switches:
+                warnings.append(note)
+            elif note not in notes:
+                notes.append(note)
         if cr.target_switches and "Switch OS" not in cr.components:
             cr.components.append("Switch OS")
-        cr.notes = notes
+        cr.notes = notes + [w for w in warnings if w not in notes]
+        if changed:
+            # The model's summary described other targets; say what will actually be changed.
+            named = cr.target_clusters + cr.target_servers + cr.target_switches
+            cr.summary = (f"Upgrade {' and '.join(cr.components)} to the {cr.baseline} baseline on "
+                          + (", ".join(named) or "no recognised targets"))
 
         servers = list(cr.target_servers)
         for c in cr.target_clusters:
@@ -74,6 +136,7 @@ class IntakeAgent:
         return {
             "change_request": cr.model_dump(),
             "targets": {"servers": sorted(servers), "switches": sorted(cr.target_switches)},
+            "warnings": warnings,
             "evidence": evidence,
             "llm": llm_rec,
             "provenance": provenance,

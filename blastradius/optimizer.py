@@ -345,16 +345,16 @@ def _changes(before: list[dict], after: list[dict], r: dict[str, float]) -> list
 
 def optimize(plan: dict, targets: list[str] | dict, topo: Topology, risk: dict, policy: Policy, components: list[str],
              window_minutes: int, deferred: list | tuple = (), seed: int = 5, iterations: int | None = None,
-             time_budget_s: float = 2.0) -> dict:
+             time_budget_s: float = 60.0) -> dict:
     """Improve a feasible plan under the hard constraints of ``check_plan``.
 
     ``targets`` is the change's asset list (or ``{"servers": [...], "switches": [...]}``), ``risk`` the Risk
     agent's output (or a name -> score map), ``deferred`` names or ``risk["deferred"]`` entries. Returns the best
     plan (the input, unchanged, if nothing better is found or the input is infeasible), the objective before and
     after, the accepted moves that lead to the best plan, per-asset wave changes and search statistics.
-    ``time_budget_s`` caps the search loop (the initial and final ``check_plan`` add a few tens of ms): if it
-    stops the search before ``iterations``, the result is still feasible and no worse, but may depend on
-    machine speed (``stats["stopped_by"]`` says which limit hit).
+    ``iterations`` is the stopping rule, so the same inputs give the same plan whatever the CPU load.
+    ``time_budget_s`` is only a safety cap on the search loop: if it stops the search first, the result is
+    still feasible and no worse but depends on machine speed, and ``stats["stopped_by"]`` says so.
     """
     t0 = time.perf_counter()
     tgt = list(targets["servers"]) + list(targets["switches"]) if isinstance(targets, dict) else list(targets)
@@ -449,7 +449,14 @@ def describe(res: dict) -> str:
     if top:
         s += "; " + ", ".join(f"{c['asset']} wave {c['from_wave']} -> {c['to_wave']} ({c['validated_before_pct'][0]}% -> "
                               f"{c['validated_before_pct'][1]}% of the plan validated first)" for c in top)
-    return s
+    return s + stop_note(res["stats"])
+
+
+def stop_note(stats: dict) -> str:
+    """Empty unless the time cap, not the iteration count, ended the search (the plan then depends on machine speed)."""
+    if (stats or {}).get("stopped_by") != "time_budget":
+        return ""
+    return f"; stopped by the time cap after {stats['iterations']} iterations, so this plan depends on machine speed"
 
 
 def regrounded(plan: dict, topo: Topology, targets: dict, policy: Policy, components: list[str],

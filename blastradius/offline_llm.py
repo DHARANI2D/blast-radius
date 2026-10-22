@@ -41,13 +41,12 @@ def intake(ctx: dict) -> dict:
     servers = [s for s in inv["servers"] if re.search(rf"\b{re.escape(s)}\b", low)]
     switches = [s for s in inv["switches"] if re.search(rf"\b{re.escape(s)}\b", low)]
     notes = []
-    if not switches and re.search(r"\b(tor|top[- ]of[- ]rack)\b", low):
-        for c in clusters:
-            pair = inv["cluster_tor_pairs"].get(c, [])
-            if pair:
-                switches = pair
-                notes.append(f"'ToR switch pair' resolved to {', '.join(pair)} (rack of {c}).")
-                break
+    from .agents.intake import resolve_tor_pair  # the same deterministic rule the Intake agent applies to a live model
+
+    tor = resolve_tor_pair(text, clusters, inv)
+    if tor is not None:
+        switches, note = tor
+        notes.append(note)
     comps = []
     if "ilo" in low:
         comps.append("iLO 6")
@@ -111,6 +110,7 @@ def _naive_plan(ctx: dict) -> dict:
         {"name": "Wave 2 - first half of each cluster", "assets": [s for v in rest.values() for s in v[: len(v) // 2]], "evacuate": []},
         {"name": "Wave 3 - second half of each cluster", "assets": [s for v in rest.values() for s in v[len(v) // 2:]], "evacuate": []},
     ]
+    waves = [w for w in waves if w["assets"]]  # a small change leaves the halves empty
     biggest = max((sum(1 for a in w["assets"] if ctx["server_cluster"].get(a) == c) for w in waves for c in by_cluster), default=0)
     big_cluster = next(iter(by_cluster), "the cluster")
     tv = ctx["target_versions"]
@@ -295,7 +295,18 @@ def report(ctx: dict) -> dict:
     outcome = ctx["outcome"]
     done = ctx["waves_completed"]
     total = ctx["waves_total"]
-    if outcome == "rolled_back":
+    if ctx.get("outcome_reason"):
+        s = f"{ctx['outcome_reason'][:1].upper()}{ctx['outcome_reason'][1:]}. No change was planned or executed."
+        lessons = []
+    elif ctx.get("halt_reason"):
+        executed = ctx["waves_executed"]
+        s = (f"Change halted in wave {ctx['halted_wave']}: {ctx['halt_reason']}. "
+             + ("The partial wave was rolled back to the previous versions and signals "
+                f"{'recovered' if ctx['recovered'] else 'did NOT recover (escalated to on-call)'}. " if outcome == "rolled_back" else
+                f"Writes were blocked, so {ctx['manual_steps']} manual clean-up step(s) are listed in the report. " if ctx.get("manual_steps") else "")
+             + f"{total - executed} remaining wave(s) were not executed.")
+        lessons = []
+    elif outcome == "rolled_back":
         executed = ctx["waves_executed"]
         s = (f"Change halted in wave {executed}: post-checks on {', '.join(ctx['regressed_assets'])} showed "
              f"{ctx['regression_summary']}. The wave was rolled back to the previous versions and signals "

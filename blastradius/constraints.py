@@ -5,16 +5,18 @@ A plan is rejected if any wave:
   * causes any workload outage in simulation (PLANNED_OUTAGE)
   * puts more hosts of a cluster in maintenance than capacity/policy allow (CLUSTER_CAPACITY)
   * is larger than the policy wave size (WAVE_SIZE)
-  * has a canary that is too big or hosts critical workloads (CANARY_FIRST)
+  * has a canary that is too big or hosts critical workloads (CANARY_FIRST); when no target server is eligible
+    (switch-only change, or only tier-0/1 or single-homed hosts) the canary is instead exactly one asset
   * has a canary that leaves a required configuration cohort untested (CANARY_COVERAGE)
-or the plan as a whole misses/duplicates targets (COVERAGE) or overruns the window (WINDOW).
+or the plan as a whole misses/duplicates targets (COVERAGE) or overruns the window (WINDOW). A plan that
+schedules nothing (EMPTY_PLAN) or has a wave with nothing in it (EMPTY_WAVE) is rejected too.
 """
 
 from __future__ import annotations
 
 from collections import Counter
 
-from .cohorts import build as build_cohorts, coverage
+from .cohorts import build as build_cohorts, coverage, eligible
 from .policy import Policy
 from .topology import Topology
 
@@ -70,14 +72,21 @@ def check_plan(plan: dict, topo: Topology, targets: list[str], components: list[
     per_cluster = int(policy.get("planning.max_parallel_per_cluster", 5))
     wave_max = int(policy.get("planning.max_assets_per_wave", 12))
     cap = {c: min(per_cluster, topo.cluster_capacity(c)["max_hosts_down"]) for c in topo.clusters}
+    single = {s["server"] for s in topo.single_homed()}
+    no_eligible = not any(eligible(a, topo, policy, single) for a in targets if a in topo.servers and a not in deferred)
+    fallback = None
 
     def v(code, msg, wave=None, assets=()):
         violations.append({"code": code, "wave": wave, "message": msg, "assets": list(assets)})
 
     total = 0
     seen: Counter = Counter()
+    if not any(w["assets"] for w in plan["waves"]):
+        v("EMPTY_PLAN", f"plan schedules no asset ({len(plan['waves'])} wave(s)); there is nothing to approve", None, [])
     for i, w in enumerate(plan["waves"], start=1):
         assets, evac = w["assets"], w.get("evacuate", [])
+        if not assets and not evac:
+            v("EMPTY_WAVE", f"wave {i} has no assets and no evacuations", i, [])
         unknown = [a for a in assets + evac if a not in topo.servers and a not in topo.switches]
         if unknown:
             v("UNKNOWN_ASSET", f"wave {i} references unknown assets {unknown}", i, unknown)
@@ -88,6 +97,13 @@ def check_plan(plan: dict, topo: Topology, targets: list[str], components: list[
         impacts.append({"wave": i, "name": w.get("name", f"Wave {i}"), "duration_min": dur, **imp})
 
         sw = [a for a in assets if a in topo.switches]
+        # An evacuated host must be a server the change upgrades, or single-homed to a switch this wave reboots.
+        # DEFERRED is about firmware writes: a deferred host may still be evacuated for its switch.
+        stray = [e for e in evac if (e in topo.servers or e in topo.switches) and not (
+            e in topo.servers and (e in set(targets) - deferred or (len(topo.links_of(e)) < 2 and set(topo.links_of(e)) & set(sw))))]
+        if stray:
+            v("COVERAGE", f"wave {i} evacuates {stray}, outside the change scope: an evacuated host must be a scheduled target "
+              "or single-homed to a switch upgraded in the same wave", i, stray)
         for a in sw:
             p = topo.peer_of(a)
             if p in sw and a < p:
@@ -103,7 +119,14 @@ def check_plan(plan: dict, topo: Topology, targets: list[str], components: list[
                   [h for h in hosts if topo.servers[h]["cluster"] == c])
         if len(assets) > wave_max:
             v("WAVE_SIZE", f"wave {i} has {len(assets)} assets; policy maximum is {wave_max}", i, assets)
-        if i == 1:
+        if i == 1 and no_eligible:
+            # No low-tier dual-homed server to canary on: the canary is one asset (a pair member or a single host).
+            if len(assets) != 1:
+                v("CANARY_FIRST", f"no target is eligible for a low-tier canary, so wave 1 must be a one-asset canary "
+                  f"(has {len(assets)})", 1, assets)
+            else:
+                fallback = assets[0]
+        elif i == 1:
             if len(assets) > canary_max:
                 v("CANARY_FIRST", f"wave 1 is the canary and may hold at most {canary_max} assets (has {len(assets)})", 1, assets)
             crit = [h for h in hosts if (topo.most_critical_tier(h) is not None and topo.most_critical_tier(h) < canary_max_tier)]
@@ -139,4 +162,5 @@ def check_plan(plan: dict, topo: Topology, targets: list[str], components: list[
     if total > window_minutes:
         v("WINDOW", f"plan needs {total} min; maintenance window is {window_minutes} min", None, [])
     return {"ok": not violations, "violations": violations, "impacts": impacts, "total_duration_min": total,
-            "max_brs": max((x["brs"] for x in impacts), default=0.0), "cluster_limits": cap, "canary_coverage": cov}
+            "max_brs": max((x["brs"] for x in impacts), default=0.0), "cluster_limits": cap, "canary_coverage": cov,
+            "canary_fallback": fallback}

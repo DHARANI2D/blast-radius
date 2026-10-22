@@ -335,7 +335,8 @@ def counterfactual_impact(lesson: dict, plan: dict, topo: Topology, policy: Poli
     cf["canary_cohorts"] = f"{cov['covered']}/{cov['total']}"
     cf["canary_would_catch"] = any(affected(h) for h in naive)
     cf["plan_violations"] = sorted({v["code"] for v in cf_check["violations"]} - {"CANARY_COVERAGE"})
-    act = scenario("Cohort-coverage canary (what happened)", plan["waves"], actual_affected, topo, components, policy, rates, 0, outage)
+    act = scenario(("Cohort-coverage" if policy.get("planning.canary_cohort_coverage", True) else "Risk-ranked")
+                   + " canary (what happened)", plan["waves"], actual_affected, topo, components, policy, rates, 0, outage)
 
     at_risk = [h for w in cf_waves[1:] for h in w["assets"] if h in topo.servers and affected(h)]
     at_risk_vms = [v for h in at_risk for v in topo.vms_on(h)]
@@ -343,19 +344,25 @@ def counterfactual_impact(lesson: dict, plan: dict, topo: Topology, policy: Poli
                            "tier0_vms": sorted(v["name"] for v in at_risk_vms if v["tier"] == 0)}
 
     tier0 = [sum(t["vm_hours"] for t in s["tiers"] if t["tier"] == 0) for s in (cf, act)]
+    # A regression first caught in a fleet wave got past the canary that ran: the canary earns no saving. Whatever the
+    # two replays still differ by comes from the wave ordering, and is reported as that.
+    fleet_caught = act["detected_wave"] not in (None, 1)
+    earned = 0.0 if fleet_caught else 1.0
     avoided = {
-        "usd": _usd(cf["cost"]["total_usd"] - act["cost"]["total_usd"]),
-        "customer_impact_usd": _usd(cf["cost"]["customer_impact_usd"] - act["cost"]["customer_impact_usd"]),
-        "vm_hours": round(cf["vm_hours"] - act["vm_hours"], 2),
-        "tier0_vm_hours": round(tier0[0] - tier0[1], 2),
-        "sev1_avoided": cf["cost"]["sev1"] and not act["cost"]["sev1"],
+        "usd": _usd(earned * (cf["cost"]["total_usd"] - act["cost"]["total_usd"])),
+        "customer_impact_usd": _usd(earned * (cf["cost"]["customer_impact_usd"] - act["cost"]["customer_impact_usd"])),
+        "vm_hours": round(earned * (cf["vm_hours"] - act["vm_hours"]), 2),
+        "tier0_vm_hours": round(earned * (tier0[0] - tier0[1]), 2),
+        "sev1_avoided": bool(earned) and cf["cost"]["sev1"] and not act["cost"]["sev1"],
+        "caught_in_fleet_wave": act["detected_wave"] if fleet_caught else None,
+        "ordering_difference_usd": _usd(cf["cost"]["total_usd"] - act["cost"]["total_usd"]) if fleet_caught else None,
     }
     sensitivity = []
     for dly in rates["sensitivity"]:
         s = cf if dly == base_delay else scenario("", cf_waves, affected, topo, components, policy, rates, dly, outage)
         sensitivity.append({"detection_delay_min": dly, "detected_at_min": s["detected_at_min"], "hosts_exposed": s["hosts_exposed"],
                             "vm_hours": s["vm_hours"], "tier0_vms": s["tier0_vms"], "counterfactual_usd": s["cost"]["total_usd"],
-                            "avoided_usd": _usd(s["cost"]["total_usd"] - act["cost"]["total_usd"])})
+                            "avoided_usd": _usd(earned * (s["cost"]["total_usd"] - act["cost"]["total_usd"]))})
 
     t0_window = _union_minutes([(h["back_in_service_min"] + rates["rebalance_delay"], h["evacuated_min"])
                                 for h in cf["hosts"] if h["exposed_min"] and h["tier0_vms"]])
@@ -450,7 +457,14 @@ def assumptions(policy: Policy, rates: dict) -> list[dict]:
 
 def _headline(impact: dict) -> dict:
     cf, act, av = impact["counterfactual"], impact["actual"], impact["avoided"]
-    if cf["detected_wave"] is None or cf["detected_wave"] == act["detected_wave"]:
+    if av.get("caught_in_fleet_wave"):
+        diff = av["ordering_difference_usd"]
+        text = (f"No canary saving: the canary ({', '.join(act['canary'])}) passed and the regression was first caught in fleet "
+                f"wave {av['caught_in_fleet_wave']}" + (f"; a risk-ranked canary would have met it in wave {cf['detected_wave']} too"
+                                                        if cf["detected_wave"] else "")
+                + (f". The optimised wave ordering exposed ${diff:,.0f} less than the greedy ordering would have" if diff > 0 else "")
+                + ".")
+    elif cf["detected_wave"] is None or cf["detected_wave"] == act["detected_wave"]:
         text = (f"Avoided ${av['usd']:,.0f}: a risk-ranked canary would have met this regression in the same wave"
                 if cf["detected_wave"] else f"Avoided ${av['usd']:,.0f}: no host in the counterfactual plan matches the lesson")
     else:
@@ -468,6 +482,13 @@ def explain(impact: dict) -> str:
     cf, act, av, les = impact["counterfactual"], impact["actual"], impact["avoided"], impact["lesson"]
     cond = ", ".join(f"{k} {p}x" for k, p in les["conditions"].items())
     scope = f"{les['culprit']} on {', '.join(m.replace('HPE ProLiant ', '') for m in les['models'])}" + (f" with {cond}" if cond else "")
+    if av.get("caught_in_fleet_wave"):
+        return (f"The canary ({', '.join(act['canary'])}) held no host matching {scope} and passed; the regression surfaced "
+                f"in fleet wave {av['caught_in_fleet_wave']} on {', '.join(h['host'] for h in act['hosts']) or 'its hosts'}, "
+                f"where the post-check caught it (${act['cost']['total_usd']:,.0f}, manual diagnosis). A risk-ranked canary "
+                + (f"would have met it in wave {cf['detected_wave']} as well (${cf['cost']['total_usd']:,.0f} on the greedy ordering), "
+                   if cf["detected_wave"] else "would not have met it either, ")
+                + "so no saving is credited to the canary.")
     if cf["detected_wave"] is None:
         return (f"No host in the counterfactual plan matches the learned regression ({scope}), so a risk-ranked canary "
                 f"changes nothing here: avoided ${av['usd']:,.0f}.")

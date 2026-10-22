@@ -7,7 +7,9 @@ lower the Trust Score and can block the plan, so state only what the provided fa
 
 Hard constraints (the plan is rejected if any is violated):
 1. Wave 1 is a canary: at most `canary_max_assets` servers, no switches, and no host that runs
-   tier-0 or tier-1 workloads.
+   tier-0 or tier-1 workloads. When `facts.no_eligible_canary` is true (switch-only change, or only
+   tier-0/1 or single-homed hosts), wave 1 is instead exactly one asset: one member of a switch pair,
+   or one host.
 2. Never put both members of a redundant switch pair (VSX / MC-LAG) in the same wave.
 3. No wave may cause any workload outage. A host that is single-homed to a switch must be in
    the same wave as that switch (so it is evacuated first). A target host

@@ -57,8 +57,8 @@ golden_signals:                 # post-check thresholds (post vs. pre)
 optimizer:                      # risk-aware wave optimizer (simulated annealing under the same hard constraints)
   enabled: true
   seed: 5
-  iterations: 2500              # about 1 s on the demo scenario; deterministic when the iteration count is reached first
-  time_budget_s: 2.0
+  iterations: 2500              # the stopping rule (about 1 s on the demo scenario): same inputs, same plan
+  time_budget_s: 60.0           # safety cap only; if it ever stops the search, the card and the CLI say so
   w_brs: 1.0                    # J = minutes + w_brs * sum(per-wave BRS) + w_exposure * exposure + w_waves * waves
   w_exposure: 30.0              # progressive exposure: risky and tier-0-carrying assets should run after more of the plan is proven
   w_waves: 10.0                 # minutes-equivalent cost per wave (hand-off, soak, approval)
@@ -74,7 +74,7 @@ canary_stats:                   # peer comparison: canary hosts vs un-upgraded h
   min_controls: 3               # fewer cohort peers widens to the same model; still fewer is reported as insufficient
   widen_to_model: true
   min_samples: 5
-  exact_max_n: 40               # exact permutation p-value up to this many samples
+  exact_max_n: 250              # exact permutation p-value up to this many samples (and whenever ties dominate)
 
 impact:
   tier_weights: {0: 10, 1: 4, 2: 2, 3: 1}
@@ -97,5 +97,11 @@ business:                       # cost replay (business.py) only; every value is
 
 redaction:
   patterns:
-    - '(?i)(api[_-]?key|password|secret|token)\s*[:=]\s*\S+'
+    # A pattern's 'keep' group (the key and its quotes) is kept, so a redacted JSON prompt stays valid JSON:
+    # "password": "x" -> "password": "[REDACTED]". Keys cover password, pwd, secret, secret_key, client_secret,
+    # private_key, aws_secret_access_key, api keys and tokens; values may be quoted, escaped-quoted or bare.
+    - '(?i)(?P<keep>\b[\w-]*?(?:api[_-]?key|passw(?:or)?d|pwd|secret|token|private[_-]?key|access[_-]?key)[\w-]*(?:\\?["''])?\s*(?:[:=]|\bis\b)\s*(?P<q>\\?["''])?)(?(q)[^"''\\]*|[^\s"''\\,;}\]]+)'
+    - '(?i)(?P<keep>\b[\w-]*?(?:api[_-]?key|passw(?:or)?d|pwd|secret|token|private[_-]?key|access[_-]?key)[\w-]*(?:\\?["''])?\s+\\?["''])[^"''\\]*'
+    - '(?i)(?P<keep>\bbearer\s+)[A-Za-z0-9._~+/-]+=*'
+    - '-----BEGIN (?:[A-Z]+ )*PRIVATE KEY-----[\s\S]*?-----END (?:[A-Z]+ )*PRIVATE KEY-----'
     - '[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}'

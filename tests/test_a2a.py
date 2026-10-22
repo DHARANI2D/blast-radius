@@ -59,3 +59,13 @@ def test_errors(server):
     assert rpc(server, "tasks/cancel", {"id": "x"})["error"]["code"] == -32002
     assert rpc(server, "nope", {})["error"]["code"] == -32601
     assert rpc(server, "message/send", {"message": {"parts": []}})["error"]["code"] == -32603
+
+
+def test_message_naming_no_known_asset_is_rejected(server, sv):
+    msg = {"message": {"role": "user", "messageId": "m9", "metadata": {"skillId": "execute-approved-change"},
+                       "parts": [{"kind": "text", "text": "Execute approved plan 20261022-000000-abcd"}]}}
+    res = rpc(server, "message/send", msg)["result"]
+    assert res["status"]["state"] == "rejected"
+    assert "no recognised targets" in res["status"]["message"]["parts"][0]["text"]
+    data = res["artifacts"][0]["parts"][0]["data"]
+    assert data["status"] == "escalated" and data["attempts"] == 0 and "plan_hash" not in data

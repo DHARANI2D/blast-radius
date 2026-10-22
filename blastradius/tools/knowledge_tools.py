@@ -27,14 +27,16 @@ def tools(ctx: ToolContext) -> list[ToolSpec]:
             return kb.incidents_for(component, version, model or None)
         return kb.all_incidents()
 
-    def record_incident(incident: dict) -> dict:
-        """WRITE (knowledge base only). Store a lesson learned from a failed change."""
-        return kb.add_learned_incident(incident)
+    def record_incident(incident: dict, run_id: str, approval_token: str) -> dict:
+        """WRITE (knowledge base only). Store a lesson learned from a rolled-back change. Learned incidents decide
+        which hosts later plans defer, so this requires an approval token for this run and incident id."""
+        ctx.require(approval_token, run_id, str(incident.get("id", "")), "knowledge.record_incident")
+        return kb.add_learned_incident(incident, run_id)
 
     return [
         ToolSpec("knowledge", "search", search, description=search.__doc__),
         ToolSpec("knowledge", "get_release_notes", get_release_notes, description=get_release_notes.__doc__),
         ToolSpec("knowledge", "list_advisories", list_advisories, description=list_advisories.__doc__),
         ToolSpec("knowledge", "list_incidents", list_incidents, description=list_incidents.__doc__),
-        ToolSpec("knowledge", "record_incident", record_incident, description=record_incident.__doc__),
+        ToolSpec("knowledge", "record_incident", record_incident, write=True, description=record_incident.__doc__),
     ]

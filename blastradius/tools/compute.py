@@ -34,8 +34,8 @@ def tools(ctx: ToolContext) -> list[ToolSpec]:
         raise ValueError(f"no baseline {name!r}")
 
     def apply_firmware(server: str, component: str, version: str, run_id: str, approval_token: str) -> dict:
-        """WRITE. Flash one firmware component. Requires an approval token for this run and server."""
-        ctx.require(approval_token, run_id, server, "compute.apply_firmware")
+        """WRITE. Flash one firmware component. Requires an approval token for this run, server and version."""
+        ctx.require(approval_token, run_id, server, "compute.apply_firmware", version)
         return twin.apply_firmware(server, component, version)
 
     return [

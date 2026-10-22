@@ -42,7 +42,7 @@ def tools(ctx: ToolContext) -> list[ToolSpec]:
 
     def upgrade_switch_os(switch: str, version: str, run_id: str, approval_token: str, hold_down: bool = True) -> dict:
         """WRITE. Upgrade the switch OS and reboot. With hold_down the call returns while the switch is still rebooting."""
-        ctx.require(approval_token, run_id, switch, "network.upgrade_switch_os")
+        ctx.require(approval_token, run_id, switch, "network.upgrade_switch_os", version)
         return twin.upgrade_switch_os(switch, version, hold_down=hold_down)
 
     def wait_upgrade_complete(switch: str) -> dict:

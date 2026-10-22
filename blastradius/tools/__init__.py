@@ -26,8 +26,8 @@ class ToolContext:
     kb: KnowledgeBase
     authority: ApprovalAuthority
 
-    def require(self, token: str, run_id: str, asset: str, action: str) -> None:
-        ok, why = self.authority.check(token, run_id, asset, action)
+    def require(self, token: str, run_id: str, asset: str, action: str, version: str = "") -> None:
+        ok, why = self.authority.check(token, run_id, asset, action, version)
         if not ok:
             raise ToolDenied(why)
 

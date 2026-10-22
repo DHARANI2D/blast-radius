@@ -23,6 +23,9 @@ def test_full_story_with_canary_regression(engine, sv):
     # the cohort canary includes a DL380 on NIC 229.x (regresses) and a DL380 on NIC 230.x (control)
     assert {"blr-esx-01", "blr-esx-03"} <= set(st["plan"]["waves"][0]["assets"])
     assert {r["asset"] for r in st["executions"][0]["regressions"]} == {"blr-esx-01"}
+    # inventory-02 is moved onto a canary host that is evacuated later: 56 migrations, 55 distinct VMs
+    assert (st["executions"][0]["migrations"], st["executions"][0]["migrated_vms"]) == (56, 55)
+    assert "55 VMs live-migrated" in " ".join(e["detail"] for e in st["timeline"])
     for c in st["executions"][0]["firmware_changes"]:
         assert sv.twin.servers[c["asset"]]["firmware"][c["component"]] == c["from"]
     # lesson: the per-component probe blames ROM and exonerates iLO on the regressed host itself;
@@ -46,13 +49,23 @@ def test_full_story_with_canary_regression(engine, sv):
 
 
 @pytest.mark.parametrize("optimise", [True, False])
-def test_a_hallucinating_first_draft_is_rejected_with_or_without_the_optimiser(tmp_path, optimise):
-    # The scripted ungrounded draft for one host is feasible but its rationale is false. The optimiser
-    # re-sequences feasible plans and has the planner re-explain them; the draft's claims must still be checked.
+def test_a_hallucinating_first_draft_is_rejected_with_or_without_the_optimiser(tmp_path, optimise, monkeypatch):
+    # Attempt 1 has feasible waves but a false CVE claim in its rationale. The optimiser re-sequences
+    # feasible plans and has the planner re-explain them; the draft's claims must still be checked.
+    from blastradius import offline_llm
+
+    def lying_planner(ctx, _grounded=offline_llm._grounded_plan):
+        out = _grounded(ctx)
+        if ctx["attempt"] == 1:
+            out["rationale"] += f" System ROM {ctx['target_versions']['System ROM'][0]} remediates SYN-CVE-2026-1105."
+        return out
+
+    monkeypatch.setattr(offline_llm, "planner", lying_planner)
     sv = make_services(tmp_path)
     sv.policy.data.setdefault("optimizer", {})["enabled"] = optimise
-    r, _ = drive(Engine(sv), "Upgrade iLO 6 and System ROM on blr-esx-10 to the latest baseline this Saturday 10pm")
+    r, _ = drive(Engine(sv))
     a1 = r["state"]["attempts"][0]
+    assert not optimise or a1["optimization"]["improved"]
     assert a1["constraints"]["ok"] and not a1["passed"]
     assert ("verification_draft" in a1) == optimise
     claims = (a1["verification_draft"] if optimise else a1["verification"])["claims"]
@@ -75,8 +88,21 @@ def test_learned_regression_defers_matching_hosts(tmp_path):
     sv = make_services(tmp_path)
     drive(Engine(sv))
     sv.reset_lab(forget_lessons=False)
+    probes = []
+    call = sv.bus.call
+
+    def spy(agent, key, **args):
+        if agent == "executor" and key == "virt.enter_maintenance" and args["host"] == "blr-esx-07":
+            # blr-esx-07 is deferred and only evacuated for its switch: maintenance is granted, firmware never is
+            run_id, tv = args["run_id"], sv.authority
+            probes.append([tv.check(tv.token(run_id, "blr-esx-07", "compute.apply_firmware", v), run_id, "blr-esx-07",
+                                    "compute.apply_firmware", v)[0] for v in ("1.64", "U54 v2.32")])
+        return call(agent, key, **args)
+
+    sv.bus.call = spy
     r, gates = drive(Engine(sv))
     st = r["state"]
+    assert any("blr-esx-07" in w.get("evacuate", []) for w in st["plan"]["waves"]) and probes == [[False, False]]
     deferred = {d["asset"] for d in st["risk"]["deferred"]}
     # only DL380s still on NIC 229.x are deferred; the four DL380s on NIC 230.x proceed
     assert len(deferred) == 16
@@ -92,13 +118,25 @@ def test_clean_run_needs_dual_approval_for_fleet(tmp_path):
     eng = Engine(sv)
     r = eng.start(INTENT)
     assert r["interrupt"]["scope"] == "canary"
+    # an approval with no approver name is not signed and nothing runs: the gate asks again and says why
+    r = eng.resume(r["run_id"], {"decision": "approve", "approver": "   "})
+    assert r["interrupt"]["scope"] == "canary" and "named approver" in r["state"]["approval_error"]
+    assert r["state"]["approvals"] == [] and r["state"]["executions"] == [] and sv.twin.maintenance == set()
     r = eng.resume(r["run_id"], {"decision": "approve", "approver": "asha.ops"})
     assert r["interrupt"]["scope"] == "fleet" and r["interrupt"]["canary_result"]["result"] == "passed"
-    # one approver twice is not two approvers: the gate asks again
-    r = eng.resume(r["run_id"], {"decision": "approve", "approvers": ["asha.ops", "asha.ops"]})
-    assert r["interrupt"]["scope"] == "fleet"
-    r = eng.resume(r["run_id"], {"decision": "approve", "approvers": ["asha.ops", "ravi.net"]})
+    assert r["state"]["approval_error"] == ""
+    # the fleet card's duration and max BRS cover the waves still to run, not the canary that already ran
+    fc = r["interrupt"]
+    assert fc["total_duration_min"] == sum(w["duration_min"] for w in fc["waves"]) < r["state"]["constraints"]["total_duration_min"]
+    assert fc["max_brs"] == max(w["brs"] for w in fc["waves"])
+    # one approver twice, in any case or spacing, is not two approvers: the gate asks again and says why
+    for names in (["asha.ops", "asha.ops"], ["asha.ops", " ASHA.OPS "], ["asha.ops", "   "]):
+        r = eng.resume(r["run_id"], {"decision": "approve", "approvers": names})
+        assert r["interrupt"]["scope"] == "fleet" and "2 distinct approvers; got 1" in r["state"]["approval_error"]
+        assert len(r["state"]["executions"]) == 1
+    r = eng.resume(r["run_id"], {"decision": "approve", "approvers": [" asha.ops", "ravi.net"]})
     st = r["state"]
+    assert st["approval_error"] == "" and [a["approver"] for a in st["approvals"]] == ["asha.ops", "asha.ops", "ravi.net"]
     assert st["status"] == "completed"
     assert all(e["result"] == "passed" for e in st["executions"])
     assert {s["firmware"]["iLO 6"] for s in sv.twin.servers.values()} == {"1.64"}
@@ -186,16 +224,6 @@ def test_every_model_call_behind_the_approval_and_the_report_is_in_the_ledger(tm
     assert r["state"]["attempts"][-1]["explain_llm"]["role"] == "planner_explain"
 
 
-def test_approving_a_plan_with_no_waves_completes_without_executing(engine, sv):
-    before = sv.twin.snapshot()
-    r = engine.start("Upgrade System ROM on PROD-BLR-99 this Saturday 10pm")
-    assert r["interrupt"]["scope"] == "canary" and r["state"]["plan"]["waves"] == []
-    r = engine.resume(r["run_id"], {"decision": "approve", "approver": "asha.ops"})
-    assert r["interrupt"] is None and r["state"]["status"] == "completed"
-    assert not r["state"].get("executions") and r["state"]["report"]
-    assert sv.twin.snapshot()["firmware"] == before["firmware"]
-
-
 def test_rollback_scope_asset_reverts_only_the_regressed_hosts(engine, sv):
     sv.policy.data["execution"]["rollback_scope"] = "asset"
     r, gates = drive(engine)
@@ -205,3 +233,50 @@ def test_rollback_scope_asset_reverts_only_the_regressed_hosts(engine, sv):
     kept = {c["asset"] for c in st["executions"][0]["firmware_changes"]} - {"blr-esx-01"}
     assert kept and all(sv.twin.servers[c["asset"]]["firmware"][c["component"]] == c["to"]
                         for c in st["executions"][0]["firmware_changes"] if c["asset"] in kept)
+
+def test_report_lists_each_section_once(engine, sv):
+    r, _ = drive(engine)
+    md = open(r["state"]["report"]["path"]).read()
+    heads = [ln for ln in md.splitlines() if ln.startswith("## ")]
+    assert len(heads) == len(set(heads))
+    assert any(h.startswith("## Business impact") for h in heads)
+
+
+def test_intent_with_no_known_target_stops_at_intake(engine, sv):
+    before = sv.twin.snapshot()["firmware"]
+    for intent in ("hello", "Upgrade System ROM on PROD-BLR-99 this Saturday 10pm", "Execute approved plan 123"):
+        r, gates = drive(engine, intent)
+        st = r["state"]
+        assert gates == [] and st["status"] == "escalated" and st["outcome_reason"].startswith("no recognised targets")
+        assert not st.get("plan") and not st["attempts"] and not st["approvals"] and not st["executions"]
+        assert st["report"]["outcome"] == "escalated" and "No change was planned or executed" in st["report"]["summary"]
+    assert sv.twin.snapshot()["firmware"] == before and sv.memory.stats()["runs"] == 0
+
+
+def test_every_target_deferred_is_nothing_to_do(tmp_path):
+    sv = make_services(tmp_path)
+    eng = Engine(sv)
+    drive(eng)  # learns the NIC 229.x regression on blr-esx-01
+    sv.reset_lab(forget_lessons=False)
+    r, gates = drive(eng, "Upgrade iLO 6 and System ROM on blr-esx-01 and blr-esx-02 to the latest baseline this Saturday 10pm")
+    st = r["state"]
+    assert gates == [] and st["status"] == "nothing_to_do" and not st["attempts"] and not st["executions"]
+    assert st["outcome_reason"].startswith("nothing to do: all 2 target(s) deferred by INC-BR-")
+    assert st["report"]["outcome"] == "nothing_to_do"
+
+
+def test_go_no_go_card_carries_the_intake_assumption(engine):
+    r = engine.start(INTENT)
+    card = r["interrupt"]
+    assert card["scope"] == "canary" and any(w.startswith("Assumption: 'the ToR switch pair' is ambiguous") for w in card["warnings"])
+    assert any(e["event"] == "warning" and e["agent"] == "intake" for e in r["state"]["timeline"])
+
+
+def test_switch_only_change_is_planned_with_a_one_asset_canary_and_a_warning(tmp_path):
+    sv = make_services(tmp_path, faults=False)
+    r, gates = drive(Engine(sv), "Upgrade switch OS on tor-r1-a and tor-r1-b to the latest baseline this Saturday 10pm")
+    st = r["state"]
+    assert [g["scope"] for g in gates] == ["canary", "fleet"] and st["status"] == "completed"
+    assert st["plan"]["waves"][0]["assets"] == ["tor-r1-b"]
+    assert "no eligible low-tier canary; canary is tor-r1-b" in gates[0]["warnings"]
+    assert sv.twin.switches["tor-r1-a"]["firmware"] == sv.twin.switches["tor-r1-b"]["firmware"] == "10.14.1000"

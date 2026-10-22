@@ -100,13 +100,14 @@ def _subset_sum_counts(values: Sequence[int], k: int) -> dict[int, int]:
 
 # ------------------------------------------------------------ Mann-Whitney
 def mann_whitney_u(x: Sequence[float], y: Sequence[float], alternative: str = "greater",
-                   exact_max_n: int = 40) -> dict:
+                   exact_max_n: int = 250) -> dict:
     """Two-sample Mann-Whitney U test of ``x`` against ``y``.
 
     ``alternative="greater"`` asks whether x tends to be larger than y. Uses the exact permutation
-    distribution of the (mid)rank sum when ``len(x) + len(y) <= exact_max_n``, otherwise the normal
-    approximation with tie and continuity correction. If every value is tied there is no evidence
-    either way and p is 1.
+    distribution of the (mid)rank sum when ``len(x) + len(y) <= exact_max_n`` or when one tie group holds
+    most of the sample (there the normal approximation's variance collapses), otherwise the normal
+    approximation with tie and continuity correction, floored at 1/C(n1+n2, min(n1, n2)), the smallest
+    p a rank test can produce. If every value is tied there is no evidence either way and p is 1.
     """
     n1, n2 = len(x), len(y)
     if not n1 or not n2:
@@ -118,7 +119,7 @@ def mann_whitney_u(x: Sequence[float], y: Sequence[float], alternative: str = "g
     r1 = sum(ranks[:n1])
     u = r1 - n1 * (n1 + 1) / 2
     mu = n1 * n2 / 2
-    if n <= exact_max_n:
+    if n <= exact_max_n or max(ties) > n / 2:
         # Doubled midranks are integers, so the permutation distribution is counted exactly.
         r2x = [int(round(2 * r)) for r in ranks]
         k = min(n1, n2)
@@ -143,7 +144,7 @@ def mann_whitney_u(x: Sequence[float], y: Sequence[float], alternative: str = "g
     else:
         z = (abs(u - mu) - 0.5) / sd
         p = min(1.0, 2 * _norm_sf(z))
-    return {"u": u, "p_value": min(1.0, max(0.0, p)), "z": z, "method": "normal", "n1": n1, "n2": n2}
+    return {"u": u, "p_value": min(1.0, max(1 / math.comb(n, min(n1, n2)), p)), "z": z, "method": "normal", "n1": n1, "n2": n2}
 
 
 # ------------------------------------------------------------ effect sizes
@@ -178,7 +179,7 @@ def _clean(xs: Iterable[float | None]) -> list[float]:
 
 def compare_metric(canary_pre: Sequence[float | None], canary_post: Sequence[float | None],
                    controls: Mapping[str, tuple[Sequence[float | None], Sequence[float | None]]],
-                   alpha: float = 0.01, min_effect: float = 1.15, exact_max_n: int = 40,
+                   alpha: float = 0.01, min_effect: float = 1.15, exact_max_n: int = 250,
                    min_samples: int = 5, min_controls: int = 3) -> dict:
     """One metric check of one canary host. ``controls`` maps control host -> (pre, post) samples
     taken over the same minutes as the canary's. ``None`` samples (maintenance) are ignored."""
@@ -227,7 +228,7 @@ def _score(checks: list[dict]) -> int | None:
     return round(100 * sum(c["verdict"] == PASS for c in judged) / len(judged)) if judged else None
 
 
-def judge(observations: Iterable[dict], alpha: float = 0.01, min_effect: float = 1.15, exact_max_n: int = 40,
+def judge(observations: Iterable[dict], alpha: float = 0.01, min_effect: float = 1.15, exact_max_n: int = 250,
           min_samples: int = 5, min_controls: int = 3) -> dict:
     """Judge a canary. Each observation is
     ``{"host", "metric", "canary": {"pre", "post"}, "controls": {host: {"pre", "post"}}}``, optionally with
@@ -313,7 +314,7 @@ def params(policy) -> dict:
         "min_controls": int(g("min_controls", 3)),
         "widen_to_model": bool(g("widen_to_model", True)),
         "min_samples": int(g("min_samples", 5)),
-        "exact_max_n": int(g("exact_max_n", 40)),
+        "exact_max_n": int(g("exact_max_n", 250)),
     }
 
 

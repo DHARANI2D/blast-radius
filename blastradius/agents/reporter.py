@@ -150,7 +150,8 @@ class ReporterAgent:
             "version": ver,
             "models": models,
             "conditions": {"firmware_prefix": prefixes} if prefixes else {},
-            "symptom": f"{worst['message']} on canary {', '.join(bad)} after {comp} {ver}" + (f" with {cond_txt}" if cond_txt else "") + ".",
+            "symptom": f"{worst['message']} on {'canary' if wave_exec.get('index', 1) == 1 else 'wave ' + str(wave_exec['index'])} "
+                       f"{', '.join(bad)} after {comp} {ver}" + (f" with {cond_txt}" if cond_txt else "") + ".",
             "lesson": " ".join(parts),
             "diagnosis": {"method": method, "culprit": f"{comp} {ver}", "exonerated": [f"{c} {v}" for c, v in exonerated],
                           "controls": controls, "scope": scope},
@@ -158,35 +159,51 @@ class ReporterAgent:
         }
 
     def counterfactual(self, lesson: dict, plan: dict, risk: dict, topo: Topology, components: list[str]) -> dict:
-        """Would a conventional risk-ranked canary of the same size have caught this regression?"""
+        """Would a conventional risk-ranked canary of the same size have caught this regression?
+
+        The fleet is the plan with that canary as wave 1 (``business.baseline_waves``) and hosts match the lesson as
+        in ``business.matcher``, so these counts are the ones the business-impact replay prices."""
+        from ..business import baseline_waves, matcher
         from ..cohorts import build, coverage, risk_ranked_canary
 
         pol = self.sv.policy
         scheduled = [a for w in plan["waves"] for a in w["assets"] if a in topo.servers]
         scores = {a: r["score"] for a, r in risk["assets"].items()}
         naive = risk_ranked_canary(scheduled, topo, scores, pol)
-        conds = (lesson.get("conditions") or {}).get("firmware_prefix", {})
-
-        def affected(h: str) -> bool:
-            s = topo.servers[h]
-            return s["model"] in lesson["models"] and all(s["firmware"].get(c, "").startswith(p) for c, p in conds.items())
-
-        later = [(i, h) for i, w in enumerate(plan["waves"][1:], start=2) for h in w["assets"] if h in topo.servers and affected(h)]
+        affected = matcher(lesson, topo, components, risk.get("target_versions"))
+        fleet = baseline_waves(plan, naive, topo)[1:]
+        later = [(i, h) for i, w in enumerate(fleet, start=2) for h in w["assets"] if h in topo.servers and affected(h)]
         hosts = [h for _, h in later]
         vms = [v for h in hosts for v in topo.vms_on(h)]
+        tier0 = sorted(v["name"] for v in vms if v["tier"] == 0)
         cov = coverage(naive, build(scheduled, topo.servers, components), topo, pol)
+        first = later[0][0] if later else None
+        first_hosts = [h for i, h in later if i == first]
+        last = later[-1][0] if later else None
+        sentence = ""
+        if later:
+            sentence = (f"Wave {first} would then have flashed {len(first_hosts)} affected host(s)"
+                        + (f"; had its post-check missed it too, waves {first + 1}-{last} would have flashed "
+                           f"{len(hosts) - len(first_hosts)} more" if last > first else "")
+                        + f" ({len(hosts)} affected hosts running {len(vms)} VMs in all"
+                        + (f", {len(tier0)} of them tier-0: {', '.join(tier0[:3])}" if tier0 else "") + ").")
         return {
             "risk_ranked_canary": naive,
             "risk_ranked_would_catch": any(affected(h) for h in naive),
             "risk_ranked_cohorts": f"{cov['covered']}/{cov['total']}",
-            "first_exposed_wave": later[0][0] if later else None,
+            "first_exposed_wave": first,
+            "first_wave_hosts": first_hosts,
+            "last_exposed_wave": last,
             "exposed_hosts": hosts,
             "exposed_vms": len(vms),
-            "exposed_tier0_vms": sorted(v["name"] for v in vms if v["tier"] == 0),
+            "exposed_tier0_vms": tier0,
+            "sentence": sentence,
         }
 
-    def learn(self, incident: dict) -> str:
-        _, ev = self.sv.bus.call(self.name, "knowledge.record_incident", incident=incident)
+    def learn(self, run_id: str, incident: dict) -> str:
+        """Record the lesson; the token is granted for this run and incident only after a rollback (workflow.rollback)."""
+        token = self.sv.authority.token(run_id, incident["id"], "knowledge.record_incident")
+        _, ev = self.sv.bus.call(self.name, "knowledge.record_incident", incident=incident, run_id=run_id, approval_token=token)
         return ev
 
     # --------------------------------------------------------------- report
@@ -204,6 +221,10 @@ class ReporterAgent:
             "regressed_assets": sorted({r["asset"] for r in reg}),
             "regression_summary": "; ".join(r["message"] for r in reg[:2]),
             "lesson": (state.get("lesson") or {}).get("symptom", ""),
+            "halt_reason": state.get("halt_reason", ""),
+            "outcome_reason": state.get("outcome_reason", ""),
+            "halted_wave": state.get("current_wave"),
+            "manual_steps": len(state.get("manual_steps") or []),
         }
         try:
             out: _ReportOut = sv.llm.complete_json("report", load_prompt("report"), json.dumps(ctx), _ReportOut, context=ctx, temperature=0.1)
@@ -226,6 +247,7 @@ class ReporterAgent:
             "intent": state.get("intent"),
             "change_request": state.get("change_request"),
             "outcome": outcome,
+            "outcome_reason": state.get("outcome_reason"),
             "summary": out.summary,
             "summary_source": source,
             "summary_llm": llm_rec,
@@ -237,8 +259,14 @@ class ReporterAgent:
             "approvals": [{k: a[k] for k in ("scope", "approver", "decision", "signature")} for a in state.get("approvals", [])],
             "waves": [{"index": w["index"], "name": w["name"], "result": w.get("result"), "assets": len(w["assets"]),
                        "regressions": w.get("regressions", [])} for w in waves],
+            "halt_reason": state.get("halt_reason"),
+            "partial_wave": next(({"index": w["index"], "name": w["name"], "actions": [f"{a['tool']} {a['asset']}" for a in w["actions"]],
+                                   "firmware_changes": w["firmware_changes"], "in_maintenance": w["in_maintenance"]}
+                                  for w in waves if w.get("result") == "halted"), None),
+            "manual_steps": state.get("manual_steps") or [],
             "rollback": {"reverted": (state.get("rollback") or {}).get("reverted", []),
-                         "recovered": (state.get("rollback") or {}).get("recovered")} if state.get("rollback") else None,
+                         "recovered": (state.get("rollback") or {}).get("recovered"),
+                         "blocked": (state.get("rollback") or {}).get("blocked")} if state.get("rollback") else None,
             "deferred": (state.get("risk") or {}).get("deferred", []),
             "learned_incident": (state.get("lesson") or {}).get("id"),
             "diagnosis": (state.get("lesson") or {}).get("diagnosis"),
@@ -264,10 +292,10 @@ class ReporterAgent:
         lines = [
             f"# BlastRadius post-change report: {r['run_id']}",
             "",
-            f"**Outcome:** {r['outcome']}  ",
+            f"**Outcome:** {r['outcome']}" + (f" ({r['outcome_reason']})" if r.get("outcome_reason") else "") + "  ",
             f"**Intent:** {r['intent']}  ",
-            f"**Plan:** {r['plan_provenance']} (hash `{(r['plan_hash'] or '')[:16]}`), Trust Score {r['trust_score']}, "
-            f"planner self-confidence {r['planner_self_confidence']}",
+            (f"**Plan:** {r['plan_provenance']} (hash `{(r['plan_hash'] or '')[:16]}`), Trust Score {r['trust_score']}, "
+             f"planner self-confidence {r['planner_self_confidence']}" if r.get("plan_hash") else "**Plan:** none"),
             "",
             "## Summary",
             r["summary"],
@@ -279,8 +307,18 @@ class ReporterAgent:
         for w in r["waves"]:
             lines.append(f"- {w['name']}: **{w['result']}** ({w['assets']} assets)"
                          + ("".join(f"\n  - {x['asset']}: {x['message']}" for x in w["regressions"]) if w["regressions"] else ""))
+        if r.get("halt_reason"):
+            lines += ["", "## Halt", f"Reason: {r['halt_reason']}"]
+            pw = r.get("partial_wave")
+            if pw:
+                lines += [f"{pw['name']} stopped part-way after {len(pw['actions'])} write action(s):"]
+                lines += [f"- {x['asset']} {x['component']}: {x['from']} -> {x['to']}" for x in pw["firmware_changes"]]
+                lines += [f"- {h} was in maintenance when the wave stopped" for h in pw["in_maintenance"]]
+        if r.get("manual_steps"):
+            lines += ["", "## Manual steps (writes are blocked)"] + [f"{i}. {x}" for i, x in enumerate(r["manual_steps"], 1)]
         if r.get("rollback"):
-            lines += ["", "## Rollback", f"Recovered: {r['rollback']['recovered']}"]
+            lines += ["", "## Rollback", f"Recovered: {r['rollback']['recovered']}"
+                      + (f" (blocked: {r['rollback']['blocked']})" if r["rollback"].get("blocked") else "")]
             lines += [f"- {x['asset']} {x['component']} -> {x['to']}" for x in r["rollback"]["reverted"]]
         if r.get("deferred"):
             lines += ["", "## Deferred assets"] + [f"- {d['asset']}: {d['reason']}" for d in r["deferred"]]
@@ -295,20 +333,9 @@ class ReporterAgent:
             lines += ["", "## Counterfactual: risk-ranked canary",
                       f"- Canary {', '.join(cf['risk_ranked_canary'])} covers {cf['risk_ranked_cohorts']} configuration cohorts; "
                       f"would have caught the regression: {cf['risk_ranked_would_catch']}",
-                      f"- Affected hosts in later waves: {len(cf['exposed_hosts'])} ({cf['exposed_vms']} VMs, "
-                      f"{len(cf['exposed_tier0_vms'])} tier-0), first in wave {cf['first_exposed_wave']}"]
-        if r.get("business_impact"):
-            from ..business import markdown as business_md
-
-            lines += ["", business_md(r["business_impact"])]
-        pm = r.get("premortem")
-        if pm:
-            lines += ["", "## Pre-mortem (assumption-driven, not measured)",
-                      f"P(tier-0 outage over the change) {pm.get('p_tier0_loss', 0):.2%}; expected VMs lost {pm.get('expected_vms_lost', 0):.2f}"]
-        mem = r.get("planning_memory")
-        if mem:
-            lines += ["", "## Planning memory",
-                      f"{mem.get('rules', 0)} rules; first-attempt pass rate {mem.get('first_attempt_pass_rate')} over {mem.get('runs', 0)} run(s)"]
+                      f"- Affected hosts in the fleet waves: {len(cf['exposed_hosts'])} ({cf['exposed_vms']} VMs, "
+                      f"{len(cf['exposed_tier0_vms'])} tier-0); {len(cf.get('first_wave_hosts', []))} in wave {cf['first_exposed_wave']}, "
+                      f"the rest by wave {cf.get('last_exposed_wave')}"]
         if r.get("business_impact"):
             from ..business import markdown as business_md
 

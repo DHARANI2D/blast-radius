@@ -5,6 +5,7 @@
 
 from __future__ import annotations
 
+import html
 import json
 import os
 import shutil
@@ -318,8 +319,10 @@ with main:
                 if opt:
                     b, af = opt["before"], opt["after"]
                     st.markdown(f"**Risk-aware wave optimizer** · {opt['status'].replace('_', ' ')} · "
-                                f"objective J {b['J']:.0f} → {af['J']:.0f}" + (f" ({(af['J'] - b['J']) / b['J'] * 100:+.0f}%)" if b["J"] else "") + ", "
-                                f"{opt['stats']['iterations']} iterations in {opt['stats']['elapsed_s']:.1f}s. The Verifier above checked the optimised waves.")
+                               f"objective J {b['J']:.0f} → {af['J']:.0f}" + (f" ({(af['J'] - b['J']) / b['J'] * 100:+.0f}%)" if b["J"] else "") + ", "
+                               f"{opt['stats']['iterations']} iterations in {opt['stats']['elapsed_s']:.1f}s"
+                               + (" (stopped by the time cap: this plan depends on machine speed)" if opt["stats"].get("stopped_by") == "time_budget" else "")
+                               + ". The Verifier above checked the optimised waves.")
                     st.dataframe(pd.DataFrame([{"": "before", **{k: b[k] for k in ("waves", "duration_min", "sum_brs", "max_brs", "exposure", "J")}},
                                                {"": "after", **{k: af[k] for k in ("waves", "duration_min", "sum_brs", "max_brs", "exposure", "J")}}]),
                                  hide_index=True, width="stretch")
@@ -401,6 +404,8 @@ with main:
             k[1].metric("Max BRS", f"{card['max_brs']:.0f}")
             k[2].metric("Duration", f"{card['total_duration_min']} min")
             k[3].metric("Deferred", len(card["deferred"]))
+            for w in card.get("warnings") or []:
+                st.markdown(f"<div class='br-banner-amber'><b>Warning:</b> {w}</div>", unsafe_allow_html=True)
             cov, rr = card.get("canary_coverage"), card.get("risk_ranked_coverage")
             if cov and card["scope"] == "canary":
                 canary = card["waves"][0]["assets"] if card["waves"] else []
@@ -446,6 +451,8 @@ with main:
             with st.expander("Claims and evidence"):
                 for c in card["claims"]:
                     st.markdown(f"{LABEL_ICON[c['label']]} {c['text']} <span class='br-tag'>({', '.join(c['evidence'])})</span>", unsafe_allow_html=True)
+            if state.get("approval_error"):
+                st.error(f"Not signed: {state['approval_error']}")
             with st.form(f"approve_{card['scope']}"):
                 names = [st.text_input(f"Approver {i + 1}", value=["asha.ops", "ravi.net"][i] if i < 2 else "")
                          for i in range(card["required_approvers"])]
@@ -481,18 +488,25 @@ with main:
             st.info("Nothing executed yet.")
         else:
             status_rows = []
+            rolled_back = bool(state.get("rollback")) and not state["rollback"].get("blocked")
             for i, w in enumerate(plan["waves"], 1):
                 ex = next((e for e in execs if e["index"] == i), None)
                 if ex is None:
                     s = "⏸ not run" if state.get("status") in ("rolled_back", "halted", "rejected", "stopped_after_canary") else "⏳ pending"
                 elif ex.get("result") == "passed":
                     s = "✅ passed"
+                elif ex.get("result") == "halted":
+                    s = "↩️ halted, rolled back" if rolled_back else "⛔ halted part-way"
                 else:
-                    s = "↩️ rolled back" if state.get("rollback") else "❌ regression"
+                    s = "↩️ rolled back" if rolled_back else "❌ regression"
                 status_rows.append({"wave": w["name"], "assets": len(w["assets"]), "status": s,
                                     "actions": len(ex["actions"]) if ex else 0, "VMs migrated": ex["migrated_vms"] if ex else 0})
             st.dataframe(pd.DataFrame(status_rows), hide_index=True, width="stretch")
-            if execs:
+            if state.get("halt_reason"):
+                st.markdown(f"<div class='br-banner-red'><b>Halted:</b> {html.escape(state['halt_reason'])}</div>", unsafe_allow_html=True)
+                if state.get("manual_steps"):
+                    st.markdown("**Manual clean-up (writes are blocked)**\n" + "\n".join(f"{i}. {x}" for i, x in enumerate(state["manual_steps"], 1)))
+            if execs and any(e.get("series") for e in execs):
                 ex = execs[0] if not state.get("rollback") else execs[-1]
                 st.markdown(f"##### Live golden signals · {ex['name']} · NIC latency (ms)")
                 st.caption("Gaps = host in maintenance (evacuated, flashing, rebooting). Threshold: 2x the pre-change baseline.")
@@ -519,7 +533,10 @@ with main:
                 if regs:
                     st.markdown("<div class='br-banner-red'><b>Auto-halt.</b> " + "; ".join(f"{r['asset']}: {r['message']}" for r in regs)
                                 + ". Remaining waves cancelled; write access revoked.</div>", unsafe_allow_html=True)
-                if state.get("rollback"):
+                if state.get("rollback") and state["rollback"].get("blocked"):
+                    st.markdown(f"<div class='br-banner-red'><b>Rollback blocked:</b> {html.escape(state['rollback']['blocked'])}. "
+                                "Manual clean-up steps are listed above.</div>", unsafe_allow_html=True)
+                elif state.get("rollback"):
                     rb = state["rollback"]
                     st.markdown(f"<div class='{'br-banner-green' if rb['recovered'] else 'br-banner-red'}'><b>Rollback:</b> "
                                 + ", ".join(f"{x['asset']} {x['component']} → {x['to']}" for x in rb["reverted"])
@@ -567,8 +584,10 @@ with main:
                                 help="Risk-ranked canary on the greedy wave order, replayed on the twin.")
                     k[2].metric("What happened", f"${h['actual_usd']:,.0f}")
                     opt = biz.get("with_optimised_order")
-                    k[3].metric("Optimised order alone", f"${opt['counterfactual_usd']:,.0f}" if opt else "-",
-                                help="If the canary had missed it but the risk-aware ordering had been used.")
+                    missed = bool(opt) and (opt.get("detected_wave") or 0) > 1
+                    k[3].metric("Optimised order alone", f"${opt['counterfactual_usd']:,.0f}" if missed else "-",
+                                help="If the canary had missed it but the risk-aware ordering had been used."
+                                     + ("" if missed else " Not applicable: a risk-ranked canary would also have caught it."))
                     st.caption(h["text"])
                     st.dataframe(pd.DataFrame(cost_table(biz)), hide_index=True, width="stretch")
                     with st.expander("Timeline, exposure, sensitivity and assumptions"):
@@ -585,12 +604,9 @@ with main:
                                 "Press <b>New run</b> and analyse again: affected hosts are now deferred.</div>", unsafe_allow_html=True)
                 cf = state.get("counterfactual")
                 if cf and not cf["risk_ranked_would_catch"] and cf["exposed_hosts"]:
-                    t0 = cf["exposed_tier0_vms"]
                     st.markdown(f"<div class='br-banner-red'><b>Counterfactual:</b> a risk-ranked canary of the same size "
                                 f"({', '.join(cf['risk_ranked_canary'])}; {cf['risk_ranked_cohorts']} cohorts) has no affected host and "
-                                f"would have passed. Wave {cf['first_exposed_wave']} would then have started flashing "
-                                f"{len(cf['exposed_hosts'])} affected hosts running {cf['exposed_vms']} VMs"
-                                + (f", including tier-0 {', '.join(t0[:3])}" if t0 else "") + ".</div>", unsafe_allow_html=True)
+                                f"would have passed. {cf['sentence']}</div>", unsafe_allow_html=True)
 
     # --------------------------------------------------------------- audit
     with tabs[4]:
@@ -614,7 +630,9 @@ with main:
             if src.exists() and entries:
                 tmp = Path(tempfile.mkdtemp()) / "ledger-copy.sqlite"
                 shutil.copy(src, tmp)
-                led = Ledger(tmp)
+                if Path(f"{src}.anchor").exists():
+                    shutil.copy(f"{src}.anchor", f"{tmp}.anchor")
+                led = Ledger(tmp, sv.settings.signing_key)
                 victim = next((e for e in entries if e["event"] == "approval"), entries[0])
                 led.tamper(victim["seq"], {**victim["payload"], "approver": "mallory"})
                 v = led.verify()

@@ -1,6 +1,8 @@
 """LangGraph supervisor: the BlastRadius state machine.
 
     intake -> discover -> assess -> plan -> verify --(gate fails)--> plan (retry with feedback)
+      |                    |
+      +--------------------+--(no recognised target / every target deferred)--> report
                                               |                     \\-> escalate (human)
                                               v
                                        approve_canary (HITL, 1 approver)
@@ -14,12 +16,16 @@
                                report
 
 Human approvals are LangGraph interrupts; the graph is checkpointed, so the UI or
-CLI resumes it with ``Command(resume=...)`` after a person decides.
+CLI resumes it with ``Command(resume=...)`` after a person decides. A wave halted
+mid-way keeps the record of its writes: a failed MCP call rolls the partial wave
+back; a policy stop (kill switch, scope, rate limit) goes to the report, which lists
+what is left and the manual steps.
 """
 
 from __future__ import annotations
 
 import operator
+import re
 import time
 import uuid
 from typing import Annotated, Any, TypedDict
@@ -31,6 +37,7 @@ from langgraph.types import Command, interrupt
 from .agents import (ExecutorAgent, IntakeAgent, PlannerAgent, PostValidationAgent, ReporterAgent, RiskAgent,
                      RollbackAgent, TopologyAgent, VerifierAgent)
 from .agents.executor import ExecutionHalted
+from .agents.rollback import manual_steps
 from .agents.reporter import plan_hash
 from .canary_stats import analyse_wave, changed_assets, params as stat_params, summary as stat_summary
 from .cohorts import build as build_cohorts, coverage, risk_ranked_canary
@@ -42,12 +49,15 @@ from .llm import LLMError
 from .mcp_layer import ToolCallError
 
 WRITE_ACTIONS = ["virt.enter_maintenance", "virt.exit_maintenance", "compute.apply_firmware", "network.upgrade_switch_os"]
+MAINTENANCE_ACTIONS = WRITE_ACTIONS[:2]
 
 
 class RunState(TypedDict, total=False):
     run_id: str
     intent: str
     change_request: dict
+    intake_warnings: list
+    outcome_reason: str
     targets: dict
     topology: dict
     risk: dict
@@ -59,11 +69,13 @@ class RunState(TypedDict, total=False):
     verification_draft: dict | None
     constraints: dict
     approvals: list
+    approval_error: str
     executions: list
     current_wave: int
     fleet_approved: bool
     status: str
     halt_reason: str
+    manual_steps: list
     rollback: dict
     lesson: dict
     counterfactual: dict
@@ -104,9 +116,22 @@ def build_graph(sv):
                                                       "llm": out["llm"], "evidence": out["evidence"]})
         t = out["targets"]
         cr = out["change_request"]
-        return {"change_request": cr, "targets": t, "status": "analysing", "attempts": [], "approvals": [], "executions": [],
-                "timeline": tl + _t("intake", "parsed", f"{cr['summary']}: {len(t['servers'])} servers, {len(t['switches'])} switches; "
-                                    f"window {cr['window']['day']} {cr['window']['start']} for {cr['window']['duration_minutes']} min")}
+        tl += _t("intake", "parsed", f"{cr['summary']}: {len(t['servers'])} servers, {len(t['switches'])} switches; "
+                                    f"window {cr['window']['day']} {cr['window']['start']} for {cr['window']['duration_minutes']} min")
+        tl += [e for w in out["warnings"] for e in _t("intake", "warning", w, "warn")]
+        upd = {"change_request": cr, "targets": t, "intake_warnings": out["warnings"], "status": "analysing", "attempts": [],
+               "approvals": [], "executions": []}
+        if not t["servers"] and not t["switches"]:
+            # Nothing to plan: stop here, before any plan, approval or write.
+            reason = ("no recognised targets: the intent names no cluster, server or switch in the inventory"
+                      + (f" ({'; '.join(w for w in out['warnings'] if w.startswith('Dropped'))})"
+                         if any(w.startswith("Dropped") for w in out["warnings"]) else ""))
+            log(state, "agent:intake", "no_targets", {"reason": reason})
+            return {**upd, "status": "escalated", "outcome_reason": reason, "timeline": tl + _t("supervisor", "escalated", reason, "error")}
+        return {**upd, "timeline": tl}
+
+    def after_intake(state: RunState) -> str:
+        return "report" if state["status"] == "escalated" else "discover"
 
     def discover(state: RunState):
         topo, summary = topo_a.run()
@@ -130,7 +155,17 @@ def build_graph(sv):
         tl = _t("risk", "scored", "highest risk: " + ", ".join(f"{r['asset']} {r['score']}" for r in top[:3]))
         if risk["deferred"]:
             tl += _t("risk", "deferred", f"{len(risk['deferred'])} asset(s) deferred: {risk['deferred'][0]['reason']}", "warn")
+        t = state["targets"]
+        if not set(t["servers"] + t["switches"]) - {d["asset"] for d in risk["deferred"]}:
+            by = sorted({(re.search(r"\bINC-[\w-]+", d["reason"]) or [d["reason"]])[0] for d in risk["deferred"]})
+            reason = f"nothing to do: all {len(risk['deferred'])} target(s) deferred by {', '.join(by)}"
+            log(state, "agent:risk", "nothing_to_do", {"reason": reason})
+            return {"risk": risk, "status": "nothing_to_do", "outcome_reason": reason,
+                    "timeline": tl + _t("supervisor", "nothing_to_do", reason, "warn")}
         return {"risk": risk, "timeline": tl}
+
+    def after_assess(state: RunState) -> str:
+        return "report" if state["status"] == "nothing_to_do" else "plan"
 
     # -------------------------------------------------------------- plan
     def plan(state: RunState):
@@ -182,7 +217,7 @@ def build_graph(sv):
         cr, targets, risk, topo = state["change_request"], state["targets"], state["risk"], topo_of(state)
         res = optimize(cur["plan"], targets, topo, risk, pol, cr["components"], cr["window"]["duration_minutes"],
                        risk["deferred"], seed=int(pol.get("optimizer.seed", 5)),
-                       time_budget_s=float(pol.get("optimizer.time_budget_s", 2.0)))
+                       time_budget_s=float(pol.get("optimizer.time_budget_s", 60.0)))
         summary = {k: res[k] for k in ("status", "improved", "before", "after", "changes", "stats", "weights")}
         cur["optimization"] = summary
         tl: list[dict] = []
@@ -347,6 +382,10 @@ def build_graph(sv):
             "premortem": state.get("premortem"),
             "premortem_compare": state.get("premortem_compare"),
             "risk_ranked_coverage": _risk_ranked_coverage(state),
+            "warnings": list(state.get("intake_warnings") or [])
+            + ([f"no eligible low-tier canary; canary is {cons['canary_fallback']}"] if cons.get("canary_fallback") else []),
+            "optimizer_stopped_by": (next((a for a in reversed(state["attempts"]) if a.get("passed")), {})
+                                     .get("optimization") or {}).get("stats", {}).get("stopped_by"),
         }
         if scope == "fleet":
             canary = state["executions"][0]
@@ -355,7 +394,10 @@ def build_graph(sv):
             cs = canary.get("canary_stats")
             if cs:
                 c["canary_result"]["statistical"] = {"verdict": cs["verdict"], "score": cs["score"], "summary": stat_summary(cs)}
+            # The fleet gate covers only the waves still to run; the canary has already run.
             c["waves"] = c["waves"][1:]
+            c["total_duration_min"] = sum(w["duration_min"] for w in c["waves"])
+            c["max_brs"] = max((w["brs"] for w in c["waves"]), default=0.0)
         return c
 
     def _risk_ranked_coverage(state) -> dict | None:
@@ -369,51 +411,84 @@ def build_graph(sv):
         cov = coverage(naive, build_cohorts(scheduled, topo.servers, state["change_request"]["components"]), topo, pol)
         return {"canary": naive, **{k: cov[k] for k in ("covered", "total", "missing", "hosts_represented", "hosts_total")}}
 
+    def _grant_writes(run_id: str, maintenance: list[str], versions: dict[str, list[str]]) -> None:
+        """Grant maintenance on hosts, and firmware writes on assets only at the listed versions."""
+        topo = sv.runs[run_id]["topo"]
+        sv.authority.grant(run_id, maintenance, MAINTENANCE_ACTIONS)
+        servers = [a for a in versions if a in topo.servers]
+        switches = [a for a in versions if a in topo.switches]
+        sv.authority.grant(run_id, servers, ["compute.apply_firmware"], versions)
+        sv.authority.grant(run_id, switches, ["network.upgrade_switch_os"], versions)
+
     def _grant(state, waves: list[dict]):
-        assets = sorted({a for w in waves for a in w["assets"] + w.get("evacuate", [])})
-        sv.authority.reinstate_run(state["run_id"])
-        sv.authority.grant(state["run_id"], assets, WRITE_ACTIONS)
-        return assets
+        """Grant one approval scope; it replaces the previous scope. Firmware writes are bound to the approved target version."""
+        topo, tv, comps = topo_of(state), state["risk"]["target_versions"], state["change_request"]["components"]
+        maint, versions = [], {}
+        for w in waves:
+            maint += [a for a in w["assets"] + w.get("evacuate", []) if a in topo.servers and a not in maint]
+            for a in w["assets"]:
+                t = tv.get(a, {})
+                versions[a] = [t["Switch OS"]] if a in topo.switches else [t[c] for c in comps if c in t]
+        sv.authority.revoke_grants(state["run_id"])
+        _grant_writes(state["run_id"], maint, versions)
+        return sorted(set(maint) | set(versions))
+
+    def _identity(name: str) -> str:
+        """Approver identity for distinctness: case and whitespace do not make a second person."""
+        return "".join((name or "").split()).casefold()
+
+    def _invalid(msg: str) -> dict:
+        # Nothing is signed or granted; the gate asks again and the UI / CLI show the reason next to the form.
+        return {"approval_error": msg, "timeline": _t("supervisor", "approval_invalid", msg, "warn")}
 
     def approve_canary(state: RunState):
         decision = interrupt(card(state, "canary"))
-        approver = (decision.get("approver") or "").strip() or "unknown"
+        approver = (decision.get("approver") or "").strip()
         verdict = "approve" if decision.get("decision") == "approve" else "reject"
+        if verdict == "approve" and not approver:
+            return _invalid("the canary needs a named approver; nothing was signed or executed")
+        approver = approver or "unknown"
         rec = sv.authority.sign_approval(state["run_id"], state["plan_hash"], "canary", approver, verdict, decision.get("comment", ""))
         log(state, f"human:{approver}", "approval", rec)
         approvals = list(state.get("approvals", [])) + [rec]
         if verdict == "reject":
-            return {"approvals": approvals, "status": "rejected",
+            return {"approvals": approvals, "status": "rejected", "approval_error": "",
                     "timeline": _t("human", "rejected", f"{approver} rejected the plan; nothing executed", "warn")}
         if not state["plan"]["waves"]:  # e.g. no target matched: approved, but there is nothing to execute
             return {"approvals": approvals, "status": "completed",
                     "timeline": _t("supervisor", "completed", "the approved plan has no waves; nothing executed", "warn")}
         assets = _grant(state, state["plan"]["waves"][:1])
         log(state, "code:authority", "write_grant", {"waves": [1], "assets": assets, "actions": WRITE_ACTIONS})
-        return {"approvals": approvals, "current_wave": 1, "status": "executing",
+        return {"approvals": approvals, "current_wave": 1, "status": "executing", "approval_error": "",
                 "timeline": _t("human", "approved", f"{approver} approved plan {state['plan_hash'][:12]} and the canary (signature {rec['signature'][:12]})", "success")}
 
     def after_canary_approval(state: RunState) -> str:
+        if state.get("approval_error"):
+            return "approve_canary"
         return "report" if state["status"] in ("rejected", "completed") else "execute"
 
     def approve_fleet(state: RunState):
         decision = interrupt(card(state, "fleet"))
         need = int(pol.get("approval.fleet.approvers", 2))
-        approvers = [a.strip() for a in decision.get("approvers", []) if a and a.strip()]
+        approvers: list[str] = []
+        for a in decision.get("approvers", []):
+            if (a or "").strip() and _identity(a) not in {_identity(x) for x in approvers}:
+                approvers.append(a.strip())
         verdict = "approve" if decision.get("decision") == "approve" else "reject"
-        if verdict == "approve" and len(set(approvers)) < need:
-            return {"timeline": _t("supervisor", "approval_invalid", f"fleet waves need {need} distinct approvers; got {len(set(approvers))}", "warn")}
+        if verdict == "approve" and len(approvers) < need:
+            return _invalid(f"fleet waves need {need} distinct approvers; got {len(approvers)} "
+                            "(names are compared ignoring case and spaces); nothing was signed or executed")
         approvals = list(state.get("approvals", []))
         for a in (approvers or ["unknown"]):
             rec = sv.authority.sign_approval(state["run_id"], state["plan_hash"], "fleet", a, verdict, decision.get("comment", ""))
             log(state, f"human:{a}", "approval", rec)
             approvals.append(rec)
         if verdict == "reject":
-            return {"approvals": approvals, "status": "stopped_after_canary",
+            return {"approvals": approvals, "status": "stopped_after_canary", "approval_error": "",
                     "timeline": _t("human", "rejected", "fleet waves rejected after the canary", "warn")}
         assets = _grant(state, state["plan"]["waves"][1:])
         log(state, "code:authority", "write_grant", {"waves": list(range(2, len(state["plan"]["waves"]) + 1)), "assets": assets})
-        return {"approvals": approvals, "fleet_approved": True,
+        return {"approvals": approvals, "fleet_approved": True, "approval_error": "",
                 "timeline": _t("human", "approved", f"dual approval by {' and '.join(approvers)} for {len(state['plan']['waves']) - 1} fleet waves", "success")}
 
     def after_fleet(state: RunState) -> str:
@@ -430,9 +505,24 @@ def build_graph(sv):
             res = exec_a.run_wave(state["run_id"], i, wave, state["change_request"]["components"], tv, topo_of(state))
         except (ExecutionHalted, ToolCallError) as exc:
             sv.authority.revoke_run(state["run_id"])
-            log(state, "agent:executor", "halted", {"wave": i, "reason": str(exc)})
-            return {"status": "halted", "halt_reason": str(exc),
-                    "timeline": _t("executor", "halted", f"wave {i} halted: {exc}", "error")}
+            part = getattr(exc, "partial", None)
+            touched = bool(part and (part["firmware_changes"] or part["in_maintenance"]))
+            # A failed MCP call leaves writes possible, so the partial wave is rolled back. A policy stop (kill
+            # switch, scope, rate limit) leaves the clean-up to a person: the report lists what is left and how.
+            undo = touched and getattr(exc, "tool_error", isinstance(exc, ToolCallError))
+            log(state, "agent:executor", "halted", {"wave": i, "reason": str(exc), "rollback": undo, **({
+                "actions": [{k: a[k] for k in ("tool", "asset", "evidence")} for a in part["actions"]],
+                "firmware_changes": part["firmware_changes"], "in_maintenance": part["in_maintenance"]} if part else {})})
+            upd: dict[str, Any] = {"status": "rolling_back" if undo else "halted", "halt_reason": str(exc)}
+            detail = f"wave {i} halted: {exc}"
+            if part:
+                upd["executions"] = list(state.get("executions", [])) + [part]
+                detail += (f" after {len(part['actions'])} write action(s), {len(part['firmware_changes'])} firmware change(s); "
+                           + ("rolling back the partial wave" if undo else f"{len(part['in_maintenance'])} host(s) left in maintenance - manual clean-up"))
+                if not undo:
+                    upd["manual_steps"] = manual_steps(part["firmware_changes"], part["in_maintenance"], part["switches_rebooting"])
+            upd["timeline"] = _t("executor", "halted", detail, "error")
+            return upd
         log(state, "agent:executor", "wave_executed", {"wave": i, "actions": [{k: a[k] for k in ("tool", "asset", "evidence")} for a in res["actions"]],
                                                        "firmware_changes": res["firmware_changes"]})
         return {"executions": list(state.get("executions", [])) + [res],
@@ -440,7 +530,7 @@ def build_graph(sv):
                                                         f"{res['migrated_vms']} VMs live-migrated")}
 
     def after_execute(state: RunState) -> str:
-        return "report" if state.get("status") == "halted" else "postcheck"
+        return {"halted": "report", "rolling_back": "rollback"}.get(state.get("status"), "postcheck")
 
     def postcheck(state: RunState):
         execs = list(state["executions"])
@@ -471,6 +561,8 @@ def build_graph(sv):
             upd["status"] = "completed"
             upd["timeline"] = tl_stats + _t("postcheck", "passed", f"{cur['name']}: {cmp['checked']} signal sets within thresholds; all waves complete", "success")
         else:
+            if not state.get("fleet_approved"):
+                sv.authority.revoke_grants(state["run_id"])  # the canary scope ends; fleet waves need their own approval
             upd["current_wave"] = cur["index"] + 1
             upd["timeline"] = tl_stats + _t("postcheck", "passed", f"{cur['name']}: {cmp['checked']} signal sets within thresholds", "success")
         return upd
@@ -487,21 +579,42 @@ def build_graph(sv):
     def rollback(state: RunState):
         cur = state["executions"][-1]
         topo = topo_of(state)
+        # Rollback writes are bound to the versions captured before the wave ran.
+        versions: dict[str, list[str]] = {}
+        for c in cur["firmware_changes"]:
+            versions.setdefault(c["asset"], []).append(c["from"])
         sv.authority.reinstate_run(state["run_id"])
-        sv.authority.grant(state["run_id"], sorted({c["asset"] for c in cur["firmware_changes"]}), WRITE_ACTIONS)
-        rb = rb_a.run(state["run_id"], cur, topo)
-        sv.authority.revoke_run(state["run_id"])
+        _grant_writes(state["run_id"], rb_a.hosts(cur, topo), versions)
+        try:
+            rb = rb_a.run(state["run_id"], cur, topo)
+        finally:
+            sv.authority.revoke_run(state["run_id"])
+        if rb.get("blocked"):
+            # The guard stopped the rollback (kill switch, scope, rate limit) or a write failed: a person takes over.
+            steps = manual_steps(rb["pending"], rb["in_maintenance"], rb["rebooting"])
+            log(state, "agent:rollback", "rollback_blocked", {k: rb[k] for k in ("blocked", "reverted", "pending", "in_maintenance")}
+                | {"actions": [{k: a[k] for k in ("tool", "asset", "evidence")} for a in rb["actions"]]})
+            return {"rollback": rb, "status": "halted", "halt_reason": f"rollback blocked: {rb['blocked']}; manual action required",
+                    "manual_steps": steps,
+                    "timeline": _t("rollback", "blocked", f"rollback blocked ({rb['blocked']}) after {len(rb['reverted'])} of "
+                                                          f"{len(cur['firmware_changes'])} revert(s); {len(steps)} manual step(s) in the report", "error")}
         assets = {s["asset"] for s in rb["after"]}
         check = post_a.compare([s for s in cur["pre"] if s["asset"] in assets], rb["after"])
         rb["recovered"] = check["passed"]
         log(state, "agent:rollback", "rolled_back", {"reverted": rb["reverted"], "recovered": check["passed"], "evidence": rb["evidence"]})
         base, _ = sv.bus.call("reporter", "compute.get_firmware_baseline", name="latest")
-        lesson = rep_a.lesson_from_rollback(state["run_id"], cur, cur["regressions"], topo, base["components"])
+        lesson = rep_a.lesson_from_rollback(state["run_id"], cur, cur.get("regressions", []), topo, base["components"])
         tl = _t("rollback", "reverted", f"{len(rb['reverted'])} firmware change(s) reverted; signals "
                                         + ("recovered" if check["passed"] else "NOT recovered - page on-call"), "success" if check["passed"] else "error")
         upd: dict[str, Any] = {"rollback": rb, "status": "rolled_back"}
         if lesson:
-            ev = rep_a.learn(lesson)
+            # Learned incidents change which hosts later plans defer, so recording one is a token-gated write too.
+            sv.authority.reinstate_run(state["run_id"])
+            sv.authority.grant(state["run_id"], [lesson["id"]], ["knowledge.record_incident"])
+            try:
+                ev = rep_a.learn(state["run_id"], lesson)
+            finally:
+                sv.authority.revoke_run(state["run_id"])
             log(state, "agent:reporter", "lesson_recorded", {"incident": lesson, "evidence": ev})
             upd["lesson"] = lesson
             tl += _t("reporter", "learned", f"{lesson['id']}: {lesson['symptom']} {lesson['lesson']}", "warn")
@@ -511,13 +624,10 @@ def build_graph(sv):
             cf = rep_a.counterfactual(lesson, baseline, state["risk"], topo, state["change_request"]["components"])
             upd["counterfactual"] = cf
             log(state, "agent:reporter", "counterfactual", cf)
-            if not cf["risk_ranked_would_catch"] and cf["exposed_hosts"]:
-                t0 = cf["exposed_tier0_vms"]
+            if cur["index"] == 1 and not cf["risk_ranked_would_catch"] and cf["exposed_hosts"]:  # only our canary caught it
                 tl += _t("reporter", "counterfactual",
                          f"A risk-ranked canary of the same size ({', '.join(cf['risk_ranked_canary'])}; {cf['risk_ranked_cohorts']} cohorts) "
-                         f"has no affected host and would have passed. Wave {cf['first_exposed_wave']} would then have started flashing "
-                         f"{len(cf['exposed_hosts'])} affected hosts running {cf['exposed_vms']} VMs"
-                         + (f", {len(t0)} of them tier-0 ({', '.join(t0[:3])})" if t0 else "") + ".", "warn")
+                         f"has no affected host and would have passed. {cf['sentence']}", "warn")
         if lesson:
             comps = state["change_request"]["components"]
             biz = counterfactual_impact(lesson, baseline, topo, pol, comps, risk=state["risk"], actual_exec=cur)
@@ -536,8 +646,11 @@ def build_graph(sv):
         return upd
 
     def report(state: RunState):
+        # Every outcome ends here: the run's write access ends with it.
+        sv.authority.revoke_run(state["run_id"])
         atts = state.get("attempts") or []
-        if atts:
+        # The memory metric is about the planner: a first attempt from the deterministic solver, or an empty plan, says nothing.
+        if atts and atts[0]["provenance"] != "deterministic-solver" and any(w["assets"] for w in atts[0]["plan"]["waves"]):
             sv.memory.record_run(state["run_id"], bool(atts[0].get("passed")), len(atts), len(atts[0].get("memory_rules", [])))
         rep = rep_a.run(dict(state))
         log(state, "agent:reporter", "report_signed", {"signature": rep["signature"], "outcome": rep["outcome"], "path": rep["path"],
@@ -555,16 +668,16 @@ def build_graph(sv):
                      ("execute", execute), ("postcheck", postcheck), ("rollback", rollback), ("report", report)]:
         g.add_node(name, fn)
     g.add_edge(START, "intake")
-    g.add_edge("intake", "discover")
+    g.add_conditional_edges("intake", after_intake, ["discover", "report"])
     g.add_edge("discover", "assess")
-    g.add_edge("assess", "plan")
+    g.add_conditional_edges("assess", after_assess, ["plan", "report"])
     g.add_edge("plan", "optimise")
     g.add_edge("optimise", "verify")
     g.add_conditional_edges("verify", after_verify, ["approve_canary", "plan", "escalate"])
     g.add_edge("escalate", "report")
-    g.add_conditional_edges("approve_canary", after_canary_approval, ["execute", "report"])
+    g.add_conditional_edges("approve_canary", after_canary_approval, ["execute", "approve_canary", "report"])
     g.add_conditional_edges("approve_fleet", after_fleet, ["execute", "approve_fleet", "report"])
-    g.add_conditional_edges("execute", after_execute, ["postcheck", "report"])
+    g.add_conditional_edges("execute", after_execute, ["postcheck", "rollback", "report"])
     g.add_conditional_edges("postcheck", after_postcheck, ["rollback", "report", "execute", "approve_fleet"])
     g.add_edge("rollback", "report")
     g.add_edge("report", END)
@@ -585,16 +698,22 @@ class Engine:
         intr = out.pop("__interrupt__", None)
         return {"run_id": run_id, "state": out, "interrupt": intr[0].value if intr else None}
 
+    def _invoke(self, run_id: str, arg) -> dict:
+        try:
+            out = self.graph.invoke(arg, self._cfg(run_id))
+        except Exception:
+            self.sv.authority.revoke_run(run_id)  # a run that dies without reaching the report keeps no write access
+            raise
+        return self._wrap(run_id, out)
+
     def start(self, intent: str, run_id: str | None = None) -> dict:
         run_id = run_id or time.strftime("%Y%m%d-%H%M%S-") + uuid.uuid4().hex[:4]
         self.sv.ledger.append(run_id, "system", "run_started", {"intent": intent, "tool_transport": self.sv.bus.transport,
                                                                 "planner_model": self.sv.llm.model, "verifier_model": self.sv.verifier_llm.model})
-        out = self.graph.invoke({"run_id": run_id, "intent": intent, "timeline": []}, self._cfg(run_id))
-        return self._wrap(run_id, out)
+        return self._invoke(run_id, {"run_id": run_id, "intent": intent, "timeline": []})
 
     def resume(self, run_id: str, decision: dict) -> dict:
-        out = self.graph.invoke(Command(resume=decision), self._cfg(run_id))
-        return self._wrap(run_id, out)
+        return self._invoke(run_id, Command(resume=decision))
 
     def state(self, run_id: str) -> dict:
         return dict(self.graph.get_state(self._cfg(run_id)).values)

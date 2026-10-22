@@ -75,6 +75,7 @@ def _summarise(run: dict) -> dict:
         "run_id": run["run_id"],
         "summary": (st.get("change_request") or {}).get("summary"),
         "status": st.get("status"),
+        "outcome_reason": st.get("outcome_reason"),
         "trust_score": ver.get("trust_score"),
         "planner_self_confidence": ver.get("self_confidence"),
         "attempts": len(st.get("attempts", [])),
@@ -135,11 +136,13 @@ class A2AService:
             run = self.engine.start(intent)
         summary = _summarise(run)
         intr = run.get("interrupt") or {}
+        reason = run["state"].get("outcome_reason")
         state = "input-required" if intr.get("scope") in ("canary", "fleet") else (
-            "failed" if intr.get("scope") == "escalation" else "completed")
+            "failed" if intr.get("scope") == "escalation" else "rejected" if run["state"].get("status") == "escalated" else "completed")
         note = {"input-required": "Plan verified. Awaiting human approval in the BlastRadius Control Tower.",
                 "failed": "No plan passed constraints and verification; escalated to a human.",
-                "completed": "Analysis finished."}[state]
+                "rejected": f"Not a change BlastRadius can plan: {reason}.",
+                "completed": f"Analysis finished: {reason}." if reason else "Analysis finished."}[state]
         task = {
             "kind": "task",
             "id": run["run_id"],

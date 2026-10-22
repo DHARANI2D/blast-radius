@@ -80,9 +80,27 @@ def test_time_budget_is_respected_and_result_stays_feasible(scenario):
     assert res["stats"]["stopped_by"] == "time_budget"
     assert res["stats"]["elapsed_s"] < 0.3 + 0.5
     assert check(scenario, res["plan"])["ok"] and res["after"]["J"] <= res["before"]["J"]
-    default = optimize(scenario["plan"], scenario["targets"], scenario["topo"], scenario["risk"], scenario["sv"].policy,
-                       scenario["cr"]["components"], 480, scenario["risk"]["deferred"])
-    assert default["stats"]["elapsed_s"] < 2.0 + 0.5 and check(scenario, default["plan"])["ok"]
+    assert "stopped by the time cap after" in describe(res)
+
+
+def test_iterations_not_the_clock_decide_the_plan(scenario, monkeypatch):
+    """The policy's time budget is only a safety cap: a machine five times slower gets the same plan."""
+    import time
+
+    import blastradius.optimizer as opt
+
+    def default():
+        return optimize(scenario["plan"], scenario["targets"], scenario["topo"], scenario["risk"], scenario["sv"].policy,
+                        scenario["cr"]["components"], 480, scenario["risk"]["deferred"],
+                        time_budget_s=float(scenario["sv"].policy.get("optimizer.time_budget_s")))
+
+    fast = default()
+    real = time.perf_counter
+    monkeypatch.setattr(opt.time, "perf_counter", lambda: 5 * real())
+    slow = default()
+    assert fast["stats"]["stopped_by"] == slow["stats"]["stopped_by"] == "iterations"
+    assert fast["plan"]["waves"] == slow["plan"]["waves"] and check(scenario, fast["plan"])["ok"]
+    assert "time cap" not in describe(fast)
 
 
 def test_objective_breakdown_matches_its_definition(scenario, result):
