@@ -14,12 +14,14 @@ one of these types and fill its arguments exactly; use "freeform" only when noth
 - per_wave_cap {hosts}: no wave has more than N hosts of one cluster in maintenance
 - canary_safe {}: the canary wave is small and runs no critical workloads
 - canary_covers_cohorts {cohorts?}: the canary contains a host from every (or the N largest)
-  configuration cohort(s), i.e. every model + untouched-firmware combination being upgraded
+  configuration cohort(s), i.e. every model + untouched-firmware combination being upgraded.
+  `cohorts` is the integer N; omit it when the sentence says all/every cohort(s)
 - no_planned_outage {}: no wave causes a workload outage
 - install_order {first, second}: component `first` must be updated before `second`
 - in_window {minutes}: the plan takes about N minutes and fits the window
 - freeform {}: anything else
 
-Components are "iLO 6", "System ROM" or "Switch OS". Copy versions exactly as written.
+Components are "iLO 6", "System ROM" or "Switch OS". Copy versions exactly as written, as strings
+(e.g. "1.64"). `hosts`, `minutes` and `cohorts` are integers.
 
 Return JSON only: {"claims": [{"text": str, "type": str, "args": {}}]}

@@ -53,8 +53,8 @@ class VerifierAgent:
             self._cache[key] = self.sv.bus.call(self.name, tool, **args)
         return self._cache[key]
 
-    def _resolve_version(self, component: str, version: str) -> str:
-        v = version.strip()
+    def _resolve_version(self, component: str, version) -> str:
+        v = str(version).strip()  # a model may write 1.64 as a JSON number
         known = [r["version"] for r in self.sv.kb.release_notes if r["component"] == component]
         for cand in (v, v.lstrip("vV"), v.replace("version ", "")):
             if cand in known:
@@ -83,10 +83,10 @@ class VerifierAgent:
             return self._c_freeform(claim, ctx)
         try:
             return fn(claim["args"], ctx)
-        except (KeyError, TypeError, ValueError) as exc:
-            return "Unverifiable", f"claim arguments could not be checked ({exc})", []
         except ToolCallError as exc:  # one bad claim must not abort the whole verification
             return "Unverifiable", f"evidence could not be gathered ({exc})", [exc.evidence_id]
+        except Exception as exc:  # oddly typed or missing arguments: this claim is unchecked, the rest still are
+            return "Unverifiable", f"checker could not evaluate: {type(exc).__name__}: {exc}", []
 
     def _c_fixes_cve(self, a, ctx):
         comp, cve = a["component"], a["cve"]
@@ -265,6 +265,8 @@ class VerifierAgent:
         e2 = self.sv.evidence.add(self.name, "blastradius.cohort_coverage", {"canary": waves[0]["assets"]},
                                   {k: cov[k] for k in ("covered", "total", "required", "missing", "hosts_represented", "hosts_total")})
         claimed = a.get("cohorts")
+        if isinstance(claimed, str) and claimed.strip().lower() in ("all", "every", "each"):
+            claimed = None  # "every cohort" is what coverage['ok'] checks below
         if not cov["ok"]:
             return ("Contradicted", f"canary covers {cov['covered']} of {cov['total']} configuration cohorts; untested: "
                     + "; ".join(f"{m['label']} ({m['size']} hosts)" for m in cov["missing"]) + ".", [e1, e2])

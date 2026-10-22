@@ -59,3 +59,21 @@ def test_trust_score_blocks_contradictions(sv, topo):
     assert not res["passed"]
     assert res["counts"]["Contradicted"] == 1
     assert res["trust_score"] < 80
+
+
+def test_oddly_typed_arguments_are_checked_or_unverifiable_never_a_crash(sv, topo):
+    # A live extractor may write versions as JSON numbers and "all" for the cohort count.
+    assert check(sv, topo, {"waves": []}, "fixes_cve", {"component": "iLO 6", "version": 1.64, "cve": "SYN-CVE-2026-1101"})[0] == "Supported"
+    assert check(sv, topo, {"waves": []}, "no_known_issues", {"component": "iLO 6", "version": 1.64})[0] == "Contradicted"
+    plan = {"waves": solve(SERVERS, SWITCHES, topo, {}, sv.policy, COMPS, 480)}
+    for cohorts in ("all", "Every", 3, "3", None):
+        assert check(sv, topo, plan, "canary_covers_cohorts", {"cohorts": cohorts})[0] == "Supported", cohorts
+    assert check(sv, topo, plan, "canary_covers_cohorts", {"cohorts": 7})[0] == "Contradicted"
+    # any failure inside a typed checker makes that one claim Unverifiable
+    v = VerifierAgent(sv)
+    v._c_canary_safe = lambda a, c: {}["missing"].strip()
+    v._c_per_wave_cap = lambda a, c: None.strip()
+    c, _ = ctx(sv, topo, plan)
+    for t in ("canary_safe", "per_wave_cap"):
+        label, why, ev = v.check({"type": t, "args": {}, "text": "claim"}, c)
+        assert label == "Unverifiable" and why.startswith("checker could not evaluate: ") and ev == []
