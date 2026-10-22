@@ -131,6 +131,10 @@ class _LoopThread:
     def run(self, coro, timeout: float = 60):
         return asyncio.run_coroutine_threadsafe(coro, self.loop).result(timeout)
 
+    def stop(self) -> None:
+        self.loop.call_soon_threadsafe(self.loop.stop)
+        self.thread.join(timeout=5)
+
 
 class ToolBus:
     def __init__(self, registry: dict[str, ToolSpec], evidence: EvidenceStore, transport: str = "mcp"):
@@ -149,6 +153,12 @@ class ToolBus:
             "tools": sorted(self.registry),
             "write_tools": sorted(k for k, s in self.registry.items() if s.write),
         }
+
+    def close(self) -> None:
+        """Stop the event-loop thread (a UI that swaps transports would otherwise leak one per switch)."""
+        if self._loop is not None:
+            self._loop.stop()
+            self._loop = None
 
     def list_mcp_tools(self, domain: str) -> list[str]:
         if self.transport != "mcp":

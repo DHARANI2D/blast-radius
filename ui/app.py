@@ -22,6 +22,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from blastradius.agents.investigator import InvestigatorAgent  # noqa: E402
 from blastradius.cli import DEFAULT_INTENT  # noqa: E402
+from blastradius.config import Settings  # noqa: E402
 from blastradius.constraints import wave_impact  # noqa: E402
 from blastradius.ledger import Ledger  # noqa: E402
 from blastradius.llm import LLMError  # noqa: E402
@@ -33,6 +34,7 @@ st.set_page_config(page_title="BlastRadius Control Tower", page_icon="💥", lay
 
 LABEL_ICON = {"Supported": "✅", "Contradicted": "❌", "Unverifiable": "❔"}
 LEVEL_ICON = {"info": "🔹", "warn": "🟠", "error": "🔴", "success": "🟢"}
+ANIMATION_FRAMES = 12  # live-signal chart frames, once per run
 
 st.markdown(
     """
@@ -57,22 +59,58 @@ st.markdown(
 def services(transport: str, scenario: str) -> tuple[Services, Engine]:
     key = (transport, scenario)
     if st.session_state.get("svc_key") != key:
-        os.environ["BR_FAULTS"] = scenario
+        old = st.session_state.get("sv")
+        if old is not None:
+            old.bus.close()  # stop the old MCP event-loop thread
         sv = Services.create(tool_transport=transport, fault_scenario=scenario)
         st.session_state.update(svc_key=key, sv=sv, engine=Engine(sv), run=None, animated=set())
+        clear_run_views()
     return st.session_state.sv, st.session_state.engine
 
+
+def clear_run_views() -> None:
+    """Forget per-run results (red-team injection, Ask history) when the run they belong to goes away."""
+    for k in ("inj", "qa"):
+        st.session_state.pop(k, None)
+
+
+def verifier_label(sv: Services) -> str:
+    """How independent the Verifier really is: a separate model only when BR_VERIFIER_MODEL names a different one."""
+    p, v = sv.llm.model, sv.verifier_llm.model
+    if sv.settings.offline:
+        return f"independent agent, temperature 0 · offline stand-in `{v}`"
+    if sv.settings.verifier_model and sv.settings.verifier_model != sv.settings.llm_model:
+        return f"independent agent, temperature 0 · separate model `{v}` (planner `{p}`)"
+    return f"independent agent, temperature 0 · same model as the planner (`{v}`), separate prompt"
+
+
+SCENARIOS = {"on": "Canary regression (ROM + NIC 229.x, ~4x)", "subtle": "Subtle regression (~1.3x, below the 2x rule)",
+             "backup": "Backup job slows every host (no fault)", "on+backup": "Regression during the backup job",
+             "subtle+backup": "Subtle regression during the backup job", "off": "No faults"}
+TRANSPORTS = ["mcp", "inproc"]
+# Defaults follow BR_TOOL_TRANSPORT and BR_FAULTS, read once per session.
+if "defaults" not in st.session_state:
+    _s = Settings()
+    st.session_state.defaults = (_s.tool_transport if _s.tool_transport in TRANSPORTS else "mcp",
+                                 _s.fault_scenario if _s.fault_scenario in SCENARIOS else "on")
+
+run = st.session_state.get("run")
+# A run waiting at a gate (or executing) belongs to the current twin and transport: switching
+# either would re-seed the twin and drop the run without a report, so the controls lock.
+in_flight = bool(run and (run.get("interrupt") or run.get("state", {}).get("status") in ("executing", "rolling_back")))
 
 with st.sidebar:
     st.markdown("## 💥 BlastRadius")
     st.caption("Know what breaks before you break it.")
-    transport = st.radio("Tool transport", ["mcp", "inproc"], horizontal=True,
+    d_transport, d_scenario = st.session_state.defaults
+    transport = st.radio("Tool transport", TRANSPORTS, index=TRANSPORTS.index(d_transport), horizontal=True, disabled=in_flight,
                          help="mcp: every agent tool call goes through an MCP client session to the domain MCP server.")
-    SCENARIOS = {"on": "Canary regression (ROM + NIC 229.x, ~4x)", "subtle": "Subtle regression (~1.3x, below the 2x rule)",
-                 "backup": "Backup job slows every host (no fault)", "on+backup": "Regression during the backup job",
-                 "subtle+backup": "Subtle regression during the backup job", "off": "No faults"}
-    scenario = st.selectbox("Fault scenario", list(SCENARIOS), format_func=SCENARIOS.get,
+    scenario = st.selectbox("Fault scenario", list(SCENARIOS), index=list(SCENARIOS).index(d_scenario), format_func=SCENARIOS.get,
+                            disabled=in_flight,
                             help="Injected into the twin. Agents cannot see these rules; they only observe telemetry.")
+    if in_flight:
+        st.caption("Locked while a change is in flight: finish it (approve, reject or Close change), or press New run, "
+                   "before switching transport or fault scenario.")
     sv, engine = services(transport, scenario)
     desc = sv.bus.describe()
     st.markdown(f"**MCP servers:** {', '.join(desc['servers'])}  \n**Tools:** {len(desc['tools'])} ({len(desc['write_tools'])} write, token-gated)")
@@ -86,10 +124,12 @@ with st.sidebar:
     if c1.button("Reset lab", help="Restore the twin and forget learned incidents", width="stretch"):
         sv.reset_lab(forget_lessons=True)
         st.session_state.run = None
+        clear_run_views()
         st.rerun()
     if c2.button("New run", help="Keep lessons, restore twin state", width="stretch"):
         sv.reset_lab(forget_lessons=False)
         st.session_state.run = None
+        clear_run_views()
         st.rerun()
     kill = st.toggle("Kill switch", value=os.environ.get("BR_KILL_SWITCH") == "on",
                      help="Blocks every write action immediately (checked by the policy guard before each write).")
@@ -107,7 +147,7 @@ with st.sidebar:
     st.divider()
     st.caption("Synthetic lab digital twin (BLR-POD-1). Firmware, CVE and advisory IDs are fictitious. No customer data.")
 
-run = st.session_state.get("run")
+run = st.session_state.get("run")  # New run / Reset lab may have cleared it above
 state = (run or {}).get("state", {})
 intr = (run or {}).get("interrupt")
 
@@ -119,6 +159,7 @@ if b1.button("Analyse change", type="primary", width="stretch"):
     sv.twin.reset()
     with st.status("Agents at work: intake, topology, risk, planner, verifier...", expanded=False) as s:
         t0 = time.time()
+        clear_run_views()
         st.session_state.run = engine.start(intent)
         st.session_state.animated = set()
         s.update(label=f"Analysis complete in {time.time() - t0:.1f}s · {sv.bus.calls} tool calls", state="complete")
@@ -140,14 +181,20 @@ STATUS = {"awaiting_canary_approval": "go / no-go", "executing": "executing", "r
 status_label = STATUS.get(state.get("status"), (state.get("status") or "-").replace("_", " "))
 if intr and intr.get("scope") == "fleet":
     status_label = "canary passed"
+elif intr and intr.get("scope") == "escalation":
+    status_label = "escalated"
 m[0].metric("Status", status_label)
-m[1].metric("Trust Score", f"{ver.get('trust_score', 0):.0f}/100",
-            delta=f"self-reported {ver.get('self_confidence')}" if ver.get("self_confidence") is not None else None, delta_color="off")
+if state.get("verification"):  # the accepted plan's score
+    m[1].metric("Trust Score", f"{ver.get('trust_score', 0):.0f}/100",
+                delta=f"self-reported {ver.get('self_confidence')}" if ver.get("self_confidence") is not None else None, delta_color="off")
+else:  # no plan was accepted: the score belongs to a rejected attempt, not to anything that can run
+    m[1].metric("Trust Score (last rejected attempt)", f"{ver['trust_score']:.0f}/100" if ver.get("trust_score") is not None else "-")
 m[2].metric("Max Blast-Radius Score", f"{cons.get('max_brs', 0):.0f}")
 m[3].metric("Plan attempts", len(state.get("attempts", [])))
-m[4].metric("Est. cost avoided", f"${state['avoided_cost_usd'] / 1e3:,.1f}K" if state.get("avoided_cost_usd") else "-",
+avoided = state.get("avoided_cost_usd")
+m[4].metric("Est. cost avoided (illustrative)", "-" if avoided is None else f"${avoided / 1e3:,.1f}K" if avoided >= 1000 else f"${avoided:,.0f}",
             help="Replayed on the twin: what the conventional risk-ranked canary would have cost minus what happened, "
-                 "at illustrative, sourced rates (policy.yaml: business). See tab ④.")
+                 "at illustrative rates (policy.yaml: business). '-' means no replay ran. See tab ④.")
 
 main, side = st.columns([3.2, 1.3], gap="medium")
 
@@ -175,16 +222,23 @@ with main:
             if state.get("plan"):
                 opts.append("Approved plan · waves")
             opts.append("Risk heat")
-            choice = st.radio("Overlay", opts, horizontal=True, index=min(1, len(opts) - 1), label_visibility="collapsed")
+            # Open on attempt 1's outage when it was rejected; when it passed, on the plan that will run.
+            default = "Attempt 1 · wave 1 impact" if attempts and not attempts[0].get("passed") else "Approved plan · waves"
+            choice = st.radio("Overlay", opts, horizontal=True, index=opts.index(default) if default in opts else 0,
+                              label_visibility="collapsed")
             impact, overlay, plan_for = None, "none", None
-            if choice.startswith("Attempt 1"):
-                first = attempts[0]["plan"]["waves"][0]
+            first = (attempts[0]["plan"]["waves"] or [None])[0] if attempts else None
+            if choice.startswith("Attempt 1") and first is None:
+                st.info("Attempt 1 has no waves.")
+            elif choice.startswith("Attempt 1"):
                 impact = wave_impact(first, topo, sv.policy)
                 overlay = "impact"
+                lost, crit = impact["impacted_vms"], impact["critical_vms"]
                 st.markdown(
-                    f"<div class='br-banner-red'><b>{first['name']}</b> ({', '.join(first['assets'])}): "
-                    f"{len(impact['impacted_vms'])} VMs lose service incl. tier-0 {', '.join(impact['critical_vms'][:4])}"
-                    f"{'...' if len(impact['critical_vms']) > 4 else ''}. "
+                    f"<div class='{'br-banner-red' if lost or impact['arrays_unreachable'] else 'br-banner-green'}'>"
+                    f"<b>{first['name']}</b> ({', '.join(first['assets'])}): "
+                    + (f"{len(lost)} VMs lose service" if lost else "no VMs lose service")
+                    + (f" incl. tier-0 {', '.join(crit[:4])}{'...' if len(crit) > 4 else ''}" if crit else "") + ". "
                     + (f"Storage array {', '.join(impact['arrays_unreachable'])} is reachable only through the R1 ToR pair, so "
                        f"{len(impact['storage_lost_servers'])} hosts in the other cluster lose their datastores. " if impact['arrays_unreachable'] else "")
                     + f"Blast-Radius Score <b>{impact['brs']:.0f}</b>.</div>", unsafe_allow_html=True)
@@ -203,7 +257,8 @@ with main:
                                 f"{', '.join(v['name'] for v in topo.vms_on(s0['server']) if v['tier'] == 0) or 'no tier-0 VMs'}.</div>",
                                 unsafe_allow_html=True)
             deferred = {d["asset"] for d in risk.get("deferred", [])}
-            st.graphviz_chart(build_dot(topo, overlay, plan_for, impact, risk.get("assets"), deferred), width="stretch")
+            st.graphviz_chart(build_dot(topo, overlay, plan_for, impact, risk.get("assets"), deferred,
+                                        high_risk=float(sv.policy.get("planning.high_risk_threshold", 70))), width="stretch")
             st.caption("Red outline/edge: single-homed host · dashed red: dead uplink · purple: storage array ports · blue: VSX/MC-LAG peer link · "
                        "dotted amber: tier-0 service placement · dashed grey node: deferred by learned regression")
             if risk.get("assets"):
@@ -242,7 +297,7 @@ with main:
                     st.dataframe(wdf, hide_index=True, width="stretch",
                                  column_config={"BRS": st.column_config.ProgressColumn("BRS", min_value=0, max_value=100, format="%.0f")})
                 with r:
-                    st.markdown("**Verifier (independent model, temperature 0)**")
+                    st.markdown(f"**Verifier** · {verifier_label(sv)}")
                     k1, k2 = st.columns(2)
                     k1.metric("Planner self-confidence", v["self_confidence"] if v["self_confidence"] is not None else "-")
                     k2.metric("Verified Trust Score", f"{v['trust_score']:.0f}",
@@ -263,7 +318,7 @@ with main:
                 if opt:
                     b, af = opt["before"], opt["after"]
                     st.markdown(f"**Risk-aware wave optimizer** · {opt['status'].replace('_', ' ')} · "
-                                f"objective J {b['J']:.0f} → {af['J']:.0f} ({(af['J'] - b['J']) / b['J'] * 100:+.0f}%), "
+                                f"objective J {b['J']:.0f} → {af['J']:.0f}" + (f" ({(af['J'] - b['J']) / b['J'] * 100:+.0f}%)" if b["J"] else "") + ", "
                                 f"{opt['stats']['iterations']} iterations in {opt['stats']['elapsed_s']:.1f}s. The Verifier above checked the optimised waves.")
                     st.dataframe(pd.DataFrame([{"": "before", **{k: b[k] for k in ("waves", "duration_min", "sum_brs", "max_brs", "exposure", "J")}},
                                                {"": "after", **{k: af[k] for k in ("waves", "duration_min", "sum_brs", "max_brs", "exposure", "J")}}]),
@@ -281,22 +336,30 @@ with main:
             for r in sorted(sv.memory.rules(), key=lambda r: -r["hits"])[:15]:
                 st.markdown(f"- `{r['hits']}x` **{r['key']}**: {r['guidance']}")
         with st.expander("Red-team benchmark: how do we know the Trust Score works?"):
-            if st.button("Run benchmark (about 5 s)", key="rt-run"):
+            extractor = "offline"
+            if not sv.settings.offline:  # live mode: the deployed extractor can be benchmarked too, at a price
+                extractor = st.radio("Claim extractor", ["offline", "configured"], horizontal=True, key="rt-extractor",
+                                     format_func={"offline": "offline extractor (about 5 s)",
+                                                  "configured": f"configured `{sv.verifier_llm.model}` (about 2,000 model calls)"}.get)
+            if st.button("Run benchmark (about 5 s)" if extractor == "offline" else "Run benchmark", key="rt-run"):
                 from blastradius.redteam import run_benchmark
 
                 with st.spinner("Generating labelled false claims and unsafe plan mutations..."):
-                    st.session_state.redteam = run_benchmark(sv, seed=7)
-            rt = st.session_state.get("redteam")
+                    st.session_state.redteam = (extractor, run_benchmark(sv, seed=7, extractor=extractor))
+            used, rt = st.session_state.get("redteam") or (None, None)
             if rt:
                 h = rt["headline"]
+                st.caption(f"Measured with the {used} extractor `{rt['extractor']}`"
+                           + (", not the deployed model." if used == "offline" and not sv.settings.offline else "."))
                 k = st.columns(4)
                 k[0].metric("False claims contradicted", f"{h['typed_caught']}/{h['typed_false']}",
                             help=f"95% CI {h['typed_catch_ci'][0]:.0%}-{h['typed_catch_ci'][1]:.0%}")
                 k[1].metric("Dangerous misses", h["typed_dangerous_misses"])
                 k[2].metric("False blocks on true claims", f"{h['typed_false_blocks']}/{h['typed_true']}")
                 k[3].metric("Unsafe plan mutations rejected", f"{h['plan_mutations_detected']}/{h['plan_mutations']}")
-                st.caption(f"Paraphrase robustness of the offline claim extractor: canonical {h['extraction_canonical']:.0%}, "
-                           f"dev {h['extraction_dev']:.0%}, held-out {h['extraction_held_out']:.0%} (a live model extractor is the fix). "
+                st.caption(f"Paraphrase robustness of the claim extractor `{rt['extractor']}`: canonical {h['extraction_canonical']:.0%}, "
+                           f"dev {h['extraction_dev']:.0%}, held-out {h['extraction_held_out']:.0%}" + (" (a live model extractor is the fix). " if used == "offline" else ". ")
+                           + 
                            f"Injected hallucinations caught: {h['injections_caught']}/{h['injections']}.")
                 from blastradius.redteam import format_markdown
 
@@ -434,20 +497,24 @@ with main:
                 st.markdown(f"##### Live golden signals · {ex['name']} · NIC latency (ms)")
                 st.caption("Gaps = host in maintenance (evacuated, flashing, rebooting). Threshold: 2x the pre-change baseline.")
                 frames = []
-                for asset, pts in ex["series"].items():
+                for asset, pts in (ex.get("series") or {}).items():
                     if state.get("rollback") and asset in state["rollback"].get("series", {}):
                         pts = pts + state["rollback"]["series"][asset]
                     for pt in pts:
                         frames.append({"t (min)": pt["t_min"], "asset": asset, "latency": pt["value"]})
-                df = pd.DataFrame(frames).drop_duplicates(["t (min)", "asset"]).pivot(index="t (min)", columns="asset", values="latency").sort_index()
-                ph = st.empty()
-                key = (run["run_id"], ex["index"])
-                if key not in st.session_state.animated:
-                    for n in range(3, len(df) + 1, 2):
-                        ph.line_chart(df.iloc[:n], height=240)
-                        time.sleep(0.06)
-                    st.session_state.animated.add(key)
-                ph.line_chart(df, height=240)
+                if not frames:  # e.g. a wave with no servers: nothing was sampled
+                    st.caption("No server telemetry for this wave.")
+                else:
+                    df = pd.DataFrame(frames).drop_duplicates(["t (min)", "asset"]).pivot(index="t (min)", columns="asset", values="latency").sort_index()
+                    ph = st.empty()
+                    # Animate once per run, in at most ANIMATION_FRAMES frames, so approving never blocks for long.
+                    if run["run_id"] not in st.session_state.animated:
+                        st.session_state.animated.add(run["run_id"])
+                        step = max(2, -(-len(df) // ANIMATION_FRAMES))
+                        for n in range(3, len(df), step):
+                            ph.line_chart(df.iloc[:n], height=240)
+                            time.sleep(0.03)
+                    ph.line_chart(df, height=240)
                 regs = [r for e in execs for r in e.get("regressions", [])]
                 if regs:
                     st.markdown("<div class='br-banner-red'><b>Auto-halt.</b> " + "; ".join(f"{r['asset']}: {r['message']}" for r in regs)
@@ -467,11 +534,11 @@ with main:
                     k[0].metric("Statistical verdict", cs["verdict"])
                     k[1].metric("Canary score", f"{cs['score']}/100" if cs["score"] is not None else "-")
                     k[2].metric("Checks", len(cs["checks"]))
-                    hosts = list(cs["band"])
-                    failing = [h for h in hosts if cs["hosts"].get(h, {}).get("verdict") == "FAIL"]
+                    hosts = list(cs.get("band") or {})
+                    failing = [h for h in hosts if (cs.get("hosts") or {}).get(h, {}).get("verdict") == "FAIL"]
                     pick = st.radio("Canary host", hosts, index=hosts.index(failing[0]) if failing else 0, horizontal=True,
-                                    key=f"band-{run['run_id']}")
-                    band = pd.DataFrame(cs["band"][pick].get("nic_latency_ms", []))
+                                    key=f"band-{run['run_id']}") if hosts else None
+                    band = pd.DataFrame(cs["band"].get(pick, {}).get("nic_latency_ms", []) if pick else [])
                     if not band.empty:
                         import altair as alt
 

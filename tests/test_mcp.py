@@ -28,3 +28,10 @@ def test_mcp_write_denial_message_survives_transport(mcp_sv):
     with pytest.raises(ToolCallError) as exc:
         mcp_sv.bus.call("rogue", "virt.enter_maintenance", host="blr-esx-03", run_id="x", approval_token="nope")
     assert "not part of an approved wave" in str(exc.value)
+
+
+def test_closing_the_bus_stops_its_event_loop_thread(mcp_sv):
+    thread = mcp_sv.bus._loop.thread
+    assert thread.is_alive()
+    mcp_sv.bus.close()
+    assert not thread.is_alive()

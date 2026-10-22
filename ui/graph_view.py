@@ -10,8 +10,10 @@ def _short(name: str) -> str:
 
 
 def build_dot(topo, overlay: str = "none", plan: dict | None = None, impact: dict | None = None,
-              risk: dict | None = None, deferred: set[str] | None = None) -> str:
-    """overlay: none | impact (one wave's simulated outage) | waves (plan colouring) | risk (heat)."""
+              risk: dict | None = None, deferred: set[str] | None = None, high_risk: float = 70) -> str:
+    """overlay: none | impact (one wave's simulated outage) | waves (plan colouring) | risk (heat).
+
+    ``high_risk`` is policy planning.high_risk_threshold: risk scores at or above it are red."""
     deferred = deferred or set()
     wave_of: dict[str, int] = {}
     if plan:
@@ -25,7 +27,7 @@ def build_dot(topo, overlay: str = "none", plan: dict | None = None, impact: dic
     single = {s["server"] for s in topo.single_homed()}
 
     def risk_color(score: float) -> str:
-        if score >= 70:
+        if score >= high_risk:
             return "#dc2626"
         if score >= 40:
             return "#f97316"

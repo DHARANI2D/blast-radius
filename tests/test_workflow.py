@@ -184,3 +184,14 @@ def test_every_model_call_behind_the_approval_and_the_report_is_in_the_ledger(tm
     assert seen == {"intake": {"change_request"}, "planner": {"plan_proposed"}, "planner_explain": {"plan_optimized"},
                     "verifier_extract": {"verification"}, "verifier_judge": {"verification"}, "report": {"report_signed"}}
     assert r["state"]["attempts"][-1]["explain_llm"]["role"] == "planner_explain"
+
+
+def test_approving_a_plan_with_no_waves_completes_without_executing(engine, sv):
+    before = sv.twin.snapshot()
+    r = engine.start("Upgrade System ROM on PROD-BLR-99 this Saturday 10pm")
+    assert r["interrupt"]["scope"] == "canary" and r["state"]["plan"]["waves"] == []
+    r = engine.resume(r["run_id"], {"decision": "approve", "approver": "asha.ops"})
+    assert r["interrupt"] is None and r["state"]["status"] == "completed"
+    assert not r["state"].get("executions") and r["state"]["report"]
+    assert sv.twin.snapshot()["firmware"] == before["firmware"]
+

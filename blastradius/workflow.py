@@ -384,13 +384,16 @@ def build_graph(sv):
         if verdict == "reject":
             return {"approvals": approvals, "status": "rejected",
                     "timeline": _t("human", "rejected", f"{approver} rejected the plan; nothing executed", "warn")}
+        if not state["plan"]["waves"]:  # e.g. no target matched: approved, but there is nothing to execute
+            return {"approvals": approvals, "status": "completed",
+                    "timeline": _t("supervisor", "completed", "the approved plan has no waves; nothing executed", "warn")}
         assets = _grant(state, state["plan"]["waves"][:1])
         log(state, "code:authority", "write_grant", {"waves": [1], "assets": assets, "actions": WRITE_ACTIONS})
         return {"approvals": approvals, "current_wave": 1, "status": "executing",
                 "timeline": _t("human", "approved", f"{approver} approved plan {state['plan_hash'][:12]} and the canary (signature {rec['signature'][:12]})", "success")}
 
     def after_canary_approval(state: RunState) -> str:
-        return "report" if state["status"] == "rejected" else "execute"
+        return "report" if state["status"] in ("rejected", "completed") else "execute"
 
     def approve_fleet(state: RunState):
         decision = interrupt(card(state, "fleet"))
