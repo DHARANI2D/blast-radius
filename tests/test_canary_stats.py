@@ -48,7 +48,19 @@ def test_mann_whitney_exact_matches_full_enumeration_with_ties():
         res = mann_whitney_u(x, y)
         assert res["method"] == "exact" and res["p_value"] == pytest.approx(_brute_force_p(x, y))
     assert mann_whitney_u([2, 2, 2], [2, 2, 2, 2])["p_value"] == 1.0  # all tied: no evidence either way
-    assert mann_whitney_u([2] * 30, [2] * 30)["p_value"] == 1.0  # same through the normal approximation
+    assert mann_whitney_u([2] * 30, [2] * 30, exact_max_n=0)["p_value"] == 1.0  # same when the sample is large
+
+
+def test_p_value_never_below_what_a_rank_test_can_produce():
+    """Noise-free twin metrics tie almost everything; the normal approximation's variance then collapses
+    (it gave p=1e-36 on the demo). The smallest attainable p is 1 / C(n1 + n2, min(n1, n2))."""
+    floor = 1 / math.comb(160, 10)
+    res = mann_whitney_u([120.0] * 10, [1.0] * 150, exact_max_n=0)  # one tie group holds most of the sample
+    assert res["method"] == "exact" and res["p_value"] == pytest.approx(floor)
+    res = mann_whitney_u([120.0] * 10, [1.0] * 150)  # demo size: exact
+    assert res["method"] == "exact" and res["p_value"] == pytest.approx(floor)
+    res = mann_whitney_u([10, 11, 12], [1, 2, 3], exact_max_n=0)  # no ties, normal branch: z gives 0.04 < 1/C(6, 3)
+    assert res["method"] == "normal" and res["p_value"] == pytest.approx(1 / 20)
 
 
 def test_tie_corrected_variance_equals_the_permutation_variance():

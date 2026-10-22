@@ -73,7 +73,7 @@ canary_stats:                   # peer comparison: canary hosts vs un-upgraded h
   min_controls: 3               # fewer cohort peers widens to the same model; still fewer is reported as insufficient
   widen_to_model: true
   min_samples: 5
-  exact_max_n: 40               # exact permutation p-value up to this many samples
+  exact_max_n: 250              # exact permutation p-value up to this many samples (and whenever ties dominate)
 
 impact:
   tier_weights: {0: 10, 1: 4, 2: 2, 3: 1}
