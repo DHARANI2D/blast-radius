@@ -22,6 +22,7 @@ from ..constraints import impact_kwargs, wave_duration
 from ..llm import LLMError, load_prompt
 from ..mcp_layer import ToolCallError
 from ..models import ClaimList, Judgement
+from ..offline_llm import _sentences
 from ..topology import Topology
 
 SAFETY_RE = re.compile(r"\b(safe(?:ly|ty)?|(?:no|zero) (?:[\w-]+ )?(?:impact|outage|risk|downtime|interruption|disruption|data loss)|"
@@ -39,6 +40,36 @@ CATEGORY = {
     "fixes_cve": "factual", "no_known_issues": "factual", "install_order": "factual",
     "in_window": "informational", "freeform": "informational",
 }
+
+
+WORD_RE = re.compile(r"[a-z0-9]+(?:[.\-/][a-z0-9]+)*")
+STOPWORDS = {"a", "an", "the", "and", "or", "of", "in", "on", "to", "is", "are", "be", "by", "for", "with", "so", "it", "its",
+             "this", "that", "as", "at", "all", "each", "every", "per", "from", "into", "than", "then", "will", "can", "has", "have"}
+CVE_RE = re.compile(r"(?:syn-)?cve-\d{4}-\d+", re.I)
+
+
+def _words(text: str) -> set[str]:
+    return {w for w in WORD_RE.findall(text.lower()) if w not in STOPWORDS}
+
+
+def uncovered_sentences(rationale: str, claims: list[dict]) -> list[str]:
+    """Rationale sentences no extracted claim accounts for.
+
+    A claim belongs to a sentence when at least half of its words (text plus arguments) occur in it.
+    The sentence is covered when the claims that belong to it name half of its words and every CVE
+    it mentions, so an extractor that silently drops a sentence, or half of one, cannot hide it.
+    """
+    bags = [_words(c["text"] + " " + " ".join(str(v) for v in (c.get("args") or {}).values())) for c in claims]
+    out = []
+    for s in _sentences(rationale):
+        words = _words(s)
+        if not words:
+            continue
+        mine = set().union(*[b for b in bags if b and len(b & words) >= 0.5 * len(b)]) & words
+        cves = {x.lower() for x in CVE_RE.findall(s)}
+        if len(mine) < 0.5 * len(words) or not cves <= mine:
+            out.append(s)
+    return out
 
 
 class VerifierAgent:
@@ -382,9 +413,13 @@ class VerifierAgent:
         ctx = {"plan": plan, "cr": cr, "topo": topo, "target_versions": risk["target_versions"]}
         weights = pol.get("verification.claim_weights", {})
         values = pol.get("verification.label_values", {})
+        # Every sentence must be accounted for: one the extractor left out is judged as a freeform claim.
+        extracted_claims = [c.model_dump() for c in extracted.claims]
+        n_sent = len(_sentences(plan["rationale"]))
+        missed = uncovered_sentences(plan["rationale"], extracted_claims)
+        coverage_ = {"sentences": n_sent, "covered": n_sent - len(missed), "uncovered": missed}
         claims = []
-        for i, c in enumerate(extracted.claims, 1):
-            cd = c.model_dump()
+        for i, cd in enumerate(extracted_claims + [{"text": s, "type": "freeform", "args": {}} for s in missed], 1):
             label, why, ev = self.check(cd, ctx)
             cat = CATEGORY.get(cd["type"], "informational")
             claims.append({"id": f"C{i}", **cd, "category": cat, "weight": weights.get(cat, 1), "label": label,
@@ -420,6 +455,7 @@ class VerifierAgent:
             "verifier_model": self.sv.verifier_llm.model,
             "independent_model": self.sv.verifier_llm.model != self.sv.llm.model,
             "extractor": extractor,
+            "extraction_coverage": coverage_,
             "llm_fallbacks": fallbacks,
             "llm_calls": list(self._llm_calls),
         }

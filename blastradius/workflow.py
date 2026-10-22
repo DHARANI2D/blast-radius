@@ -252,7 +252,7 @@ def build_graph(sv):
                                                           "self_confidence": v["self_confidence"], "counts": v["counts"],
                                                           "claims": [{k: c[k] for k in ("text", "type", "label", "evidence")} for c in v["claims"]],
                                                           "verifier_model": v["verifier_model"], "extractor": v["extractor"],
-                                                          "llm": v["llm_calls"]})
+                                                          "extraction_coverage": v["extraction_coverage"], "llm": v["llm_calls"]})
             c = v["counts"]
             detail = (("planner's own rationale for the draft waves: " if v is ver_draft else "")
                       + f"Trust Score {v['trust_score']:.0f} (planner self-confidence {v['self_confidence']}); "

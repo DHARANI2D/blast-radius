@@ -132,3 +132,33 @@ def test_a_typed_safety_claim_left_unverifiable_blocks(sv, topo):
     assert not res["passed"] and res["blocked_by"] == ["1 safety claim(s) no evidence could check"]
     sv.policy.data["verification"]["block_unverified_safety_claims"] = False
     assert VerifierAgent(sv).run(plan, CR, topo, risk)["passed"]
+
+
+def test_a_sentence_the_extractor_leaves_out_is_still_judged(sv, topo):
+    from blastradius.agents.verifier import uncovered_sentences
+
+    orig = sv.verifier_llm.complete_json
+
+    def drop(role, system, user, schema, context=None, temperature=0.0):  # an extractor that silently omits sentences
+        out = orig(role, system, user, schema, context=context, temperature=temperature)
+        if role == "verifier_extract":
+            out.claims = [c for c in out.claims if c.type != "fixes_cve" and "hitless" not in c.text]
+        return out
+
+    sv.verifier_llm.complete_json = drop
+    base = "tor-r1-a and tor-r1-b are upgraded in different waves. Update iLO 6 before System ROM."
+    plan = {"waves": solve(SERVERS, SWITCHES, topo, {}, sv.policy, COMPS, 480), "self_confidence": 90, "rationale": base}
+    _, risk = ctx(sv, topo, plan)
+    res = VerifierAgent(sv).run(plan, CR, topo, risk)
+    assert res["passed"] and res["extraction_coverage"] == {"sentences": 2, "covered": 2, "uncovered": []}
+    for extra, passed in (("System ROM U54 v2.32 remediates SYN-CVE-2026-1105.", True), ("The switch upgrade is hitless for every VM.", False)):
+        res = VerifierAgent(sv).run(dict(plan, rationale=base + " " + extra), CR, topo, risk)
+        assert res["extraction_coverage"] == {"sentences": 3, "covered": 2, "uncovered": [extra]}
+        last = res["claims"][-1]
+        assert (last["text"], last["type"], last["label"]) == (extra, "freeform", "Unverifiable")
+        assert res["passed"] is passed and res["trust_score"] < 100
+    # half a sentence is not enough: the CVE the claims never mention keeps it uncovered
+    s = "iLO 6 v1.64 has no known issues and System ROM U54 v2.32 remediates SYN-CVE-2026-1105."
+    kept = [{"text": "iLO 6 v1.64 has no known issues", "args": {"component": "iLO 6", "version": "v1.64"}}]
+    assert uncovered_sentences(s, kept) == [s]
+    assert uncovered_sentences("iLO 6 v1.64 has no known issues.", kept) == []

@@ -24,4 +24,8 @@ one of these types and fill its arguments exactly; use "freeform" only when noth
 Components are "iLO 6", "System ROM" or "Switch OS". Copy versions exactly as written, as strings
 (e.g. "1.64"). `hosts`, `minutes` and `cohorts` are integers.
 
+Every sentence of the rationale must yield at least one claim (freeform when nothing fits), and
+each claim's text copies the words of the sentence it came from. Sentences no claim accounts for are
+judged as freeform claims anyway.
+
 Return JSON only: {"claims": [{"text": str, "type": str, "args": {}}]}
