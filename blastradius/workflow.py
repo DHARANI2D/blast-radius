@@ -181,7 +181,7 @@ def build_graph(sv):
         cr, targets, risk, topo = state["change_request"], state["targets"], state["risk"], topo_of(state)
         res = optimize(cur["plan"], targets, topo, risk, pol, cr["components"], cr["window"]["duration_minutes"],
                        risk["deferred"], seed=int(pol.get("optimizer.seed", 5)),
-                       time_budget_s=float(pol.get("optimizer.time_budget_s", 2.0)))
+                       time_budget_s=float(pol.get("optimizer.time_budget_s", 60.0)))
         summary = {k: res[k] for k in ("status", "improved", "before", "after", "changes", "stats", "weights")}
         cur["optimization"] = summary
         if res["improved"]:
@@ -312,6 +312,8 @@ def build_graph(sv):
             "premortem": state.get("premortem"),
             "premortem_compare": state.get("premortem_compare"),
             "risk_ranked_coverage": _risk_ranked_coverage(state),
+            "optimizer_stopped_by": (next((a for a in reversed(state["attempts"]) if a.get("passed")), {})
+                                     .get("optimization") or {}).get("stats", {}).get("stopped_by"),
         }
         if scope == "fleet":
             canary = state["executions"][0]

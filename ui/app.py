@@ -258,7 +258,9 @@ with main:
                     b, af = opt["before"], opt["after"]
                     st.markdown(f"**Risk-aware wave optimizer** · {opt['status'].replace('_', ' ')} · "
                                 f"objective J {b['J']:.0f} → {af['J']:.0f} ({(af['J'] - b['J']) / b['J'] * 100:+.0f}%), "
-                                f"{opt['stats']['iterations']} iterations in {opt['stats']['elapsed_s']:.1f}s. The Verifier above checked the optimised waves.")
+                                f"{opt['stats']['iterations']} iterations in {opt['stats']['elapsed_s']:.1f}s"
+                                + (" (stopped by the time cap: this plan depends on machine speed)" if opt["stats"].get("stopped_by") == "time_budget" else "")
+                                + ". The Verifier above checked the optimised waves.")
                     st.dataframe(pd.DataFrame([{"": "before", **{k: b[k] for k in ("waves", "duration_min", "sum_brs", "max_brs", "exposure", "J")}},
                                                {"": "after", **{k: af[k] for k in ("waves", "duration_min", "sum_brs", "max_brs", "exposure", "J")}}]),
                                  hide_index=True, width="stretch")
