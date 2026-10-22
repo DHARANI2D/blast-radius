@@ -1,4 +1,5 @@
 import json
+import os
 import threading
 from http.server import BaseHTTPRequestHandler, HTTPServer
 
@@ -193,3 +194,22 @@ def test_prompt_hash_is_of_the_redacted_prompt_that_was_sent(server):
     sent = SEEN[0]["body"]["messages"]
     assert "SECRET" not in json.dumps(sent)
     assert c.last()["prompt_sha256"] == hashlib.sha256((sent[0]["content"] + sent[1]["content"]).encode()).hexdigest()
+
+
+def test_dotenv_file_is_loaded_without_overriding_the_environment(tmp_path, monkeypatch):
+    from blastradius.config import Settings, load_env_file
+
+    env = tmp_path / ".env"
+    env.write_text("# comment\nBR_LLM_MODE=openai\nexport BR_LLM_MODEL='approved-x'   \nBR_TOOL_TRANSPORT=inproc          # mcp | inproc\n"
+                   "BR_FAULTS=off\nBR_VERIFIER_MODEL=\nnot a line\n")
+    for k in ("BR_LLM_MODE", "BR_LLM_MODEL", "BR_TOOL_TRANSPORT", "BR_VERIFIER_MODEL"):
+        monkeypatch.delenv(k, raising=False)
+    monkeypatch.setenv("BR_FAULTS", "subtle")  # already set: the file must not win
+    monkeypatch.setenv("BR_ENV_FILE", str(env))
+    try:
+        assert load_env_file() == {"BR_LLM_MODE": "openai", "BR_LLM_MODEL": "approved-x", "BR_TOOL_TRANSPORT": "inproc"}
+        s = Settings()
+        assert (s.llm_mode, s.llm_model, s.tool_transport, s.fault_scenario, s.verifier_model) == ("openai", "approved-x", "inproc", "subtle", "")
+    finally:
+        for k in ("BR_LLM_MODE", "BR_LLM_MODEL", "BR_TOOL_TRANSPORT"):
+            os.environ.pop(k, None)

@@ -137,7 +137,7 @@ The benchmark found and fixed 2 dangerous misses, 3 crashes and 6 false blocks i
 
 ## Using an HPE-approved LLM
 
-Copy `.env.example` to `.env` and set:
+Copy `.env.example` to `.env` and set the values below. `blastradius/config.py` reads `.env` from the repo root (or the file named by `BR_ENV_FILE`) at start-up for the CLI, the UI and the A2A endpoint; a variable already set in the environment always wins, and an empty value keeps the code default.
 
 ```bash
 BR_LLM_MODE=openai            # OpenAI-compatible: NVIDIA NIM on HPE Private Cloud AI, or a ChatHPE / GenAI Hub gateway

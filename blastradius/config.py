@@ -1,4 +1,8 @@
-"""Runtime settings, read from environment variables (see .env.example)."""
+"""Runtime settings, read from environment variables (see .env.example).
+
+A ``.env`` file in the repo root (or the file named by BR_ENV_FILE) is loaded
+first. It never overrides a variable that is already set in the environment.
+"""
 
 from __future__ import annotations
 
@@ -7,6 +11,34 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
+
+
+def load_env_file(path: Path | None = None) -> dict[str, str]:
+    """Set KEY=VALUE lines from a .env file into os.environ, unless the variable is already set.
+
+    A small parser, not a shell: blank lines and '#' comments are skipped, an optional
+    'export ' prefix and matching quotes are stripped, an unquoted ' #' starts a comment,
+    and an empty value leaves the variable unset (so the code default applies)."""
+    path = path or Path(os.environ.get("BR_ENV_FILE") or ROOT / ".env")
+    if not path.is_file():
+        return {}
+    loaded: dict[str, str] = {}
+    for line in path.read_text().splitlines():
+        line = line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, _, value = line.removeprefix("export ").partition("=")
+        key, value = key.strip(), value.strip()
+        if value[:1] in ("'", '"') and value.count(value[0]) >= 2:
+            value = value[1:value.index(value[0], 1)]
+        else:
+            value = value.split(" #", 1)[0].strip()
+        if key and value and key not in os.environ:
+            os.environ[key] = loaded[key] = value
+    return loaded
+
+
+load_env_file()
 
 
 def _env(name: str, default: str = "") -> str:
