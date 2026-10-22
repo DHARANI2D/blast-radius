@@ -9,4 +9,4 @@ Rules:
   limit, no planned outage, install order, total minutes).
 - State the total duration from `total_duration_min` exactly.
 
-Return JSON only: {"waves": [...the waves unchanged...], "rationale": str, "self_confidence": int (0-100)}
+Return JSON only, without the waves: {"rationale": str, "self_confidence": int (0-100)}

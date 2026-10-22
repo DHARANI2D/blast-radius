@@ -7,7 +7,7 @@ import json
 from ..constraints import check_plan
 from ..llm import load_prompt
 from ..memory import as_prompt
-from ..models import Plan
+from ..models import Explanation, Plan
 from ..solver import grounded_rationale, plan_facts, solve
 from ..topology import Topology
 
@@ -104,8 +104,8 @@ class PlannerAgent:
         facts = plan_facts(topo, targets, self.sv.policy, cr["components"], inp["deferred"])
         user = {"waves": waves, "total_duration_min": total_duration_min,
                 "facts": {k: v for k, v in facts.items() if not k.startswith("_")}, "components": cr["components"]}
-        out: Plan = self.sv.llm.complete_json(
-            "planner_explain", load_prompt("planner_explain"), json.dumps(user, default=str), Plan,
+        out: Explanation = self.sv.llm.complete_json(
+            "planner_explain", load_prompt("planner_explain"), json.dumps(user, default=str), Explanation,
             context={"waves": waves, "facts": facts, "components": cr["components"], "total_duration_min": total_duration_min},
             temperature=0.2)
         return {"rationale": out.rationale, "self_confidence": out.self_confidence, "llm": self.sv.llm.last()}

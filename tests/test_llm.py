@@ -164,3 +164,21 @@ def test_default_llm_timeout_suits_a_slow_model(monkeypatch):
 
     monkeypatch.delenv("BR_LLM_TIMEOUT_S", raising=False)
     assert Settings().llm_timeout_s == 180
+
+
+def test_planner_explain_asks_only_for_the_rationale(server, tmp_path):
+    """A live model that re-explains the optimised waves without echoing them is accepted on the first reply."""
+    from conftest import INTENT, make_services
+
+    from blastradius.agents import IntakeAgent, PlannerAgent, RiskAgent, TopologyAgent
+    from blastradius.llm import load_prompt
+
+    sv = make_services(tmp_path)
+    cr = IntakeAgent(sv).run(INTENT)
+    topo, _ = TopologyAgent(sv).run()
+    risk = RiskAgent(sv).run(cr["targets"], cr["change_request"]["components"], topo)
+    sv.llm = client(server)
+    _Handler.replies = [json.dumps({"rationale": "Wave 1 is a canary of blr-esx-03.", "self_confidence": 90})]
+    out = PlannerAgent(sv).explain([{"name": "w1", "assets": ["blr-esx-03"]}], cr["change_request"], cr["targets"], risk, topo, 60)
+    assert out["rationale"] == "Wave 1 is a canary of blr-esx-03." and out["self_confidence"] == 90 and len(SEEN) == 1
+    assert '"waves"' not in load_prompt("planner_explain")

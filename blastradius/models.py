@@ -67,6 +67,12 @@ class Plan(BaseModel):
     self_confidence: int | None = Field(None, ge=0, le=100)
 
 
+class Explanation(BaseModel):
+    """The planner's re-explanation of the optimiser's waves (the waves themselves are not echoed back)."""
+    rationale: str
+    self_confidence: int | None = Field(None, ge=0, le=100)
+
+
 class ExtractedClaim(BaseModel):
     text: str
     type: str = "freeform"

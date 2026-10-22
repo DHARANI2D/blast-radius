@@ -133,7 +133,7 @@ def planner_explain(ctx: dict) -> dict:
 
     text = grounded_rationale(ctx["waves"], ctx["facts"], ctx["components"], ctx["total_duration_min"])
     text += " Saturday-night application traffic is expected to be low."
-    return {"waves": ctx["waves"], "rationale": text, "self_confidence": 88}
+    return {"rationale": text, "self_confidence": 88}
 
 
 def _grounded_plan(ctx: dict) -> dict:
