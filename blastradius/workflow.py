@@ -42,6 +42,7 @@ from .llm import LLMError
 from .mcp_layer import ToolCallError
 
 WRITE_ACTIONS = ["virt.enter_maintenance", "virt.exit_maintenance", "compute.apply_firmware", "network.upgrade_switch_os"]
+MAINTENANCE_ACTIONS = WRITE_ACTIONS[:2]
 
 
 class RunState(TypedDict, total=False):
@@ -327,11 +328,27 @@ def build_graph(sv):
         cov = coverage(naive, build_cohorts(scheduled, topo.servers, state["change_request"]["components"]), topo, pol)
         return {"canary": naive, **{k: cov[k] for k in ("covered", "total", "missing", "hosts_represented", "hosts_total")}}
 
+    def _grant_writes(run_id: str, maintenance: list[str], versions: dict[str, list[str]]) -> None:
+        """Grant maintenance on hosts, and firmware writes on assets only at the listed versions."""
+        topo = sv.runs[run_id]["topo"]
+        sv.authority.grant(run_id, maintenance, MAINTENANCE_ACTIONS)
+        servers = [a for a in versions if a in topo.servers]
+        switches = [a for a in versions if a in topo.switches]
+        sv.authority.grant(run_id, servers, ["compute.apply_firmware"], versions)
+        sv.authority.grant(run_id, switches, ["network.upgrade_switch_os"], versions)
+
     def _grant(state, waves: list[dict]):
-        assets = sorted({a for w in waves for a in w["assets"] + w.get("evacuate", [])})
-        sv.authority.reinstate_run(state["run_id"])
-        sv.authority.grant(state["run_id"], assets, WRITE_ACTIONS)
-        return assets
+        """Grant one approval scope; it replaces the previous scope. Firmware writes are bound to the approved target version."""
+        topo, tv, comps = topo_of(state), state["risk"]["target_versions"], state["change_request"]["components"]
+        maint, versions = [], {}
+        for w in waves:
+            maint += [a for a in w["assets"] + w.get("evacuate", []) if a in topo.servers and a not in maint]
+            for a in w["assets"]:
+                t = tv.get(a, {})
+                versions[a] = [t["Switch OS"]] if a in topo.switches else [t[c] for c in comps if c in t]
+        sv.authority.revoke_grants(state["run_id"])
+        _grant_writes(state["run_id"], maint, versions)
+        return sorted(set(maint) | set(versions))
 
     def approve_canary(state: RunState):
         decision = interrupt(card(state, "canary"))
@@ -426,6 +443,8 @@ def build_graph(sv):
             upd["status"] = "completed"
             upd["timeline"] = tl_stats + _t("postcheck", "passed", f"{cur['name']}: {cmp['checked']} signal sets within thresholds; all waves complete", "success")
         else:
+            if not state.get("fleet_approved"):
+                sv.authority.revoke_grants(state["run_id"])  # the canary scope ends; fleet waves need their own approval
             upd["current_wave"] = cur["index"] + 1
             upd["timeline"] = tl_stats + _t("postcheck", "passed", f"{cur['name']}: {cmp['checked']} signal sets within thresholds", "success")
         return upd
@@ -442,10 +461,16 @@ def build_graph(sv):
     def rollback(state: RunState):
         cur = state["executions"][-1]
         topo = topo_of(state)
+        # Rollback writes are bound to the versions captured before the wave ran.
+        versions: dict[str, list[str]] = {}
+        for c in cur["firmware_changes"]:
+            versions.setdefault(c["asset"], []).append(c["from"])
         sv.authority.reinstate_run(state["run_id"])
-        sv.authority.grant(state["run_id"], sorted({c["asset"] for c in cur["firmware_changes"]}), WRITE_ACTIONS)
-        rb = rb_a.run(state["run_id"], cur, topo)
-        sv.authority.revoke_run(state["run_id"])
+        _grant_writes(state["run_id"], sorted(a for a in versions if a in topo.servers), versions)
+        try:
+            rb = rb_a.run(state["run_id"], cur, topo)
+        finally:
+            sv.authority.revoke_run(state["run_id"])
         assets = {s["asset"] for s in rb["after"]}
         check = post_a.compare([s for s in cur["pre"] if s["asset"] in assets], rb["after"])
         rb["recovered"] = check["passed"]
@@ -491,6 +516,8 @@ def build_graph(sv):
         return upd
 
     def report(state: RunState):
+        # Every outcome ends here: the run's write access ends with it.
+        sv.authority.revoke_run(state["run_id"])
         atts = state.get("attempts") or []
         if atts:
             sv.memory.record_run(state["run_id"], bool(atts[0].get("passed")), len(atts), len(atts[0].get("memory_rules", [])))
@@ -536,16 +563,22 @@ class Engine:
         intr = out.pop("__interrupt__", None)
         return {"run_id": run_id, "state": out, "interrupt": intr[0].value if intr else None}
 
+    def _invoke(self, run_id: str, arg) -> dict:
+        try:
+            out = self.graph.invoke(arg, self._cfg(run_id))
+        except Exception:
+            self.sv.authority.revoke_run(run_id)  # a run that dies without reaching the report keeps no write access
+            raise
+        return self._wrap(run_id, out)
+
     def start(self, intent: str, run_id: str | None = None) -> dict:
         run_id = run_id or time.strftime("%Y%m%d-%H%M%S-") + uuid.uuid4().hex[:4]
         self.sv.ledger.append(run_id, "system", "run_started", {"intent": intent, "tool_transport": self.sv.bus.transport,
                                                                 "planner_model": self.sv.llm.model, "verifier_model": self.sv.verifier_llm.model})
-        out = self.graph.invoke({"run_id": run_id, "intent": intent, "timeline": []}, self._cfg(run_id))
-        return self._wrap(run_id, out)
+        return self._invoke(run_id, {"run_id": run_id, "intent": intent, "timeline": []})
 
     def resume(self, run_id: str, decision: dict) -> dict:
-        out = self.graph.invoke(Command(resume=decision), self._cfg(run_id))
-        return self._wrap(run_id, out)
+        return self._invoke(run_id, Command(resume=decision))
 
     def state(self, run_id: str) -> dict:
         return dict(self.graph.get_state(self._cfg(run_id)).values)

@@ -12,7 +12,7 @@ class RollbackAgent:
         self.sv = sv
 
     def _write(self, run_id: str, tool: str, asset: str, **args):
-        token = self.sv.authority.token(run_id, asset, tool)
+        token = self.sv.authority.token(run_id, asset, tool, args.get("version", ""))
         return self.sv.bus.call(self.name, tool, run_id=run_id, approval_token=token, **args)
 
     def run(self, run_id: str, wave_exec: dict, topo: Topology) -> dict:
