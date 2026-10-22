@@ -24,6 +24,7 @@ from blastradius.agents.investigator import InvestigatorAgent  # noqa: E402
 from blastradius.cli import DEFAULT_INTENT  # noqa: E402
 from blastradius.constraints import wave_impact  # noqa: E402
 from blastradius.ledger import Ledger  # noqa: E402
+from blastradius.llm import LLMError  # noqa: E402
 from blastradius.services import Services  # noqa: E402
 from blastradius.workflow import Engine  # noqa: E402
 from graph_view import build_dot  # noqa: E402
@@ -564,7 +565,10 @@ with main:
             asked = st.form_submit_button("Ask", type="primary")
         if asked and q.strip():
             with st.spinner("Investigating over MCP..."):
-                st.session_state.setdefault("qa", []).insert(0, {"q": q, **InvestigatorAgent(sv).ask(q, state, topo)})
+                try:
+                    st.session_state.setdefault("qa", []).insert(0, {"q": q, **InvestigatorAgent(sv).ask(q, state, topo)})
+                except LLMError as exc:
+                    st.error(f"The model call failed, so there is no answer: {exc}")
         for qa in st.session_state.get("qa", [])[:5]:
             v = qa["verification"]
             with st.container(border=True):

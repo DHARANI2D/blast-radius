@@ -89,3 +89,45 @@ def test_live_function_calling_loop_is_verified(sv, topo):
     # the model's second sentence is false and the Verifier catches it from LLDP
     assert labels["blr-esx-07"] == "Supported" and labels["blr-esx-03"] == "Contradicted"
     assert not out["verification"]["passed"]
+
+
+class _LoopingModel(BaseHTTPRequestHandler):
+    """Asks for another tool while tools are offered; validates requests the way OpenAI does."""
+
+    seen: list = []
+
+    def do_POST(self):  # noqa: N802
+        body = json.loads(self.rfile.read(int(self.headers["Content-Length"])))
+        self.seen.append(body)
+        status = 200
+        if ("tools" in body and not body["tools"]) or ("tool_choice" in body and not body.get("tools")):
+            status, out = 400, {"error": {"message": "Invalid 'tools': empty array."}}
+        elif body.get("tools"):
+            out = {"choices": [{"message": {"role": "assistant", "content": None, "tool_calls": [
+                {"id": f"c{len(self.seen)}", "type": "function",
+                 "function": {"name": "network__get_switch", "arguments": json.dumps({"name": "tor-r1-a"})}}]}}]}
+        else:
+            ev = json.loads(body["messages"][-2]["content"])["evidence_id"]
+            out = {"choices": [{"message": {"role": "assistant", "content": f"tor-r1-a has redundancy peer tor-r1-b [{ev}]."}}]}
+        data = json.dumps(out).encode()
+        self.send_response(status)
+        self.send_header("Content-Length", str(len(data)))
+        self.end_headers()
+        self.wfile.write(data)
+
+    def log_message(self, *a):
+        pass
+
+
+def test_final_answer_after_the_tool_budget_sends_no_tools(sv, topo):
+    _LoopingModel.seen = []
+    srv = HTTPServer(("127.0.0.1", 0), _LoopingModel)
+    threading.Thread(target=srv.serve_forever, daemon=True).start()
+    try:
+        sv.llm = OpenAICompatClient(f"http://127.0.0.1:{srv.server_port}/v1", "k", "fake-tools", "openai", "x", 5, sv.policy.redact)
+        out = InvestigatorAgent(sv).ask("Tell me about tor-r1-a", {}, topo, max_steps=2)
+    finally:
+        srv.shutdown()
+    final = _LoopingModel.seen[-1]
+    assert len(_LoopingModel.seen) == 3 and "tools" not in final and "tool_choice" not in final
+    assert out["answer"].startswith("tor-r1-a has redundancy peer tor-r1-b") and len(out["steps"]) == 2

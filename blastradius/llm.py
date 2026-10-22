@@ -185,7 +185,10 @@ class OpenAICompatClient(LLMClient):
     def chat_tools(self, role, messages, tools, temperature=0.0):
         safe = [dict(m, content=self.redact(m["content"])) if isinstance(m.get("content"), str) else m for m in messages]
         t0 = time.time()
-        msg = self._request({"messages": safe, "temperature": temperature, "tools": tools, "tool_choice": "auto"})
+        body: dict[str, Any] = {"messages": safe, "temperature": temperature}
+        if tools:  # OpenAI rejects an empty tools array, and tool_choice without tools (the final no-tools turn)
+            body.update(tools=tools, tool_choice="auto")
+        msg = self._request(body)
         calls = []
         for tc in msg.get("tool_calls") or []:
             fn = tc.get("function") or {}
