@@ -118,3 +118,17 @@ def test_unchecked_safety_paraphrases_block_the_gate(sv, topo):
     for s in ("Saturday-night application traffic is expected to be low.", "Update iLO 6 before System ROM.",
               "The plan takes about 165 minutes and fits the window."):
         assert not SAFETY_RE.search(s), s
+
+
+def test_a_typed_safety_claim_left_unverifiable_blocks(sv, topo):
+    waves = solve(SERVERS, SWITCHES, topo, {}, sv.policy, COMPS, 480)
+    plan = {"waves": waves, "self_confidence": 90,
+            "rationale": "tor-r1-a and tor-r1-b are upgraded in different waves. Update iLO 6 before System ROM. "
+                         "tor-r1-b and tor-r2-a are upgraded in different waves, so the storage array always keeps a path."}
+    _, risk = ctx(sv, topo, plan)
+    res = VerifierAgent(sv).run(plan, CR, topo, risk)
+    c = res["claims"][-1]
+    assert (c["type"], c["category"], c["label"]) == ("pair_staggered", "safety", "Unverifiable")  # tor-r2-a is not scheduled
+    assert not res["passed"] and res["blocked_by"] == ["1 safety claim(s) no evidence could check"]
+    sv.policy.data["verification"]["block_unverified_safety_claims"] = False
+    assert VerifierAgent(sv).run(plan, CR, topo, risk)["passed"]

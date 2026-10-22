@@ -399,11 +399,11 @@ class VerifierAgent:
         trust = max(0.0, min(100.0, 100 * share - float(pol.get("verification.contradiction_penalty", 15)) * n_contra))
         threshold = float(pol.get("verification.trust_threshold", 80))
         blocked_by = []
-        # A sentence that sounds like a safety guarantee but could not be typed or checked must not slip through
-        # just because Unverifiable only lowers the score.
+        # A safety claim that could not be checked must not slip through just because Unverifiable only lowers
+        # the score: a typed safety claim, or an untyped sentence that sounds like a safety guarantee.
         for c in claims:
             c["safety_language"] = c["type"] == "freeform" and bool(SAFETY_RE.search(c["text"]))
-        unchecked_safety = [c for c in claims if c["safety_language"] and c["label"] == "Unverifiable"]
+        unchecked_safety = [c for c in claims if (c["category"] == "safety" or c["safety_language"]) and c["label"] == "Unverifiable"]
         if unchecked_safety and pol.get("verification.block_unverified_safety_claims", True):
             blocked_by.append(f"{len(unchecked_safety)} safety claim(s) no evidence could check")
         if trust < threshold:
