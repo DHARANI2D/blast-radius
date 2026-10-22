@@ -321,7 +321,8 @@ def build_graph(sv):
             for comp, ver_ in r["current"].items():
                 if comp in r["target"]:
                     prev.setdefault(comp, set()).add(ver_)
-        rollback_plan = ("Automatic on any golden-signal regression: halt remaining waves, revert the failing wave to the versions "
+        what = "the regressed assets" if pol.get("execution.rollback_scope", "wave") == "asset" else "the failing wave"
+        rollback_plan = (f"Automatic on any golden-signal regression: halt remaining waves, revert {what} to the versions "
                          "captured at execution time (" + "; ".join(f"{c} -> {'/'.join(sorted(v))}" for c, v in sorted(prev.items()))
                          + "), re-check signals, record the lesson.")
         top = sorted(risk["assets"].values(), key=lambda r: -r["score"])[:6]

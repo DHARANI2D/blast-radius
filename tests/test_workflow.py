@@ -195,3 +195,13 @@ def test_approving_a_plan_with_no_waves_completes_without_executing(engine, sv):
     assert not r["state"].get("executions") and r["state"]["report"]
     assert sv.twin.snapshot()["firmware"] == before["firmware"]
 
+
+def test_rollback_scope_asset_reverts_only_the_regressed_hosts(engine, sv):
+    sv.policy.data["execution"]["rollback_scope"] = "asset"
+    r, gates = drive(engine)
+    assert "revert the regressed assets" in gates[0]["rollback_plan"]
+    st = r["state"]
+    assert {x["asset"] for x in st["rollback"]["reverted"]} == {"blr-esx-01"}
+    kept = {c["asset"] for c in st["executions"][0]["firmware_changes"]} - {"blr-esx-01"}
+    assert kept and all(sv.twin.servers[c["asset"]]["firmware"][c["component"]] == c["to"]
+                        for c in st["executions"][0]["firmware_changes"] if c["asset"] in kept)

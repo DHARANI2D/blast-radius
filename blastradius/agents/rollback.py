@@ -1,4 +1,4 @@
-"""Rollback agent: reverts a failed wave to the versions captured before it ran."""
+"""Rollback agent: reverts a failed wave (or, with rollback_scope: asset, its regressed assets) to the versions captured before it ran."""
 
 from __future__ import annotations
 
@@ -20,6 +20,10 @@ class RollbackAgent:
         actions = []
         t0 = bus.call(self.name, "telemetry.get_clock")[0]["t_min"]
         changes = list(reversed(wave_exec["firmware_changes"]))
+        if self.sv.policy.get("execution.rollback_scope", "wave") == "asset":
+            # Only the assets whose golden signals regressed; the rest of the wave keeps its upgrade.
+            bad = {r["asset"] for r in wave_exec.get("regressions", [])}
+            changes = [c for c in changes if c["asset"] in bad] or changes
         servers = sorted({c["asset"] for c in changes if c["asset"] in topo.servers})
         switches = sorted({c["asset"] for c in changes if c["asset"] in topo.switches})
         for h in servers:

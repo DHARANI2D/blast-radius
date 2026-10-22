@@ -1,6 +1,7 @@
 # BlastRadius governance policy.
-# Everything in this file is enforced in code (blastradius/policy.py,
-# blastradius/constraints.py, blastradius/agents/executor.py). The LLM never
+# Every key in this file is read by code: the rules by blastradius/policy.py,
+# constraints.py, workflow.py and the agents; business: only by the cost replay
+# (business.py); planning.high_risk_threshold only by the UI. The LLM never
 # decides whether a rule applies.
 
 version: 1
@@ -14,7 +15,7 @@ planning:
   max_parallel_per_cluster: 5   # hosts in maintenance at once, per cluster
   max_assets_per_wave: 12
   defer_known_regressions: true # hosts matching a learned/known regression are left out of the plan
-  high_risk_threshold: 70       # shown in red on the approval card
+  high_risk_threshold: 70       # risk scores at or above this are red in the UI risk heat map (display only)
 
 verification:
   trust_threshold: 80           # minimum Trust Score to reach the approval gate
@@ -43,7 +44,7 @@ execution:
     soak: 10
   component_order: ["iLO 6", "System ROM", "NIC BCM57414"]
   canary_component_probe: true  # canary only: probe golden signals after each component, so a regression is pinned to one
-  rollback_scope: wave          # roll back every asset in the failing wave
+  rollback_scope: wave          # wave: roll back every asset in the failing wave; asset: only the assets that regressed
 
 golden_signals:                 # post-check thresholds (post vs. pre)
   nic_latency_ratio_max: 2.0
