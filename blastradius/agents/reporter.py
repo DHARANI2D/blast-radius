@@ -313,18 +313,6 @@ class ReporterAgent:
         if mem:
             lines += ["", "## Planning memory",
                       f"{mem.get('rules', 0)} rules; first-attempt pass rate {mem.get('first_attempt_pass_rate')} over {mem.get('runs', 0)} run(s)"]
-        if r.get("business_impact"):
-            from ..business import markdown as business_md
-
-            lines += ["", business_md(r["business_impact"])]
-        pm = r.get("premortem")
-        if pm:
-            lines += ["", "## Pre-mortem (assumption-driven, not measured)",
-                      f"P(tier-0 outage over the change) {pm.get('p_tier0_loss', 0):.2%}; expected VMs lost {pm.get('expected_vms_lost', 0):.2f}"]
-        mem = r.get("planning_memory")
-        if mem:
-            lines += ["", "## Planning memory",
-                      f"{mem.get('rules', 0)} rules; first-attempt pass rate {mem.get('first_attempt_pass_rate')} over {mem.get('runs', 0)} run(s)"]
         lines += ["", "## Approvals"] + [f"- {a['scope']}: {a['approver']} {a['decision']} (sig `{a['signature'][:16]}...`)" for a in r["approvals"]]
         lines += ["", "## Integrity",
                   f"Ledger entries: {r['ledger']['entries']}, chain verified: {r['ledger']['chain_ok']}, head `{(r['ledger']['head'] or '')[:16]}`  ",

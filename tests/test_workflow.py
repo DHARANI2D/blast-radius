@@ -113,3 +113,11 @@ def test_rejection_executes_nothing(engine, sv):
     r, _ = drive(engine, canary="reject")
     assert r["state"]["status"] == "rejected"
     assert sv.twin.snapshot()["firmware"] == before["firmware"]
+
+
+def test_report_lists_each_section_once(engine, sv):
+    r, _ = drive(engine)
+    md = open(r["state"]["report"]["path"]).read()
+    heads = [ln for ln in md.splitlines() if ln.startswith("## ")]
+    assert len(heads) == len(set(heads))
+    assert any(h.startswith("## Business impact") for h in heads)
