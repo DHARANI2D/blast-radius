@@ -11,7 +11,12 @@ measures it against labelled ground truth, in four parts:
    ``unsafe_canary``, ...). Labels come from the raw twin and knowledge records,
    read directly rather than through MCP or the checker code, or from the
    construction of the operator; ``audit_labels`` then recomputes every
-   plan-dependent label with an independent raw-twin oracle.
+   plan-dependent label with a raw-twin oracle. Exception (``CONSISTENCY_ONLY``):
+   ``in_window`` labels use the plan duration model the checker uses
+   (``constraints.wave_duration``) and ``canary_covers_cohorts`` labels use the
+   same cohort builder (``cohorts.build``), in the corpus and in the audit. Those
+   two rows are consistency checks, not independent measurements: a bug shared
+   with the checker would not lower their scores.
 2. Typed evaluation. Each claim goes straight to ``VerifierAgent.check``. A false
    claim is *caught* (Contradicted), *flagged* (Unverifiable) or *missed*
    (Supported: a dangerous miss); a true claim *passes*, stays *unverifiable*, or
@@ -179,6 +184,9 @@ TEMPLATES: dict[str, list[str]] = {
 CHECK_PLAN_CODES = {"UNKNOWN_ASSET", "REDUNDANT_PAIR", "PLANNED_OUTAGE", "CLUSTER_CAPACITY", "WAVE_SIZE", "CANARY_FIRST",
                     "CANARY_COVERAGE", "COVERAGE", "WINDOW", "DEFERRED"}
 
+# Claim types whose labels come from the same code the checker uses (see the module docstring).
+CONSISTENCY_ONLY = {"in_window": "constraints.wave_duration (via check_plan)", "canary_covers_cohorts": "cohorts.build"}
+
 HALLUCINATION_KINDS = ("swap_cve", "deny_known_issue", "fake_dual_homing", "fake_single_homing", "pair_safe_together",
                        "inflate_capacity", "wrong_install_order", "wrong_duration")
 
@@ -197,7 +205,8 @@ def _sandbox(sv, extractor: str = "offline") -> Services:
 
 
 # ------------------------------------------------------------- ground truth
-# The oracle reads raw twin and knowledge records directly (no MCP, no checker code).
+# The oracle reads raw twin and knowledge records directly (no MCP, no checker code),
+# except for the CONSISTENCY_ONLY claim types.
 def _live_uplinks(twin) -> dict[str, set[str]]:
     ups: dict[str, set[str]] = defaultdict(set)
     for p in twin.ports_of():
@@ -1265,7 +1274,7 @@ def format_markdown(res: dict) -> str:
           "| claim type | true | supported | unverifiable | false block | false | caught | flagged | missed |",
           "|---|---:|---:|---:|---:|---:|---:|---:|---:|"]
     for t, s in res["typed"]["by_type"].items():
-        L.append(f"| `{t}` | {s['n_true']} | {s['passed']} | {s['unverifiable']} | {s['false_blocks']} | {s['n_false']} | "
+        L.append(f"| `{t}`{' (consistency check)' if t in CONSISTENCY_ONLY else ''} | {s['n_true']} | {s['passed']} | {s['unverifiable']} | {s['false_blocks']} | {s['n_false']} | "
                  f"{s['caught']} | {s['flagged']} | {s['missed']} |")
     L += ["", "## False claims by mutation operator", "", "| operator | claim types | n | caught | flagged | missed | catch rate |",
           "|---|---|---:|---:|---:|---:|---:|"]
@@ -1314,6 +1323,10 @@ def format_markdown(res: dict) -> str:
           "or follows from how a mutation operator built the plan. Capacity truth uses the aggregate memory-ceiling rule; "
           "duration truth uses the policy duration model. Duration claims within 25% of the computed value are labelled true "
           "and claims at least 50% off are labelled false; the band in between is not sampled.",
+          "- Consistency checks, not independent measurements: "
+          + "; ".join(f"`{t}` labels come from {src}" for t, src in CONSISTENCY_ONLY.items())
+          + ", the same code the Verifier's checker uses (and the label audit reuses it). A bug shared with the checker "
+          "would not lower these rows' scores; the other claim types are labelled without the checker code.",
           "- Runs on a private, freshly seeded copy of the twin and knowledge base with an in-process tool bus, so the "
           "caller's session is not touched. Sampling is seeded.",
           "- Catch rate = Contradicted / false claims; flagged = Unverifiable; dangerous miss = a false claim labelled "

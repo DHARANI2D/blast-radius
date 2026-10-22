@@ -100,6 +100,8 @@ Intent: *"Upgrade iLO 6 and System ROM on clusters PROD-BLR-07 and PROD-BLR-08 a
 
 The benchmark found and fixed 2 dangerous misses, 3 crashes and 6 false blocks in the Verifier and extractor. It also found a missing hard constraint (re-scheduling a host deferred by a learned regression); that `DEFERRED` rule now exists. The weak held-out paraphrase coverage belongs to the offline regex extractor that stands in for the model. A false sentence it cannot type is labelled Unverifiable, which lowers the Trust Score but does not by itself block: the safety-claim gate blocks it only when it uses safety language ("safe", "no downtime", "without impact", "at once", "in parallel", "hitless", ...). The last row counts the false sentences that still pass; none of them is labelled Supported. In the UI you can inject a labelled hallucination into the accepted plan and watch it get caught.
 
+Ground truth is read from the raw twin and knowledge records, not through the checkers, with two exceptions: `in_window` labels come from the same plan duration model (`constraints.wave_duration`) and `canary_covers_cohorts` labels from the same cohort builder (`cohorts.build`) that the Verifier's checkers use. Those two rows are consistency checks, not independent measurements: a bug shared by the checker and that code would not show up in them. The report marks them as such.
+
 ### Canary: cohort coverage, statistics and diagnosis
 
 - **Configuration cohorts** (`cohorts.py`). Target hosts are grouped by model plus the major version of every firmware component the change does *not* touch, here NIC 229.x vs 230.x. A conventional lowest-risk canary picks dev/CI boxes that already got new NIC firmware, and covers only 2 of 3 cohorts.

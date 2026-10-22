@@ -152,6 +152,9 @@ def test_markdown_report(res):
                     "## Paraphrase robustness", "## Plan mutations", "## Live injection", "## Method"):
         assert heading in md
     assert "schedule_deferred_host" in md and "(no such rule)" not in md  # the DEFERRED gap is closed
+    # labels produced by the checker's own duration and cohort code are called consistency checks, not measurements
+    assert "| `in_window` (consistency check) |" in md and "| `canary_covers_cohorts` (consistency check) |" in md
+    assert "Consistency checks, not independent measurements" in md and "cohorts.build" in md
 
 
 def test_wilson_interval():
