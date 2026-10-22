@@ -345,9 +345,12 @@ class VerifierAgent:
             self._judge_errors.append((claim["text"], str(exc)[:300]))
             return "Unverifiable", f"judge unavailable (LLM failed: {str(exc)[:200]}).", evidence
         self._llm_calls.append(self.sv.verifier_llm.last())
-        cited = [x for x in j.evidence if self.sv.evidence.get(x)]
+        # Only evidence the judge was given for this claim counts; any other id in the store is dropped.
+        cited = [x for x in dict.fromkeys(j.evidence) if x in evidence]
         if j.label != "Unverifiable" and not cited:
-            return "Unverifiable", f"judge answered {j.label} without citing evidence; downgraded.", evidence
+            dropped = [x for x in j.evidence if x not in evidence]
+            return "Unverifiable", (f"judge answered {j.label} citing only evidence it was not given ({', '.join(dropped[:3])}); downgraded."
+                                    if dropped else f"judge answered {j.label} without citing evidence; downgraded."), evidence
         return j.label, j.explanation, cited or evidence
 
     # -------------------------------------------------------------- run

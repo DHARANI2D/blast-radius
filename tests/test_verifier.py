@@ -77,3 +77,25 @@ def test_oddly_typed_arguments_are_checked_or_unverifiable_never_a_crash(sv, top
     for t in ("canary_safe", "per_wave_cap"):
         label, why, ev = v.check({"type": t, "args": {}, "text": "claim"}, c)
         assert label == "Unverifiable" and why.startswith("checker could not evaluate: ") and ev == []
+
+
+def test_judge_may_only_cite_the_evidence_it_was_given(sv, topo):
+    import json
+
+    from blastradius.models import Judgement
+
+    foreign = sv.evidence.add("intake", "compute.list_servers", {}, [])  # in the store, but never shown to the judge
+    cite = {}
+
+    def judge(role, system, user, schema, context=None, temperature=0.0):
+        given = [e.split(" ")[0] for e in json.loads(user)["evidence"]]
+        return Judgement(label="Supported", explanation="looks fine", evidence=cite["ids"](given))
+
+    sv.verifier_llm.complete_json = judge
+    text = "Payments VMs fail over cleanly, so customers see no downtime."
+    cite["ids"] = lambda given: [foreign]
+    label, why, ev = check(sv, topo, {"waves": []}, "freeform", {}, text)
+    assert label == "Unverifiable" and foreign in why and foreign not in ev
+    cite["ids"] = lambda given: [foreign] + given
+    label, _, ev = check(sv, topo, {"waves": []}, "freeform", {}, text)
+    assert label == "Supported" and foreign not in ev and ev
