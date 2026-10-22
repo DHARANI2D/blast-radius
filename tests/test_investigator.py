@@ -158,3 +158,37 @@ def test_final_answer_after_the_tool_budget_sends_no_tools(sv, topo):
     final = _LoopingModel.seen[-1]
     assert len(_LoopingModel.seen) == 3 and "tools" not in final and "tool_choice" not in final
     assert out["answer"].startswith("tor-r1-a has redundancy peer tor-r1-b") and len(out["steps"]) == 2
+
+
+class _Recorder:
+    """A tool-calling client that records what the live model would be sent and answers at once."""
+
+    supports_tools, model = True, "recorder"
+
+    def __init__(self):
+        self.seen = []
+
+    def chat_tools(self, role, messages, tools, temperature=0.0):
+        self.seen.append(messages)
+        return {"content": "No answer.", "tool_calls": [], "message": {}}
+
+
+def test_live_model_gets_the_run_facts_the_offline_router_uses(tmp_path):
+    from conftest import drive, make_services
+
+    from blastradius.workflow import Engine
+
+    sv = make_services(tmp_path)
+    r, _ = drive(Engine(sv))
+    st, topo = r["state"], sv.runs[r["run_id"]]["topo"]
+    sv.llm = rec = _Recorder()
+    InvestigatorAgent(sv).ask("Why is tor-r1-a the riskiest asset? Why was attempt 1 rejected? Why did the canary fail?", st, topo)
+    ctx = json.loads(rec.seen[0][1]["content"].split("\n\nContext: ", 1)[1])
+    top = ctx["top_risks"][0]
+    assert top["asset"] == "tor-r1-a" and top["reasons"] and all(sv.evidence.get(e) for e in top["evidence"])
+    first = ctx["plan_attempts"][0]
+    assert first["passed"] is False and "REDUNDANT_PAIR" in first["violated_rules"] and first["contradicted_claims"][0]["evidence"]
+    assert ctx["plan"]["canary_coverage"]["covered"] == 3 and "approved_plan_waves" not in ctx
+    assert ctx["executions"][0]["result"] == "regression" and ctx["executions"][0]["regressions"][0]["asset"] == "blr-esx-01"
+    assert ctx["rollback"]["recovered"] is True and ctx["lesson"]["id"] == st["lesson"]["id"]
+    assert len(rec.seen[0][1]["content"]) < 8000

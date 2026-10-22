@@ -92,12 +92,47 @@ class InvestigatorAgent:
         out["verification"] = self.verify(out["answer"], state, topo)
         return out
 
-    def _ask_llm(self, question: str, state: dict, max_steps: int) -> dict:
-        context = {}
+    @staticmethod
+    def _context(state: dict) -> dict:
+        """The run facts the offline router answers from, compact and with their evidence ids, for the live model."""
+        context: dict = {}
         if state.get("change_request"):
             context["change_request"] = state["change_request"].get("summary")
+        if state.get("status"):
+            context["run_status"] = state["status"]
+        risk = (state.get("risk") or {}).get("assets", {})
+        if risk:
+            context["top_risks"] = [{"asset": r["asset"], "score": r["score"], "reasons": r["reasons"][:3], "evidence": r["evidence"][:3]}
+                                    for r in sorted(risk.values(), key=lambda r: -r["score"])[:5]]
+        if state.get("attempts"):
+            context["plan_attempts"] = [{
+                "attempt": a["attempt"], "provenance": a["provenance"], "passed": a.get("passed"),
+                "trust_score": (a.get("verification") or {}).get("trust_score"),
+                "violated_rules": sorted({v["code"] for v in a["constraints"]["violations"]}),
+                "contradicted_claims": [{"claim": c["text"], "why": c["explanation"], "evidence": c["evidence"][:3]}
+                                        for c in (a.get("verification") or {}).get("claims", []) if c["label"] == "Contradicted"][:4],
+            } for a in state["attempts"]]
         if state.get("plan"):
-            context["approved_plan_waves"] = [w["assets"] for w in state["plan"]["waves"]]
+            waves = state["plan"]["waves"]
+            context["plan"] = {"waves": [w["assets"] for w in waves], "canary": waves[0]["assets"] if waves else []}
+            cov = (state.get("constraints") or {}).get("canary_coverage")
+            if cov:
+                context["plan"]["canary_coverage"] = {k: cov[k] for k in ("covered", "total", "hosts_represented", "hosts_total")}
+        if state.get("executions"):
+            context["executions"] = [{"wave": x["index"], "assets": x["assets"], "result": x.get("result"), "evidence": x.get("evidence"),
+                                      "regressions": [{k: r.get(k) for k in ("asset", "metric", "pre", "post", "message")}
+                                                      for r in x.get("regressions", [])[:3]]} for x in state["executions"]]
+        if state.get("halt_reason"):
+            context["halt_reason"] = state["halt_reason"]
+        if state.get("rollback"):
+            rb = state["rollback"]
+            context["rollback"] = {"reverted": len(rb["reverted"]), "recovered": rb.get("recovered"), "evidence": rb.get("evidence")}
+        if state.get("lesson"):
+            context["lesson"] = {k: state["lesson"].get(k) for k in ("id", "component", "version", "symptom", "lesson")}
+        return context
+
+    def _ask_llm(self, question: str, state: dict, max_steps: int) -> dict:
+        context = self._context(state)
         messages = [{"role": "system", "content": load_prompt("investigator")},
                     {"role": "user", "content": question + (f"\n\nContext: {json.dumps(context)}" if context else "")}]
         tools, steps = self.tool_specs(), []
