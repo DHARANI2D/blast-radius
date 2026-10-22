@@ -13,6 +13,7 @@ All BlastRadius source code in this repository was written for the HPE Agentic A
 | PyYAML | 6.0 | MIT | Policy file |
 | Streamlit | 1.66 | Apache-2.0 | Control Tower UI (Graphviz rendering is bundled in Streamlit's front end) |
 | pandas | 3.0 | BSD-3-Clause | UI tables and charts |
+| Vega-Altair | 6.0 (installed with Streamlit) | BSD-3-Clause | Statistical-judge band chart in the UI |
 
 ## Development and documentation tooling
 
@@ -24,10 +25,11 @@ All BlastRadius source code in this repository was written for the HPE Agentic A
 
 ## Standard library only
 
-The OpenAI-compatible and Azure OpenAI LLM client (`blastradius/llm.py`) uses `urllib`. BM25 retrieval, the SQLite ledger and the HMAC signatures also use only the Python standard library.
+The OpenAI-compatible and Azure OpenAI LLM client (`blastradius/llm.py`, including function calling) uses `urllib`. BM25 retrieval, the SQLite ledger, the HMAC signatures and the A2A JSON-RPC endpoint (`http.server`) also use only the Python standard library. The statistics (Mann-Whitney U with an exact permutation test for small samples, Wilson intervals), the simulated-annealing optimiser and the Monte Carlo pre-mortem are implemented from scratch in pure Python: no numpy or scipy.
 
 ## External services and data
 
 - **LLM endpoints:** none are bundled. Configure an HPE-approved endpoint (see README). The default offline mode makes no network calls.
-- **HPE GreenLake MCP server (`HewlettPackard/gl-mcp`):** optional, read-only, not bundled. It is only contacted if `BR_GL_MCP_URL` or `BR_GL_MCP_CMD` is set.
+- **HPE GreenLake MCP servers (`HewlettPackard/gl-mcp`, Apache-2.0):** optional, read-only, not bundled and not vendored. BlastRadius calls only the devices server's `getdevicesv1` tool, and only if `BR_GL_MCP_URL` or `BR_GL_MCP_CMD` is set (see docs/GREENLAKE_MCP.md).
+- **Agent2Agent (A2A) protocol:** `blastradius/a2a_server.py` implements the JSON-RPC methods and agent card from the public specification; no A2A SDK is used.
 - **Data:** all twin, release-note, advisory and incident data in `data/` is synthetic and was created for this project.

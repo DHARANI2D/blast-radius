@@ -5,13 +5,13 @@ HPE Agentic AI Hackathon India 2026 · Track 3: Autonomous Infrastructure Optimi
 
 BlastRadius is a LangGraph multi-agent system, connected to infrastructure through the Model Context Protocol (MCP), that turns a firmware or configuration upgrade into a verified, staged and reversible operation:
 
-1. **Discover**: build a live dependency graph across compute, network, virtualization and storage.
-2. **Assess**: score every asset from release notes, advisories, incidents and the *simulated* impact on everything downstream of it.
-3. **Plan and verify**: an LLM proposes canary waves; deterministic constraints reject unsafe waves; an independent **Verifier** checks every claim in the plan against tool evidence and computes a **Trust Score**.
-4. **Approve**: a human signs a one-page go/no-go card (two signers for fleet-wide waves).
-5. **Execute and validate**: policy-guarded MCP writes run wave by wave, golden signals are compared before, during and after each wave, and any regression auto-halts and rolls back. The failure becomes a lesson that protects the next change.
+1. **Discover** a live dependency graph across compute, network, virtualization and storage.
+2. **Assess** every asset from release notes, advisories, incidents (including lessons it learned itself) and the *simulated* impact on everything downstream of it.
+3. **Plan, optimise and verify.** An LLM proposes canary waves, helped by rules it learned from earlier rejected plans. A risk-aware optimiser re-sequences them under the same hard constraints. Code rejects unsafe waves, and an independent **Verifier** checks every claim against tool evidence it gathers itself and computes a **Trust Score**. A Monte Carlo **pre-mortem** estimates the chance of a tier-0 outage.
+4. **Approve.** A human signs a one-page go/no-go card (two signers for fleet-wide waves).
+5. **Execute and validate.** A canary covering every configuration cohort runs first. Golden signals are judged against fixed thresholds *and* statistically against un-upgraded peers over the same minutes. Any regression auto-halts and rolls back. A probe after each flashed component pins the culprit, and the failure becomes a lesson that protects the next change.
 
-Every step lands in a hash-chained audit ledger.
+Every step lands in a hash-chained audit ledger. A red-team benchmark measures how well the Verifier and the constraint checker catch false claims and unsafe plans.
 
 ![Blast radius view](docs/img/01_blast_radius.png)
 
@@ -20,31 +20,35 @@ Every step lands in a hash-chained audit ledger.
 ```bash
 pip install -r requirements.txt
 
-python -m blastradius ui                              # Control Tower at http://localhost:8501
-python -m blastradius demo --auto-approve --reset     # the whole story in the terminal
-python -m blastradius demo --faults off --auto-approve --reset   # clean run, all 5 waves
-python -m pytest -q                                   # 43 tests
-docker compose up --build                             # same UI in a container
+python -m blastradius ui                                    # Control Tower at http://localhost:8501
+python -m blastradius demo --auto-approve --reset           # the whole story in the terminal
+python -m blastradius demo --auto-approve                   # "New run": the learning re-run
+python -m blastradius demo --faults subtle --auto-approve --reset   # a 1.3x regression only the statistics catch
+python -m blastradius redteam                               # Verifier red-team benchmark (about 5 s)
+python -m pytest -q                                         # 131 tests
 ```
 
-No model endpoint is needed for the demo: `BR_LLM_MODE=offline` (the default) swaps the LLM calls for deterministic stand-ins (see [Honest scope](#honest-scope)). Everything else (MCP servers, graph, constraints, Verifier, approvals, execution, rollback, ledger) is the real code path.
+Other commands: `memory show|clear` (planner memory), `greenlake doctor|devices` (HPE GreenLake MCP), `a2a-serve` (read-only A2A endpoint), `mcp-serve <domain>`, `tools`, `ledger verify|show`, `reset`. Fault scenarios: `on` (default), `off`, `subtle`, `backup`, `on+backup`, `subtle+backup`. `docker compose up --build` runs the UI in a container.
 
-## The demo story (5 minutes, see [docs/DEMO_SCRIPT.md](docs/DEMO_SCRIPT.md))
+No model endpoint is needed for the demo. `BR_LLM_MODE=offline` (the default) replaces the LLM calls with deterministic stand-ins, labelled as such on screen (see [Honest scope](#honest-scope)). Everything else is the real code path: MCP servers, graph, constraints, optimiser, Verifier, statistics, approvals, execution, rollback, memory and ledger.
+
+## The demo story (see [docs/DEMO_SCRIPT.md](docs/DEMO_SCRIPT.md))
 
 Intent: *"Upgrade iLO 6 and System ROM on clusters PROD-BLR-07 and PROD-BLR-08 and the ToR switch pair to the latest baseline this Saturday 10pm."* That is 40 servers and 2 switches in a seeded digital twin of one Bangalore pod (504 VMs).
 
 | Step | What happens |
 |---|---|
-| Hidden dependency | LLDP shows `blr-esx-07` (it runs `payments-db-01`) has had its second uplink err-disabled for weeks. The Risk agent's failure simulation makes `tor-r1-a` the riskiest asset (79/100). |
-| First plan blocked | The planner batches both VSX members into wave 1. Simulation: **504 VMs lose service**, because the Alletra array hangs only off the R1 ToR pair, so the *other* cluster loses its datastores too. 13 constraint violations, including a canary that leaves a configuration cohort untested. |
-| Hallucination caught | The Verifier contradicts *"System ROM U54 v2.32 remediates SYN-CVE-2026-1105"* (the release notes list other CVEs; the advisory says it is fixed in iLO 6 v1.66) along with 4 other claims. **Trust Score 0 against a self-reported 91.** |
-| Re-plan accepted | Staggered VSX members, the single-homed host co-scheduled with its switch, at most 5 hosts per cluster per wave, and a **cohort-coverage canary**: one host from each of the 3 configuration cohorts (`blr-esx-21` DL360 · NIC 230.x, `blr-esx-01` DL380 · NIC 229.x, `blr-esx-03` DL380 · NIC 230.x). **Trust Score 98** (8 supported, 1 unverifiable). |
-| Human gate | Go/no-go card with canary coverage (3/3 cohorts, 40/40 hosts represented; a risk-ranked canary would cover 2/3), HMAC-signed approval, scoped write tokens. |
-| Canary regression | ROM U54 v2.32 combined with NIC firmware 229.x raises NIC latency **3.9x** on `blr-esx-01`. The wave auto-halts, write access is revoked, the wave is rolled back and signals recover. *Estimated outage avoided: $1.2M (illustrative).* |
-| Diagnosis | The canary probed each host after every component: `blr-esx-01` was normal after iLO 1.64 and broke right after ROM U54 v2.32, so **iLO is exonerated on the regressed host itself**. Control `blr-esx-03` (same DL380 model, NIC 230.x) got the same ROM and stayed healthy, so the lesson is scoped to **NIC 229.x**, with the fix: update the NIC to 230.0.156.0 first. |
-| Counterfactual | A conventional risk-ranked canary of the same size (`blr-esx-03`, `blr-esx-21`, `blr-esx-11`: the dev/CI hosts that got new NIC firmware first) covers 2/3 cohorts and **would have passed**. Wave 2 would then have started flashing 15 affected hosts running 165 VMs, including tier-0 `payments-db-01`. |
-| Learning | Press **New run**: only the **16 DL380 hosts still on NIC 229.x are deferred**; the 4 DL380s on NIC 230.x and all DL360s (26 assets) complete safely. |
-| Audit | Signed report; ledger verified; *Simulate tampering* breaks the chain on a copy. |
+| Hidden dependency | LLDP shows `blr-esx-07` (it runs `payments-db-01`) has had its second uplink err-disabled for weeks. The failure simulation makes `tor-r1-a` the riskiest asset (79/100). |
+| First plan blocked | The first draft (offline: a scripted ungrounded draft, labelled as such) batches both VSX members into wave 1. Simulation: **504 VMs lose service**, because the Alletra array hangs only off the R1 ToR pair, so the *other* cluster loses its datastores too. 13 constraint violations. |
+| Hallucination caught | The Verifier contradicts *"System ROM U54 v2.32 remediates SYN-CVE-2026-1105"* (the release notes list other CVEs; an advisory says the fix is iLO 6 v1.66) and 4 other claims. **Trust Score 0 against a self-reported 91.** The rejection becomes **15 planner-memory rules**. |
+| Re-plan, optimise, verify | Staggered VSX members, the single-homed host scheduled with its switch, at most 5 hosts per cluster per wave, and a **cohort-coverage canary** (one host from each of 3 configuration cohorts). The **optimiser** moves `tor-r1-a` and its single-homed payments host from wave 2 to wave 5, after 81% of the plan has been validated (objective -16%). The planner re-explains the final waves: **Trust Score 98**. |
+| Go / no-go | Canary covers 3/3 cohorts (a risk-ranked canary would cover 2/3). **Pre-mortem** (assumption-driven): P(tier-0 outage) **0.75%** for the accepted plan vs **100%** for the first draft. HMAC-signed approval, scoped write tokens. |
+| Canary regression | ROM U54 v2.32 with NIC firmware 229.x raises NIC latency **3.9x** on `blr-esx-01`. Fixed thresholds and the **statistical judge** agree (4.17x vs 15 cohort peers over the same minutes, Mann-Whitney p = 6e-8). Auto-halt, write access revoked, rollback, signals recover. |
+| Diagnosis and counterfactual | A probe after each component shows `blr-esx-01` was normal after iLO and broke right after the ROM. Control `blr-esx-03` (same model, NIC 230.x) stayed healthy, so the lesson is scoped to **NIC 229.x**, with the fix. A conventional risk-ranked canary would have passed, and wave 2 would have hit 15 affected hosts running 165 VMs, including `payments-db-01`. |
+| Business impact | Replayed on the twin: **~$64K avoided** against the conventional process (risk-ranked canary on the greedy ordering: Sev-1, 13 degraded VM-hours incl. tier-0), versus $458 for what actually happened. With the optimiser's ordering alone it would have been ~$4.6K. If the fleet post-check had missed it for 4 h: ~$409K. All rates are illustrative and listed. |
+| Learning | Press **New run**: memory gives the planner 12 rules and **attempt 1 passes first time**. Exactly the **16 hosts still on NIC 229.x are deferred**. The optimiser cuts the remaining plan from 7 waves to 5 (231 → 165 min), and all 26 assets complete. |
+| Red team | 93/97 false claims contradicted, 0 dangerous misses, 0/69 false blocks, 21/21 unsafe plan mutations rejected, 8/8 injected hallucinations caught. |
+| Ask BlastRadius | *"Why is tor-r1-a the riskiest asset?"* is answered from MCP tool calls only, every sentence cited, and the answer re-verified. |
 
 | Plan & Verifier | Canary rollback |
 |---|---|
@@ -56,42 +60,78 @@ Intent: *"Upgrade iLO 6 and System ROM on clusters PROD-BLR-07 and PROD-BLR-08 a
 
 | Module | Role |
 |---|---|
-| `blastradius/workflow.py` | LangGraph supervisor: checkpointed state machine with interrupts for the two approval gates |
-| `blastradius/agents/` | Intake, Topology, Risk & Advisory, Wave Planner, **Verifier**, Executor, Post-Validation, Rollback, Reporter |
+| `blastradius/workflow.py` | LangGraph supervisor: intake, discover, assess, plan, **optimise**, verify, approve (interrupt), execute, post-check, rollback, report, escalate |
+| `blastradius/agents/` | Intake, Topology, Risk & Advisory, Wave Planner, **Verifier**, Executor, Post-Validation, Rollback, Reporter, **Investigator** |
 | `blastradius/mcp_layer.py`, `tools/` | 5 MCP servers (compute, network, virt, telemetry, knowledge; 26 tools) and the ToolBus. Every call is recorded as evidence `EV-xxxx` |
-| `blastradius/topology.py` | NetworkX cross-domain graph and failure simulation (network isolation, storage reachability, cluster capacity), plus the Blast-Radius Score |
-| `blastradius/constraints.py`, `solver.py` | Hard constraints in code, and a deterministic wave solver used as fallback |
-| `blastradius/cohorts.py` | Configuration cohorts, cohort-coverage canary selection, and the risk-ranked baseline used for the counterfactual |
+| `blastradius/topology.py` | Cross-domain graph and failure simulation (isolation, storage reachability, VM-by-VM evacuation), Blast-Radius Score |
+| `blastradius/constraints.py`, `solver.py`, `optimizer.py` | Hard constraints, a deterministic wave solver (fallback), and the risk-aware simulated-annealing optimiser |
+| `blastradius/cohorts.py`, `canary_stats.py` | Configuration cohorts, cohort-coverage canary, and the statistical canary judge (Mann-Whitney U against cohort peers) |
+| `blastradius/premortem.py`, `business.py` | Monte Carlo pre-mortem, and business impact replayed on the twin |
+| `blastradius/memory.py` | Planner memory: rules from rejected plans, retrieval, first-attempt pass rate |
+| `blastradius/redteam.py` | Verifier red-team benchmark: labelled corpus, 22 mutation operators, plan mutations, injection |
+| `blastradius/a2a_server.py`, `greenlake.py` | Read-only A2A endpoint, and the adapter for HPE's GreenLake devices MCP server |
 | `blastradius/ledger.py`, `approval.py`, `policy.py` | Hash-chained ledger, HMAC approvals and write tokens, allow-list, rate limit, kill switch, redaction |
-| `blastradius/twin.py`, `data/` | Seeded digital twin (COM / Central / Mist / Morpheus / OpsRamp-shaped JSON) with fault injection, and a synthetic knowledge base |
+| `blastradius/twin.py`, `data/` | Seeded digital twin (COM / Central / Mist / Morpheus / OpsRamp-shaped JSON), fault scenarios, synthetic knowledge base |
 | `ui/app.py` | Streamlit Control Tower |
-| `policy/policy.yaml` | Every threshold the system enforces |
+| `policy/policy.yaml` | Every threshold and weight the system uses |
 
 ### How the Verifier scores trust
 
-1. A separate model, using its own prompt at temperature 0, splits the planner's rationale into atomic, typed claims (`fixes_cve`, `pair_safe_together`, `all_dual_homed`, `cluster_capacity`, `no_planned_outage`, `install_order`, `in_window`, ...).
-2. Each typed claim goes to a deterministic checker that gathers **its own** evidence over MCP (release notes, advisories, LLDP, cluster capacity, independent re-simulation). Untyped claims go to an LLM judge that may only cite retrieved evidence; if it cites nothing, its verdict is downgraded to *Unverifiable*.
+1. A separate model, using its own prompt at temperature 0, splits the planner's rationale into atomic, typed claims (`fixes_cve`, `pair_safe_together`, `all_dual_homed`, `cluster_capacity`, `canary_covers_cohorts`, `no_planned_outage`, `install_order`, `in_window`, ...).
+2. Each typed claim goes to a deterministic checker that gathers **its own** evidence over MCP: release notes, advisories, LLDP, cluster capacity, inventory, and independent re-simulation. Untyped claims go to an LLM judge that sees the evidence the sentence cites plus retrieved documents. If the judge cites nothing, its verdict is downgraded to *Unverifiable*.
 3. `Trust = 100 × Σ(weight × value) / Σ weight − 15 × contradictions`, where value is Supported 1, Unverifiable 0.5, Contradicted 0, and weight is safety 3, factual 2, informational 1.
-4. A plan reaches a human only if the constraints pass, Trust ≥ 80 and there are **no** contradictions. Otherwise the planner retries with the violations and contradicted claims as feedback, then the deterministic solver takes over, then the change is escalated.
+4. A plan reaches a human only if the constraints pass, Trust ≥ 80, there are **no** contradictions, and **no safety-sounding sentence is left unverifiable**. Otherwise the rejection is stored as planner memory and the planner retries with the feedback; then a deterministic solver takes over; then a human is asked.
+5. When the optimiser changes the waves, the planner re-explains the final waves and the Verifier checks that explanation. The approval signs the hash of the plan that will actually run.
 
-### How the canary is chosen, and how a canary failure is diagnosed
+### Red-team benchmark: how we know the Trust Score works
 
-A canary only tests the configurations it contains. Picking it by *risk* is the conventional rule, and it is quietly wrong: the lowest-risk hosts are usually dev/CI boxes, which are also the hosts that got firmware first and least resemble production.
+`python -m blastradius redteam` (seed 7, about 5 s) generates a labelled corpus from the twin and the knowledge base. Any change to the Verifier is measured against it.
 
-1. **Configuration cohorts** (`blastradius/cohorts.py`). Target servers are grouped by model plus the major version of every firmware component the change does *not* touch (here NIC BCM57414 229.x vs 230.x). Those are the attributes that interact with the new firmware and that the change will not make uniform.
-2. **Cohort-coverage canary.** The canary takes one eligible host (dual-homed, no tier-0/1 workloads) from each cohort, largest first, up to `canary_max_assets`. `CANARY_COVERAGE` is a hard constraint, and `canary_covers_cohorts` is a typed Verifier claim checked against inventory the Verifier fetches itself.
-3. **Per-component probe.** In the canary wave only, the Executor reads golden signals after each component it flashes, while the host is still in maintenance. The first component after which a regressed host breaks is the culprit, and components flashed before it are exonerated *on that host*.
-4. **Controls.** Healthy canary hosts that received the same culprit version are controls. Untouched-firmware attributes shared by every regressed host and by no control become the incident's conditions. With no control, the lesson is scoped to the whole cohort and says so.
-5. **Counterfactual.** After a rollback, the Reporter replays the conventional risk-ranked canary rule against the learned lesson and reports whether it would have caught the regression, and what the later waves would have hit.
+| Measure | Result |
+|---|---|
+| False typed claims contradicted (22 mutation operators) | **93/97** (96%, 95% CI 90-98%); the other 4 flagged Unverifiable |
+| Dangerous misses (false claim labelled Supported) | **0** (95% CI 0-4%) |
+| False blocks on true claims | **0/69** (95% CI 0-5%) |
+| Unsafe plan mutations rejected by the hard constraints | **21/21** |
+| Injected hallucinations caught / plans blocked | **8/8** / 8/8 |
+| Offline claim-extractor paraphrase coverage (canonical / dev / held-out) | 100% / 100% / 11% |
 
-Evacuation capacity is also simulated VM by VM (largest first, onto the least-utilised host under the cluster ceiling), not as aggregate free memory: a 256 GB database VM needs 256 GB free on *one* host.
+The benchmark found and fixed 2 dangerous misses, 3 crashes and 6 false blocks in the Verifier and extractor. It also found a missing hard constraint (re-scheduling a host deferred by a learned regression); that `DEFERRED` rule now exists. The weak held-out paraphrase coverage belongs to the offline regex extractor that stands in for the model. The safety-claim gate keeps it from becoming a silent pass. In the UI you can inject a labelled hallucination into the accepted plan and watch it get caught.
+
+### Canary: cohort coverage, statistics and diagnosis
+
+- **Configuration cohorts** (`cohorts.py`). Target hosts are grouped by model plus the major version of every firmware component the change does *not* touch, here NIC 229.x vs 230.x. A conventional lowest-risk canary picks dev/CI boxes that already got new NIC firmware, and covers only 2 of 3 cohorts.
+- **Cohort-coverage canary.** One eligible host (dual-homed, no tier-0/1 workloads) from each cohort is required. `CANARY_COVERAGE` is a hard constraint and a typed Verifier claim.
+- **Statistical judge** (`canary_stats.py`). Each canary host is normalised to its own pre-change median and compared with un-upgraded hosts of the same cohort over the *same minutes*, using a one-sided Mann-Whitney U test with an exact permutation test for small samples and a difference-in-differences effect size. Either a fixed-threshold FAIL or a statistical FAIL rolls back.
+
+| Scenario | Fixed 2x rule | Fixed 1.3x rule | Statistical judge |
+|---|---|---|---|
+| Demo regression (~4x) | catches | catches | catches (p = 6e-8) |
+| Subtle regression (1.36x) | **misses** | misses | **catches** (p = 5e-8) |
+| Backup job slows every host | passes | **false alarm on all 3 canary hosts** | passes (peers slowed down too) |
+
+- **Per-component probe and controls.** A probe after each flashed component pins the culprit on the regressed host itself. Healthy canary hosts that got the same version act as controls that scope the lesson.
+
+### Optimiser, pre-mortem, business impact, memory
+
+- **Optimiser** (`optimizer.py`). Simulated annealing over move, swap, merge, split and reorder moves, under the same per-wave rules as the constraint checker, with a final full check. The objective is J = minutes + Σ Blast-Radius Score + w·progressive exposure + w·waves; exposure penalises risky or tier-0-carrying assets in early waves. On the first run it reorders (-16%); on the learning re-run it cuts 7 waves to 5. The canary is never changed.
+- **Pre-mortem** (`premortem.py`). Per wave, assets fail to come back and other infrastructure fails in the background, at **assumed** rates scaled by the risk score. Single failures are counted exactly and multi-failure worlds are sampled. It reports P(tier-0 outage), the share attributable to the change, expected and P95 VMs lost, and the most likely and most severe scenarios. All of it is assumption-driven and labelled so.
+- **Business impact** (`business.py`). Replays the conventional process on the twin (risk-ranked canary, greedy ordering): when affected hosts return to service, when a post-check would detect the regression, and how many degraded VM-hours each tier accumulates. Cost uses per-tier rates, a Sev-1 and diagnosis hours, all illustrative and listed. ITIC's $300K/h appears only as a labelled cross-check.
+- **Planner memory** (`memory.py`). Every rejected attempt becomes normalised, evidence-backed rules, such as *"Never put tor-r1-a and tor-r1-b in the same wave..."* and *"Do not claim ROM U54 v2.32 fixes SYN-CVE-2026-1105..."*. Rules relevant to the next change are retrieved into the planner's prompt, and the first-attempt pass rate is tracked with and without memory.
+
+### Interoperability
+
+- **Ask BlastRadius** (`agents/investigator.py`). With a live model, the LLM chooses read-only MCP tools through function calling (up to six rounds), cites the evidence, and the Verifier re-checks the answer. Write tools are not exposed.
+- **A2A endpoint** (`python -m blastradius a2a-serve`). An upstream copilot sends a change intent and gets the verified go/no-go card back with state `input-required`. There is no A2A method that approves. It implements JSON-RPC send/get/cancel (slash and PascalCase method names); it has not been run against an official conformance suite.
+- **HPE GreenLake MCP** (`greenlake.py`, [docs/GREENLAKE_MCP.md](docs/GREENLAKE_MCP.md)). Aligned with HPE's `greenlake-devices-mcp` server (`getdevicesv1`, stdio, OAuth via `GREENLAKE_*` variables, paging, select). `python -m blastradius greenlake doctor` checks readiness without any network call. Not yet run against a live workspace.
 
 ## Responsible AI and governance
 
-- **Human in the loop:** analysis runs automatically; the canary needs 1 signer; fleet waves need 2 *distinct* signers. Nothing is written without a signed approval, and every write tool checks an HMAC token scoped to `(run, asset, action)` on the MCP server side.
-- **Grounding:** every claim links to evidence; *Unverifiable* is the default; any *Contradicted* claim blocks.
-- **Deterministic guardrails:** redundancy, capacity, canary and window rules are code, never prompt text. A write allow-list, approved scope only, a per-wave rate limit and a kill switch (`BR_KILL_SWITCH=on`, or the toggle in the UI) back them up.
-- **Auditability:** the ledger stores prompt hashes, model IDs, tool calls, claims, scores, approvals, actions and outcomes. `python -m blastradius ledger verify` recomputes the chain.
+- **Human in the loop:** analysis is automatic; the canary needs 1 signer; fleet waves need 2 *distinct* signers. Every write tool checks an HMAC token scoped to `(run, asset, action)` on the MCP server side. The A2A endpoint and the Investigator are read-only.
+- **Grounding and evaluation:** every claim links to evidence; Unverifiable is the default; contradictions and unverifiable safety claims block. The red-team benchmark measures the gate.
+- **Deterministic guardrails:** redundancy, capacity, cohort coverage, deferral and window rules are code, never prompt text. A write allow-list, approved scope only, a per-wave rate limit and a kill switch back them up.
+- **Honest numbers:** probabilities and dollars are labelled assumption-driven or illustrative wherever they appear, with the assumptions listed.
+- **Auditability:** the ledger stores prompt hashes, model IDs, tool calls, claims, scores, pre-mortem assumptions, approvals, actions and outcomes. `python -m blastradius ledger verify` recomputes the chain.
 - **Data protection:** synthetic data only. Secrets and e-mail addresses are redacted before any prompt. Configure only HPE-approved LLM endpoints.
 
 ## Using an HPE-approved LLM
@@ -107,16 +147,15 @@ BR_VERIFIER_MODEL=<a different approved model>   # recommended: independent blin
 # BR_LLM_MODE=azure  uses the Azure OpenAI URL scheme (deployment name in BR_LLM_MODEL)
 ```
 
-Prompts are in `blastradius/prompts/`. LLM outputs are validated against Pydantic schemas, with up to two repair round-trips. If the planner keeps failing, the deterministic solver takes over and the plan is marked `deterministic-solver`.
-
-Optional: set `BR_GL_MCP_URL` or `BR_GL_MCP_CMD` to attach HPE's official GreenLake MCP server (`HewlettPackard/gl-mcp`) read-only. The Topology agent will list the workspace's devices and match them by serial number. This adapter has **not** been tested against a live gl-mcp deployment.
+Prompts are in `blastradius/prompts/`. LLM outputs are validated against Pydantic schemas, with up to two repair round-trips. If the planner keeps failing, the deterministic solver takes over and the plan is marked `deterministic-solver`. `python -m blastradius redteam --extractor configured` measures the configured model as the claim extractor.
 
 ## Honest scope
 
-- **Execution is simulated.** Write tools act on a digital twin with an injected fault. Real COM, Central or Mist writes would need lab hardware and change approvals.
-- **Offline mode** replaces the LLM with deterministic stand-ins so the demo is reproducible. The planner stand-in deliberately behaves like an ungrounded model on its first attempt (it batches the VSX pair and repeats a false CVE claim) and like a corrected model after feedback. With a live endpoint the model's behaviour will vary, and the guardrails are what make that safe.
+- **Execution is simulated.** Write tools act on a digital twin with injected faults. Real COM, Central or Mist writes would need lab hardware and change approvals.
+- **Offline mode is a stand-in, and says so.** Its first planner draft is scripted to make the mistakes an ungrounded model makes, and is labelled *"scripted ungrounded draft"* on screen. Its memory-conditioned first draft switches to the corrected wording when retrieved rules cover those mistakes, so the memory gain in offline mode is by construction. With a live model, rules reach the model only through the prompt, and the gain has to be measured. The Investigator's offline router and the judge's offline lexical-grounding check are stand-ins too. Record the demo with an HPE-approved model.
+- **Numbers are model outputs.** Pre-mortem probabilities come from assumed failure rates. Dollar figures use illustrative rates listed in `policy.yaml` and in the UI. Statistical p-values pool samples from control hosts, so read them as evidence strength, not exact error rates.
+- **Not yet run live:** the GreenLake adapter (no credentials here) and the live-model path end to end (no approved endpoint here; it is tested against fake OpenAI-compatible servers).
 - **Synthetic data.** Firmware versions, CVE IDs (`SYN-CVE-…`), advisories (`ADV-SYN-…`) and incidents are fictitious.
-- **Business figures** ($1.2M per avoided Sev-1) are illustrative: 4 h × the ITIC 2024 floor of $300K/h, configurable in `policy.yaml`.
 - Retrieval is BM25 (no vector DB); Chroma/pgvector is planned for Phase 2.
 
 ## Hackathon deliverables

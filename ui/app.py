@@ -144,8 +144,9 @@ m[1].metric("Trust Score", f"{ver.get('trust_score', 0):.0f}/100",
             delta=f"self-reported {ver.get('self_confidence')}" if ver.get("self_confidence") is not None else None, delta_color="off")
 m[2].metric("Max Blast-Radius Score", f"{cons.get('max_brs', 0):.0f}")
 m[3].metric("Plan attempts", len(state.get("attempts", [])))
-m[4].metric("Est. outage avoided", f"${state['avoided_cost_usd'] / 1e6:.1f}M" if state.get("avoided_cost_usd") else "-",
-            help="Illustrative: assumed 4 h Sev-1 x ITIC 2024 floor of $300K/h (policy.yaml: business).")
+m[4].metric("Est. cost avoided", f"${state['avoided_cost_usd'] / 1e3:,.1f}K" if state.get("avoided_cost_usd") else "-",
+            help="Replayed on the twin: what the conventional risk-ranked canary would have cost minus what happened, "
+                 "at illustrative, sourced rates (policy.yaml: business). See tab ④.")
 
 main, side = st.columns([3.2, 1.3], gap="medium")
 
