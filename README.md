@@ -81,7 +81,7 @@ Intent: *"Upgrade iLO 6 and System ROM on clusters PROD-BLR-07 and PROD-BLR-08 a
 2. Each typed claim goes to a deterministic checker that gathers **its own** evidence over MCP: release notes, advisories, LLDP, cluster capacity, inventory, and independent re-simulation. Untyped claims go to an LLM judge that sees the evidence the sentence cites plus retrieved documents. If the judge cites nothing, its verdict is downgraded to *Unverifiable*.
 3. `Trust = 100 × Σ(weight × value) / Σ weight − 15 × contradictions`, where value is Supported 1, Unverifiable 0.5, Contradicted 0, and weight is safety 3, factual 2, informational 1.
 4. A plan reaches a human only if the constraints pass, Trust ≥ 80, there are **no** contradictions, and **no safety-sounding sentence is left unverifiable**. Otherwise the rejection is stored as planner memory and the planner retries with the feedback; then a deterministic solver takes over; then a human is asked.
-5. When the optimiser changes the waves, the planner re-explains the final waves and the Verifier checks that explanation. The approval signs the hash of the plan that will actually run.
+5. When the optimiser changes the waves, the planner re-explains the final waves and the Verifier checks that explanation. It also checks the planner's own first rationale against the draft waves it described, and the attempt passes only if both pass, so a false claim in the draft is rejected and learned even when the optimiser improves the waves. The approval signs the hash of the plan that will actually run; the card shows both Trust Scores.
 
 ### Red-team benchmark: how we know the Trust Score works
 

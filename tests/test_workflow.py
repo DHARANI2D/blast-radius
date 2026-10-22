@@ -14,6 +14,8 @@ def test_full_story_with_canary_regression(engine, sv):
     assert not a1["passed"] and a1["verification"]["trust_score"] < 50
     assert any(c["label"] == "Contradicted" and "SYN-CVE-2026-1105" in c["text"] for c in a1["verification"]["claims"])
     assert a2["passed"] and a2["verification"]["trust_score"] >= 80
+    # the planner's own rationale for its draft waves is verified too, and its score is on the card
+    assert a2["verification_draft"]["passed"] and gates[0]["draft_trust_score"] == a2["verification_draft"]["trust_score"]
     # only the canary gate is reached; the canary regresses and is rolled back
     assert [g["scope"] for g in gates] == ["canary"]
     assert st["status"] == "rolled_back"
@@ -41,6 +43,25 @@ def test_full_story_with_canary_regression(engine, sv):
     # the risk-aware ordering alone would also have kept the regression away from tier-0
     assert biz["with_optimised_order"]["tier0_vms"] == [] and biz["with_optimised_order"]["counterfactual_usd"] < biz["headline"]["counterfactual_usd"]
     assert sv.ledger.verify()["ok"]
+
+
+@pytest.mark.parametrize("optimise", [True, False])
+def test_a_hallucinating_first_draft_is_rejected_with_or_without_the_optimiser(tmp_path, optimise):
+    # The scripted ungrounded draft for one host is feasible but its rationale is false. The optimiser
+    # re-sequences feasible plans and has the planner re-explain them; the draft's claims must still be checked.
+    sv = make_services(tmp_path)
+    sv.policy.data.setdefault("optimizer", {})["enabled"] = optimise
+    r, _ = drive(Engine(sv), "Upgrade iLO 6 and System ROM on blr-esx-10 to the latest baseline this Saturday 10pm")
+    a1 = r["state"]["attempts"][0]
+    assert a1["constraints"]["ok"] and not a1["passed"]
+    assert ("verification_draft" in a1) == optimise
+    claims = (a1["verification_draft"] if optimise else a1["verification"])["claims"]
+    assert any(c["label"] == "Contradicted" and "SYN-CVE-2026-1105" in c["text"] for c in claims)
+    assert any("SYN-CVE-2026-1105" in c["claim"] for c in a1["feedback"]["contradicted_claims"])
+    assert any("SYN-CVE-2026-1105" in r["key"] for r in sv.memory.rules())
+    assert r["state"]["attempts"][-1]["passed"]
+    verifications = [e["payload"] for e in sv.ledger.entries(r["run_id"]) if e["event"] == "verification" and e["payload"]["attempt"] == 1]
+    assert [v["subject"] for v in verifications] == (["planner draft", "plan"] if optimise else ["plan"])
 
 
 def test_report_is_signed(engine, sv):

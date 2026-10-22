@@ -249,6 +249,12 @@ with main:
                               delta=(f"{v['trust_score'] - v['self_confidence']:+.0f} vs self-report" if v["self_confidence"] is not None else None))
                     if v["blocked_by"]:
                         st.markdown(f"<div class='br-banner-red'>Blocked: {'; '.join(v['blocked_by'])}</div>", unsafe_allow_html=True)
+                    vd = a.get("verification_draft")
+                    if vd:  # the planner's own rationale for its draft waves, before the optimiser re-sequenced them
+                        st.caption(f"Planner's draft rationale (before optimisation): Trust Score {vd['trust_score']:.0f}"
+                                   + (f"; blocked: {'; '.join(vd['blocked_by'])}" if vd["blocked_by"] else ""))
+                        for x in [x for x in vd["claims"] if x["label"] == "Contradicted"][:4]:
+                            st.markdown(f"{LABEL_ICON[x['label']]} {x['text']} - {x['explanation']}")
                 st.markdown("**Claims extracted from the planner's rationale**")
                 cdf = pd.DataFrame([{"": LABEL_ICON[x["label"]], "claim": x["text"], "verdict": x["label"], "why": x["explanation"],
                                      "evidence": ", ".join(x["evidence"])} for x in v["claims"]])

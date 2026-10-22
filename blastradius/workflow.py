@@ -56,6 +56,7 @@ class RunState(TypedDict, total=False):
     plan_hash: str
     plan_provenance: str
     verification: dict
+    verification_draft: dict | None
     constraints: dict
     approvals: list
     executions: list
@@ -219,31 +220,50 @@ def build_graph(sv):
     def verify(state: RunState):
         attempts = list(state["attempts"])
         cur = dict(attempts[-1])
-        ver = verifier_a.run(cur["plan"], state["change_request"], topo_of(state), state["risk"])
+        cr, topo = state["change_request"], topo_of(state)
+        # When the optimiser had the planner re-explain re-sequenced waves, the planner's own first rationale
+        # is still its claim: verify it against the waves it described, so a hallucinating draft cannot pass
+        # just because the optimiser replaced its text.
+        draft = cur.get("plan_before_optimization") if not cur["provenance"].startswith("deterministic-solver") else None
+        ver_draft = verifier_a.run(draft, cr, topo, state["risk"]) if draft else None
+        ver = verifier_a.run(cur["plan"], cr, topo, state["risk"])
         cons = cur["constraints"]
-        passed = cons["ok"] and ver["passed"]
+        passed = cons["ok"] and ver["passed"] and (ver_draft is None or ver_draft["passed"])
+        failing = [v for v in (ver_draft, ver) if v and not v["passed"]]
+        failed_claims = [c for v in failing for c in v["claims"]]
         cur["verification"] = ver
+        if ver_draft:
+            cur["verification_draft"] = ver_draft
         cur["passed"] = passed
         cur["feedback"] = None if passed else {
             "constraint_violations": [v["message"] for v in cons["violations"]],
-            "contradicted_claims": [{"claim": c["text"], "why": c["explanation"]} for c in ver["claims"] if c["label"] == "Contradicted"],
-            "unverifiable_claims": [c["text"] for c in ver["claims"] if c["label"] == "Unverifiable"],
+            "contradicted_claims": [{"claim": c["text"], "why": c["explanation"]} for c in failed_claims if c["label"] == "Contradicted"],
+            "unverifiable_claims": [c["text"] for c in failed_claims if c["label"] == "Unverifiable"],
         }
         attempts[-1] = cur
-        tl = [e for fb in ver["llm_fallbacks"] for e in fallback(state, "verifier", fb, attempt=cur["attempt"])]
-        log(state, "agent:verifier", "verification", {"attempt": cur["attempt"], "trust_score": ver["trust_score"],
-                                                      "self_confidence": ver["self_confidence"], "counts": ver["counts"],
-                                                      "claims": [{k: c[k] for k in ("text", "type", "label", "evidence")} for c in ver["claims"]],
-                                                      "verifier_model": ver["verifier_model"], "extractor": ver["extractor"],
-                                                      "llm": ver["llm_calls"]})
-        c = ver["counts"]
-        detail = (f"Trust Score {ver['trust_score']:.0f} (planner self-confidence {ver['self_confidence']}); "
-                  f"{c.get('Supported', 0)} supported, {c.get('Contradicted', 0)} contradicted, {c.get('Unverifiable', 0)} unverifiable")
-        tl += _t("verifier", "scored", detail, "success" if ver["passed"] else "error")
-        for cl in [x for x in ver["claims"] if x["label"] == "Contradicted"][:3]:
-            tl += _t("verifier", "contradicted", f"\"{cl['text']}\" - {cl['explanation']}", "error")
+        tl = []
+        for which, v in (("planner draft", ver_draft), ("plan", ver)):
+            if v is None:
+                continue
+            tl += [e for fb in v["llm_fallbacks"] for e in fallback(state, "verifier", fb, attempt=cur["attempt"])]
+            log(state, "agent:verifier", "verification", {"attempt": cur["attempt"], "subject": which if ver_draft else "plan",
+                                                          "plan_hash": plan_hash(draft if v is ver_draft else cur["plan"]),
+                                                          "trust_score": v["trust_score"],
+                                                          "self_confidence": v["self_confidence"], "counts": v["counts"],
+                                                          "claims": [{k: c[k] for k in ("text", "type", "label", "evidence")} for c in v["claims"]],
+                                                          "verifier_model": v["verifier_model"], "extractor": v["extractor"],
+                                                          "llm": v["llm_calls"]})
+            c = v["counts"]
+            detail = (("planner's own rationale for the draft waves: " if v is ver_draft else "")
+                      + f"Trust Score {v['trust_score']:.0f} (planner self-confidence {v['self_confidence']}); "
+                      f"{c.get('Supported', 0)} supported, {c.get('Contradicted', 0)} contradicted, {c.get('Unverifiable', 0)} unverifiable")
+            tl += _t("verifier", "scored", detail, "success" if v["passed"] else "error")
+            for cl in [x for x in v["claims"] if x["label"] == "Contradicted"][:3]:
+                tl += _t("verifier", "contradicted", f"\"{cl['text']}\" - {cl['explanation']}", "error")
         if not passed and pol.get("memory.enabled", True):
-            learned = sv.memory.learn(state["run_id"], cur["feedback"], cur, topo_of(state))
+            # Rules come from the verification(s) that failed; constraint violations from the attempt itself.
+            lesson = {**cur, "verification": {"claims": failed_claims}} if failing else cur
+            learned = sv.memory.learn(state["run_id"], cur["feedback"], lesson, topo_of(state))
             log(state, "agent:planner_memory", "rules_learned", {"attempt": cur["attempt"],
                                                                   "rules": [{k: r[k] for k in ("key", "hits", "evidence")} for r in learned]})
             if learned:
@@ -252,7 +272,8 @@ def build_graph(sv):
         upd: dict[str, Any] = {"attempts": attempts, "timeline": tl}
         if passed:
             upd.update(plan=cur["plan"], plan_hash=plan_hash(cur["plan"]), plan_provenance=cur["provenance"],
-                       verification=ver, constraints=cons, status="awaiting_canary_approval")
+                       verification=ver, verification_draft=ver_draft, constraints=cons,
+                       status="awaiting_canary_approval")
             # Pre-mortem (assumption-driven Monte Carlo) of the accepted plan, against the first draft when there was one.
             topo, risk, comps = topo_of(state), state["risk"], state["change_request"]["components"]
             samples, seed = int(pol.get("premortem.samples", 2000)), int(pol.get("premortem.seed", 11))
@@ -313,6 +334,7 @@ def build_graph(sv):
             "plan_provenance": state["plan_provenance"],
             "trust_score": ver["trust_score"],
             "self_confidence": ver["self_confidence"],
+            "draft_trust_score": (state.get("verification_draft") or {}).get("trust_score"),
             "claims": [{k: x[k] for k in ("id", "text", "label", "explanation", "evidence")} for x in ver["claims"]],
             "waves": waves,
             "total_duration_min": cons["total_duration_min"],

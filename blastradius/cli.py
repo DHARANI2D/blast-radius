@@ -27,8 +27,10 @@ def _print_timeline(events: list[dict], start: int = 0) -> int:
 
 def _card(card: dict) -> None:
     print(f"\n  ┌─ GO / NO-GO ({card['scope']}) ── plan {card['plan_hash'][:12]} ({card['plan_provenance']})")
+    draft = card.get("draft_trust_score")
     print(f"  │ Trust Score {card['trust_score']:.0f}/100 (planner self-confidence {card['self_confidence']})"
-          f"  · max Blast-Radius Score {card['max_brs']:.0f} · {card['total_duration_min']} min")
+          + (f" · planner's draft rationale {draft:.0f}/100" if draft is not None else "")
+          + f"  · max Blast-Radius Score {card['max_brs']:.0f} · {card['total_duration_min']} min")
     for w in card["waves"]:
         ev = f" (+evacuate {', '.join(w['evacuate'])})" if w["evacuate"] else ""
         print(f"  │  {w['name']:<32} {len(w['assets']):>2} assets  BRS {w['brs']:>5.1f}  {w['duration_min']} min{ev}")
