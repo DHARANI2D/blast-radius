@@ -17,6 +17,6 @@ Setup: `python -m blastradius ui`, browser at 1500×950 or larger. In the sideba
 
 Say plainly once in the video: *"Execution here runs against a simulated digital twin with injected faults. The data is synthetic, and the LLM is an offline stand-in unless an HPE-approved endpoint is configured."*
 
-Good questions to type in tab ⑥: *Why is blr-esx-07 risky?*, *Why was attempt 1 rejected?*, *What does the canary cover?*
+Tab ⑥ has one-click example questions: *Why is tor-r1-a the riskiest asset?*, *Does System ROM U54 v2.32 fix SYN-CVE-2026-1105?* (good for the video: the answer contradicts the planner's first draft), *How many hosts of PROD-BLR-07 can be in maintenance at once?*, *Tell me about blr-esx-07*. In offline mode a deterministic router picks the tools, so free-form questions outside these shapes get a generic answer.
 
 Backup if the UI misbehaves: `python -m blastradius demo --auto-approve --reset` shows run 1 in the terminal. Run it again without `--reset` to show the deferred hosts and the memory-conditioned first draft.

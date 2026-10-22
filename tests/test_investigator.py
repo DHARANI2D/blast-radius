@@ -18,6 +18,30 @@ def test_offline_router_answers_with_cited_tool_evidence(sv, topo):
     assert out["verification"]["claims"][0]["label"] == "Supported"
 
 
+def test_offline_router_explains_a_rejected_attempt_and_the_canary(tmp_path):
+    from conftest import make_services
+
+    from blastradius.workflow import Engine
+
+    sv = make_services(tmp_path)
+    r = Engine(sv).start("Upgrade iLO 6 and System ROM on clusters PROD-BLR-07 and PROD-BLR-08 and the ToR switch pair "
+                         "to the latest baseline this Saturday 10pm")
+    st, topo = r["state"], sv.runs[r["run_id"]]["topo"]
+    out = InvestigatorAgent(sv).ask("Why was attempt 1 rejected?", st, topo)
+    assert out["answer"].startswith("Attempt 1 was rejected with 13 constraint violations")
+    assert "REDUNDANT_PAIR" in out["answer"] and "Risk agent" not in out["answer"]
+    claims = out["verification"]["claims"]
+    # the Verifier's own findings are restated with their evidence and hold up when re-checked
+    lldp = next(c for c in claims if c["text"].startswith("LLDP shows blr-esx-07 with fewer than two live uplinks [EV-"))
+    assert lldp["label"] == "Supported" and lldp["type"] == "single_homed"
+    assert "Contradicted" not in {c["label"] for c in claims}
+    cov = InvestigatorAgent(sv).ask("What does the canary cover?", st, topo)
+    assert cov["answer"].endswith("covers 3/3 configuration cohorts.")
+    assert [c["label"] for c in cov["verification"]["claims"]] == ["Supported"]
+    # "why" alone no longer falls through to the riskiest asset
+    assert "Risk agent" not in InvestigatorAgent(sv).ask("Why?", st, topo)["answer"]
+
+
 def test_investigator_never_calls_write_tools(sv):
     names = {t["function"]["name"] for t in InvestigatorAgent(sv).tool_specs()}
     assert "compute__apply_firmware" not in names and "virt__enter_maintenance" not in names

@@ -189,8 +189,15 @@ def test_verifier_fixes(sv, claim, label):
     ("Every host in prod-blr-07 has two live uplinks.", "all_dual_homed", {"cluster": "prod-blr-07"}),
     ("SYN-CVE-2026-1105 is fixed in iLO 6 1.66.", "fixes_cve", {"component": "iLO 6", "version": "1.66", "cve": "SYN-CVE-2026-1105"}),
     ("blr-esx-07 is not dual-homed.", "freeform", {}),
+    ("LLDP shows blr-esx-07 with fewer than two live uplinks.", "single_homed", {"server": "blr-esx-07"}),
 ])
 def test_extractor_paraphrases(sentence, ctype, args):
     switches = ["tor-r1-a", "tor-r1-b", "tor-r2-a", "tor-r2-b", "spine-1", "spine-2"]
     (c,) = extract_claims({"rationale": sentence, "switch_names": switches})["claims"]
     assert (c["type"], c["args"]) == (ctype, args)
+
+
+def test_abbreviations_do_not_end_a_sentence():
+    text = "504 VMs lose service (incl. payments-db-01). Wave 2 waits, e.g. for the soak. Done."
+    assert extract_claims({"rationale": text, "switch_names": []})["claims"][0]["text"].endswith("(incl. payments-db-01).")
+    assert len(extract_claims({"rationale": text, "switch_names": []})["claims"]) == 3

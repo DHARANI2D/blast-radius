@@ -22,6 +22,7 @@ import typing
 
 from ..cohorts import major
 from ..llm import load_prompt
+from ..offline_llm import _sentences
 from .verifier import VerifierAgent
 
 EXCLUDE = {"telemetry.advance_clock", "knowledge.record_incident", "network.wait_upgrade_complete"}
@@ -192,8 +193,31 @@ class InvestigatorAgent:
                     say(f"{rn['component']} {rn['version']} fixes {cve}", rev)
             if not advs and not any(cve in r.get("security_fixes", []) for r in self.sv.kb.release_notes):
                 say(f"The knowledge base has no release note or advisory for {cve}", aev)
+        attempts = state.get("attempts") or []
+        if attempts and re.search(r"\b(attempts?|reject\w*|block\w*|fail\w*|drafts?)\b", q):
+            m = re.search(r"\b(?:attempt|draft)\s*#?(\d+)", q)
+            pick = ([a for a in attempts if m and a["attempt"] == int(m.group(1))]
+                    or [a for a in attempts if not a["passed"]][:1] or attempts[-1:])
+            for a in pick:
+                ver, viol = a["verification"], a["constraints"]["violations"]
+                bad = [c for c in ver["claims"] if c["label"] == "Contradicted"]
+                if a["passed"]:
+                    say(f"Attempt {a['attempt']} passed with no constraint violations and Trust Score {ver['trust_score']:.0f}")
+                    continue
+                say(f"Attempt {a['attempt']} was rejected with {len(viol)} constraint violations and Trust Score "
+                    f"{ver['trust_score']:.0f}, {len(bad)} claims contradicted")
+                codes = sorted({v["code"] for v in viol})
+                if codes:
+                    say(f"The violated rules were {', '.join(codes)}")
+                for c in bad[:2]:  # the Verifier's own findings, each sentence with the evidence it rests on
+                    for part in _sentences(c["explanation"]):
+                        say(part.rstrip("."), *c["evidence"][:3])
+        cov = (state.get("constraints") or {}).get("canary_coverage")
+        if cov and state.get("plan") and "canary" in q:
+            canary = [x for x in state["plan"]["waves"][0]["assets"] if x in topo.servers]
+            say(f"The canary {', '.join(canary)} covers {cov['covered']}/{cov['total']} configuration cohorts")
         risk = (state.get("risk") or {}).get("assets", {})
-        if re.search(r"\b(why|risk|risky|riskiest)\b", q):
+        if re.search(r"\b(risk|risky|riskiest)\b", q) or (re.search(r"\bwhy\b", q) and (servers or switches)):
             named = servers + switches or sorted(risk, key=lambda a: -risk[a]["score"])[:1]
             for a in named:
                 if a in risk:

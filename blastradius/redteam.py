@@ -56,6 +56,7 @@ from .ledger import Ledger
 from .llm import OfflineLLM
 from .mcp_layer import ToolBus
 from .models import CLAIM_TYPES, MaintenanceWindow
+from .offline_llm import _sentences
 from .policy import PolicyGuard
 from .services import Services
 from .solver import grounded_rationale, plan_facts, solve
@@ -1146,7 +1147,7 @@ def verify_injected(sv, plan: dict, cr: dict, topo, risk: dict, kind: str, durat
     facts = hallucination_facts(sv, topo, risk["target_versions"], duration_min)
     text, lab = inject_hallucination(plan["rationale"], kind, facts)
     res = (verifier or VerifierAgent(sv)).run({**plan, "rationale": text}, cr, topo, risk)
-    sents = [x for x in re.split(r"(?<=[.!?])\s+", text.strip()) if x]
+    sents = _sentences(text)
     hit = {c["label"] for c in _assign(res["claims"], sents).get(sents.index(lab["sentence"]), [])}
     label = next((x for x in ("Contradicted", "Unverifiable", "Supported") if x in hit), None)
     return {**lab, "label": label, "caught": label == "Contradicted", "plan_blocked": not res["passed"],

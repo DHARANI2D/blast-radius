@@ -147,8 +147,12 @@ def _grounded_plan(ctx: dict) -> dict:
 
 
 # -------------------------------------------------------------- verifier
+# A full stop after "incl.", "e.g.", "i.e." or "vs." does not end a sentence.
+SENTENCE_END = re.compile(r"(?<!\bincl\.)(?<!\be\.g\.)(?<!\bi\.e\.)(?<!\bvs\.)(?<=[.!?])\s+", re.I)
+
+
 def _sentences(text: str) -> list[str]:
-    return [s.strip() for s in re.split(r"(?<=[.!?])\s+", text.strip()) if s.strip()]
+    return [s.strip() for s in SENTENCE_END.split(text.strip()) if s.strip()]
 
 
 # Paraphrase support for extract_claims. Each pattern below was added for a phrasing in the
@@ -160,8 +164,8 @@ CVE_ID = r"(?P<cve>(?:SYN-)?CVE-\d{4}-\d+)"
 FIX_WORD = r"\b(?:fix|remediat|resolv|address|patch)\w*"
 CLUSTER_NAME = r"(?P<cluster>[A-Z][A-Z0-9]*(?:-[A-Z0-9]+)+)"
 HOST_NAME = r"\b[a-z][a-z0-9]*(?:-[a-z0-9]+)*-\d+\b"  # blr-esx-07; switch names and tier-N are filtered out
-DUAL_HOMED = r"dual-homed|two (?:live )?uplinks|connected to both"
-SINGLE_HOMED = r"single-homed|only one (?:live )?uplink|a single (?:tor )?switch"
+DUAL_HOMED = r"dual-homed|(?<!fewer than )(?<!less than )two (?:live )?uplinks|connected to both"
+SINGLE_HOMED = r"single-homed|only one (?:live )?uplink|a single (?:tor )?switch|(?:fewer|less) than two (?:live )?uplinks"
 TOGETHER = r"together|same wave|same time|simultaneous|in parallel"
 CANONICAL_COMPONENTS = {"ilo 6": "iLO 6", "system rom": "System ROM", "switch os": "Switch OS"}
 
