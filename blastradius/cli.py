@@ -99,7 +99,7 @@ def cmd_demo(args) -> int:
         for line in summary_lines(st["business_impact"]):
             print(line)
         opt = st["business_impact"].get("with_optimised_order")
-        if opt:
+        if opt and (opt.get("detected_wave") or 0) > 1:  # only when the risk-ranked canary would have missed it
             print(f"With the optimiser's risk-aware ordering alone, a missed canary would have cost ~${opt['counterfactual_usd']:,.0f} "
                   f"({'no' if not opt['tier0_vms'] else len(opt['tier0_vms'])} tier-0 VMs exposed).")
     mem = sv.memory.stats()

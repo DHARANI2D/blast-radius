@@ -29,3 +29,15 @@ def test_env_sets_demo_and_a2a_defaults_and_a_flag_wins(monkeypatch):
     monkeypatch.delenv("BR_TOOL_TRANSPORT")
     a = _parsed(monkeypatch, ["demo"], "cmd_demo")
     assert (a.faults, a.transport) == ("on", "mcp")
+
+
+def test_optimised_order_line_only_when_the_risk_ranked_canary_misses(monkeypatch, tmp_path, capsys):
+    monkeypatch.setenv("BR_RUNTIME_DIR", str(tmp_path / "rt"))
+    monkeypatch.delenv("BR_FAULTS", raising=False)
+    line = "With the optimiser's risk-aware ordering alone, a missed canary"
+    # subtle: the risk-ranked canary contains blr-esx-21 and catches it in wave 1, so nothing was missed
+    cli.main(["demo", "--faults", "subtle", "--auto-approve", "--reset", "--transport", "inproc"])
+    out = capsys.readouterr().out
+    assert "Avoided $0" in out and line not in out
+    cli.main(["demo", "--faults", "on", "--auto-approve", "--reset", "--transport", "inproc"])
+    assert line in capsys.readouterr().out

@@ -508,8 +508,10 @@ with main:
                                 help="Risk-ranked canary on the greedy wave order, replayed on the twin.")
                     k[2].metric("What happened", f"${h['actual_usd']:,.0f}")
                     opt = biz.get("with_optimised_order")
-                    k[3].metric("Optimised order alone", f"${opt['counterfactual_usd']:,.0f}" if opt else "-",
-                                help="If the canary had missed it but the risk-aware ordering had been used.")
+                    missed = bool(opt) and (opt.get("detected_wave") or 0) > 1
+                    k[3].metric("Optimised order alone", f"${opt['counterfactual_usd']:,.0f}" if missed else "-",
+                                help="If the canary had missed it but the risk-aware ordering had been used."
+                                     + ("" if missed else " Not applicable: a risk-ranked canary would also have caught it."))
                     st.caption(h["text"])
                     st.dataframe(pd.DataFrame(cost_table(biz)), hide_index=True, width="stretch")
                     with st.expander("Timeline, exposure, sensitivity and assumptions"):
