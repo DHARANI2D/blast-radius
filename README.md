@@ -122,7 +122,7 @@ The benchmark found and fixed 2 dangerous misses, 3 crashes and 6 false blocks i
 ### Interoperability
 
 - **Ask BlastRadius** (`agents/investigator.py`). With a live model, the LLM chooses read-only MCP tools through function calling (up to six rounds), cites the evidence, and the Verifier re-checks the answer. Write tools are not exposed.
-- **A2A endpoint** (`python -m blastradius a2a-serve`). An upstream copilot sends a change intent and gets the verified go/no-go card back with state `input-required`. There is no A2A method that approves. It implements JSON-RPC send/get/cancel (slash and PascalCase method names); it has not been run against an official conformance suite.
+- **A2A endpoint** (`python -m blastradius a2a-serve`). An upstream copilot sends a change intent and gets the verified go/no-go card back with state `input-required`; an intent that names no known asset comes back `rejected` with the reason. There is no A2A method that approves. It implements JSON-RPC send/get/cancel (slash and PascalCase method names); it has not been run against an official conformance suite.
 - **HPE GreenLake MCP** (`greenlake.py`, [docs/GREENLAKE_MCP.md](docs/GREENLAKE_MCP.md)). Aligned with HPE's `greenlake-devices-mcp` server (`getdevicesv1`, stdio, OAuth via `GREENLAKE_*` variables, paging, select). `python -m blastradius greenlake doctor` checks readiness without any network call. Not yet run against a live workspace.
 
 ## Responsible AI and governance
