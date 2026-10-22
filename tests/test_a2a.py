@@ -27,7 +27,18 @@ def rpc(svc, method, params, rid=1):
 def test_agent_card_is_served(server):
     with urllib.request.urlopen(server.base_url + "/.well-known/agent-card.json", timeout=10) as r:
         card = json.loads(r.read())
-    assert card["url"].endswith("/a2a") and {s["id"] for s in card["skills"]} >= {"assess-change"}
+    assert card["url"] == server.base_url + "/a2a" and [s["id"] for s in card["skills"]] == ["assess-change"]
+
+
+def test_static_card_and_cli_card_are_the_served_card(capsys):
+    from blastradius.a2a_server import agent_card
+    from blastradius.cli import main
+    from blastradius.config import ROOT
+
+    main(["a2a-card"])
+    printed = json.loads(capsys.readouterr().out)
+    assert printed == agent_card() == json.loads((ROOT / "a2a" / "agent-card.json").read_text())
+    assert printed["url"] == "http://127.0.0.1:8765/a2a"  # a2a-serve's defaults, not the Streamlit port
 
 
 def test_send_message_returns_go_no_go_and_never_executes(server, sv):

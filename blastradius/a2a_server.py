@@ -24,18 +24,41 @@ import uuid
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import Any
 
-from .config import ROOT
 
 SEND = {"message/send", "SendMessage"}
 GET = {"tasks/get", "GetTask"}
 CANCEL = {"tasks/cancel", "CancelTask"}
 
 
-def agent_card(base_url: str) -> dict:
-    card = json.loads((ROOT / "a2a" / "agent-card.json").read_text())
-    card["url"] = base_url.rstrip("/") + "/a2a"
-    card["preferredTransport"] = "JSONRPC"
-    return card
+DEFAULT_BASE_URL = "http://127.0.0.1:8765"  # a2a-serve's default --host and --port
+
+# The one definition of the card: a2a-serve serves it, ``python -m blastradius a2a-card``
+# prints it, and a2a/agent-card.json is that output (regenerate it with the CLI).
+# Only the skill this endpoint implements is listed.
+CARD = {
+    "protocolVersion": "1.0",
+    "name": "BlastRadius Change-Safety Agent",
+    "description": "Predicts the cross-domain blast radius of firmware and configuration changes on HPE compute, network and "
+                   "virtualization, plans canary waves and verifies every planner claim against tool evidence (Trust Score). "
+                   "Read-only over A2A: approval and execution happen only in the Control Tower, by a human.",
+    "version": "0.1.0",
+    "provider": {"organization": "HPE Agentic AI Hackathon India 2026 team (PoC)"},
+    "defaultInputModes": ["text/plain", "application/json"],
+    "defaultOutputModes": ["application/json", "text/markdown"],
+    "capabilities": {"streaming": False, "pushNotifications": False},
+    "skills": [{
+        "id": "assess-change",
+        "name": "Assess change blast radius",
+        "description": "Natural-language change intent in; dependency graph, per-asset risk, staged wave plan, Trust Score and "
+                       "go/no-go card out. Read-only.",
+        "tags": ["change-management", "firmware", "risk", "dependency-graph"],
+        "examples": ["Upgrade iLO 6 and System ROM on PROD-BLR-07 and the ToR switch pair to the latest baseline on Saturday"],
+    }],
+}
+
+
+def agent_card(base_url: str = DEFAULT_BASE_URL) -> dict:
+    return {**CARD, "url": base_url.rstrip("/") + "/a2a", "preferredTransport": "JSONRPC"}
 
 
 def _text_of(message: dict) -> str:

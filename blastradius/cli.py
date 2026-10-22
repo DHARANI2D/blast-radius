@@ -191,7 +191,9 @@ def cmd_greenlake(args) -> int:
 
 
 def cmd_a2a(args) -> int:
-    print((ROOT / "a2a" / "agent-card.json").read_text())
+    from .a2a_server import agent_card
+
+    print(json.dumps(agent_card(), indent=2))
     return 0
 
 
@@ -247,7 +249,7 @@ def main(argv: list[str] | None = None) -> int:
     gl = sub.add_parser("greenlake", help="HPE GreenLake MCP (gl-mcp): readiness check, or a read-only device listing")
     gl.add_argument("action", choices=["doctor", "devices"])
     gl.set_defaults(fn=cmd_greenlake)
-    sub.add_parser("a2a-card", help="print the A2A agent card").set_defaults(fn=cmd_a2a)
+    sub.add_parser("a2a-card", help="print the A2A agent card that a2a-serve serves (default host and port)").set_defaults(fn=cmd_a2a)
     a2 = sub.add_parser("a2a-serve", help="serve the read-only assess-change skill over A2A (JSON-RPC)")
     a2.add_argument("--host", default="127.0.0.1")
     a2.add_argument("--port", type=int, default=8765)
