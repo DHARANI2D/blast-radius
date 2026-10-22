@@ -78,8 +78,8 @@ INNOVATION = [
     "**Cross-domain, before the change:** one graph joins compute, network, virtualization and storage. In the PoC the "
     "storage array hangs only off the rack-R1 ToR pair, so rebooting both R1 switches would also cut the *other* cluster's datastores.",
     "**Verifier-gated autonomy, measured:** each planner sentence becomes an atomic claim checked by code that fetches its "
-    "own MCP evidence (release notes, LLDP, capacity, re-simulation); other claims go to an LLM judge (a separate model when "
-    "BR_VERIFIER_MODEL is set, recommended) that may only cite retrieved evidence. A contradiction or an unverifiable *safety* claim blocks the plan. Red-team benchmark (166 "
+    "own MCP evidence (release notes, LLDP, capacity, re-simulation); other claims go to an LLM judge (ideally a separate "
+    "model) that may only cite retrieved evidence. A contradiction or an unverifiable *safety* claim blocks the plan. Red-team benchmark (166 "
     "labelled claims, 22 mutation operators): 93/97 false claims contradicted, the rest flagged, 0 dangerous misses, "
     "0 false blocks; 21/21 unsafe plan mutations rejected.",
     "**LLM proposes, code disposes:** redundancy, capacity, canary, window and deferral rules are code, with a deterministic "
@@ -98,8 +98,8 @@ BUSINESS = [
     "**Avoided cost, replayed on the twin:** a risk-ranked canary passes the fault and wave 2 degrades payments-db until "
     "minute 66: about **$64K** (13.2 degraded VM-hours, a tier-0 Sev-1) vs $458 with BlastRadius, at illustrative "
     "rates (policy.yaml). Cross-check: one avoided 4-hour Sev-1 at ITIC's $300K/hour floor is $1.2M.",
-    "**Operator time:** hours of cross-team impact analysis become a verified 42-asset plan in about 3 seconds of compute "
-    "with the offline stand-ins (target under 5 minutes end to end with a hosted LLM).",
+    "**Operator time:** hours of cross-team impact analysis become a verified 42-asset plan in about 3 s of compute "
+    "offline (target under 5 minutes end to end with a hosted LLM).",
     "**HPE levers:** stickier GreenLake Intelligence, a reason to run compute, network and virtualization on HPE, a \"safe "
     "autonomy\" answer to Gartner, fewer support escalations.",
     "**Roadmap:** P1 twin -> P2 Q1 2027 HPE IT pilot (read-only COM/Central/Mist) -> P3 GreenLake Intelligence agent "
@@ -130,10 +130,10 @@ HOW = [
 
 STACK = [
     "**LLMs (HPE-approved only):** OpenAI-compatible endpoint (NVIDIA NIM on HPE Private Cloud AI or the ChatHPE/GenAI Hub "
-    "gateway) or Azure OpenAI with function calling; Verifier on its own prompt at temperature 0, a separate model when "
-    "BR_VERIFIER_MODEL is set (recommended); offline stand-ins for a reproducible demo.",
+    "gateway) or Azure OpenAI with function calling; Verifier at temperature 0, ideally on a "
+    "separate model; offline stand-ins for a reproducible demo.",
     "**Frameworks:** LangGraph 1.x, MCP Python SDK 2.x (5 servers, 26 tools), A2A JSON-RPC, NetworkX, BM25 retrieval, "
-    "pure-Python statistics, annealing and Monte Carlo, Pydantic, YAML policy, SQLite ledger, Streamlit, Docker; 131 pytest tests.",
+    "pure-Python statistics, annealing and Monte Carlo, Pydantic, YAML policy, SQLite ledger, Streamlit, Docker; 203 pytest tests.",
 ]
 
 RAI = [
@@ -151,15 +151,15 @@ DEMO = [
     "**PoC (twin of one Bangalore pod: 40 ProLiant Gen11, 504 VMs, 2 ToR pairs, Alletra):** the naive plan puts both VSX "
     "members in wave 1 (504 VMs incl. payments-db lose service; Trust 0 vs. self-reported 91; a false CVE claim contradicted); "
     "the optimised re-plan scores Trust 98, covers all 3 configuration cohorts, pre-mortem tier-0 risk 0.75% (naive: 100%). "
-    "A 3.9x NIC-latency regression on a NIC-229.x host (Mann-Whitney p = 6e-8 vs 15 peers) auto-halts and rolls back; the "
+    "A 3.9x NIC-latency regression on a NIC-229.x host (Mann-Whitney p = 4.4e-16 vs 15 peers) auto-halts and rolls back; the "
     "next run defers exactly the 16 affected hosts and its first draft passes. Execution is simulated; twin IDs are fictitious.",
 ]
 
 REFERENCES = [
     "HPE press releases: unified agentic IT operations with GreenLake and Morpheus (June 17, 2026); self-driving networks (June 16, 2026).",
-    "HPE Compute Ops Management product page; HewlettPackard/gl-mcp repository; MCP specification; Linux Foundation A2A (April 9, 2026).",
+    "HPE Compute Ops Management; HewlettPackard/gl-mcp; MCP specification; Linux Foundation A2A (April 9, 2026).",
     "Uptime Institute outage analysis 2026 and survey 2025; ITIC 2024 hourly cost of downtime.",
-    "Gartner, \"Agentic AI Fails Where Governance Stops\" (Sept 2026); Hype Cycle for AI in IT Operations 2026.",
+    "Gartner, \"Agentic AI Fails Where Governance Stops\" (Sept 2026); AI in I&O Hype Cycle 2026.",
     "Open source (OSS_DISCLOSURE.md): LangGraph, MCP SDK, Pydantic, PyYAML (MIT); NetworkX, pandas, Altair (BSD-3); Streamlit (Apache-2.0).",
 ]
 

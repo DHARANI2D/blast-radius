@@ -25,7 +25,7 @@ python -m blastradius demo --auto-approve --reset           # the whole story in
 python -m blastradius demo --auto-approve                   # "New run": the learning re-run
 python -m blastradius demo --faults subtle --auto-approve --reset   # a 1.3x regression only the statistics catch
 python -m blastradius redteam                               # Verifier red-team benchmark (about 5 s)
-python -m pytest -q                                         # 131 tests
+python -m pytest -q                                         # 203 tests
 ```
 
 Other commands: `memory show|clear` (planner memory), `greenlake doctor|devices` (HPE GreenLake MCP), `a2a-serve` (read-only A2A endpoint), `mcp-serve <domain>`, `tools`, `ledger verify|show`, `reset`. Fault scenarios: `on` (default), `off`, `subtle`, `backup`, `on+backup`, `subtle+backup`. `docker compose up --build` runs the UI in a container.
@@ -54,6 +54,8 @@ Intent: *"Upgrade iLO 6 and System ROM on clusters PROD-BLR-07 and PROD-BLR-08 a
 | Plan & Verifier | Canary rollback |
 |---|---|
 | ![](docs/img/02_verifier.png) | ![](docs/img/04_canary_rollback.png) |
+| **Go / No-Go with pre-mortem** | **Ask BlastRadius** |
+| ![](docs/img/03_go_no_go.png) | ![](docs/img/08_ask.png) |
 
 ## Architecture
 
@@ -110,7 +112,7 @@ Ground truth is read from the raw twin and knowledge records, not through the ch
 
 | Scenario | Fixed 2x rule | Fixed 1.3x rule | Statistical judge |
 |---|---|---|---|
-| Demo regression (~4x) | catches | catches | catches (p = 6e-8) |
+| Demo regression (~4x) | catches | catches | catches (p = 4.4e-16, the exact-test minimum) |
 | Subtle regression (1.36x) | **misses** | misses | **catches** (p = 5e-8) |
 | Backup job slows every host | passes | **false alarm on all 3 canary hosts** | passes (peers slowed down too) |
 
