@@ -120,6 +120,28 @@ def test_redaction_removes_secrets(sv):
     assert "abc123" not in out and "ops@example.com" not in out
 
 
+def test_redaction_is_json_aware_and_covers_common_secret_forms(sv):
+    import json
+
+    secrets = {"password": "S1", "aws_secret_access_key": "S2", "client_secret": "S3", "api_token": 12345}
+    intent = ('creds {"password": "S4"} secret_key=S5 private_key=S6 Authorization: Bearer S7.x the pwd is S8 '
+              'api-token "S9"; -----BEGIN RSA PRIVATE KEY-----\nS10\n-----END RSA PRIVATE KEY----- Upgrade PROD-BLR-07')
+    prompt = json.dumps({"ilo": secrets, "intent": intent})
+    out = sv.policy.redact(prompt)
+    back = json.loads(out)  # still valid JSON
+    assert not any(f"S{i}" in out for i in range(1, 11)) and "12345" not in out
+    assert back["ilo"] == {k: "[REDACTED]" for k in secrets}
+    assert back["intent"].startswith('creds {"password": "[REDACTED]"} secret_key=[REDACTED]') and "PROD-BLR-07" in back["intent"]
+    # the same redaction reaches the wire on the chat_tools path
+    from blastradius.llm import OpenAICompatClient
+
+    sent = []
+    llm = OpenAICompatClient("http://llm.invalid", "k", "m", "openai", "", 5, sv.policy.redact)
+    llm._request = lambda body: sent.append(body) or {"content": "ok"}
+    llm.chat_tools("investigator", [{"role": "user", "content": prompt}], [])
+    assert json.loads(sent[0]["messages"][0]["content"]) == back
+
+
 def test_kill_switch_mid_wave_keeps_the_record_of_applied_writes(tmp_path, monkeypatch):
     sv = make_services(tmp_path, faults=False)
     monkeypatch.delenv("BR_KILL_SWITCH", raising=False)

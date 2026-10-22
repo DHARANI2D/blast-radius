@@ -86,5 +86,11 @@ business:                       # illustrative assumptions, shown with their sou
 
 redaction:
   patterns:
-    - '(?i)(api[_-]?key|password|secret|token)\s*[:=]\s*\S+'
+    # A pattern's 'keep' group (the key and its quotes) is kept, so a redacted JSON prompt stays valid JSON:
+    # "password": "x" -> "password": "[REDACTED]". Keys cover password, pwd, secret, secret_key, client_secret,
+    # private_key, aws_secret_access_key, api keys and tokens; values may be quoted, escaped-quoted or bare.
+    - '(?i)(?P<keep>\b[\w-]*?(?:api[_-]?key|passw(?:or)?d|pwd|secret|token|private[_-]?key|access[_-]?key)[\w-]*(?:\\?["''])?\s*(?:[:=]|\bis\b)\s*(?P<q>\\?["''])?)(?(q)[^"''\\]*|[^\s"''\\,;}\]]+)'
+    - '(?i)(?P<keep>\b[\w-]*?(?:api[_-]?key|passw(?:or)?d|pwd|secret|token|private[_-]?key|access[_-]?key)[\w-]*(?:\\?["''])?\s+\\?["''])[^"''\\]*'
+    - '(?i)(?P<keep>\bbearer\s+)[A-Za-z0-9._~+/-]+=*'
+    - '-----BEGIN (?:[A-Z]+ )*PRIVATE KEY-----[\s\S]*?-----END (?:[A-Z]+ )*PRIVATE KEY-----'
     - '[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}'

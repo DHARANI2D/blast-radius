@@ -31,8 +31,15 @@ class Policy:
         return float(w.get(tier, w.get(str(tier), 1)))
 
     def redact(self, text: str) -> str:
+        """Mask secrets and e-mail addresses. A pattern's ``keep`` group (the key and its quotes) survives, so a
+        redacted JSON prompt stays valid JSON."""
+        def mask(m: re.Match) -> str:
+            keep = m.groupdict().get("keep") or ""
+            # A bare JSON value under a secret key ("api_token": 12345) gets a quoted mask, so the JSON stays valid.
+            return keep + ('"[REDACTED]"' if re.search(r'(?<!\\)"\s*:\s*$', keep) else "[REDACTED]")
+
         for pat in self.get("redaction.patterns", []):
-            text = re.sub(pat, "[REDACTED]", text)
+            text = re.sub(pat, mask, text)
         return text
 
 
