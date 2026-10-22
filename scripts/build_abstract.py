@@ -65,7 +65,7 @@ WHY = [
 ]
 
 OVERVIEW_INTRO = (
-    "An operator, a ServiceNow change request or an upstream copilot (over A2A) states a change in plain language "
+    "An operator, a change ticket or an upstream copilot (over A2A) states a change in plain language "
     "(*\"Upgrade iLO 6 and System ROM on clusters PROD-BLR-07 and PROD-BLR-08 and the ToR switch pair to the latest "
     "baseline this Saturday 10pm\"*). BlastRadius **discovers** the cross-domain dependency graph, **assesses** per-asset "
     "risk and downstream exposure, **plans, optimises and verifies** canary waves (code rejects unsafe waves; the Verifier "

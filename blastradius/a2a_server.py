@@ -1,5 +1,5 @@
-"""A2A endpoint: lets an upstream agent (an OpsRamp or Morpheus copilot, a ServiceNow
-change workflow) ask BlastRadius to assess a change.
+"""A2A endpoint: lets an upstream agent (an OpsRamp or Morpheus copilot, a change-ticket
+workflow) ask BlastRadius to assess a change.
 
 Read-only by design. The skill runs intake, discovery, risk, planning and verification,
 then stops at the human approval gate and returns the go/no-go card as the task
