@@ -90,7 +90,11 @@ def test_itic_is_a_labelled_cross_check_and_assumptions_are_sourced(canon):
     assert itic["flat_usd"] == 1_200_000 and itic["source"] == "ITIC 2024" and "not used" in itic["label"]
     assert imp["headline"]["counterfactual_usd"] != itic["flat_usd"]
     assert all(a["source"] for a in imp["assumptions"])
-    assert {"illustrative", "ITIC 2024"} <= {a["source"] for a in imp["assumptions"]}
+    assert {"illustrative (policy.yaml)", "ITIC 2024"} <= {a["source"] for a in imp["assumptions"]}
+    # every rate in the totals is listed in policy.yaml, not only defaulted in code
+    biz = [a for a in imp["assumptions"] if a["key"].startswith("business.") and " x " not in a["key"]]
+    assert len(biz) >= 8 and all(a["source"] == "illustrative (policy.yaml)" for a in biz)
+    assert business._rates(canon[0].policy) == business._rates(Policy({}))  # the code fallbacks match: no number changed
     md = business.markdown(imp)
     assert "Cross-check only" in md and "payments-db-01" in md and imp["explanation"] in md
     assert business.summary_lines(imp)[0] == imp["headline"]["text"]

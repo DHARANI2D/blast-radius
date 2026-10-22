@@ -81,9 +81,19 @@ impact:
   migrated_vm_weight: 0.02      # live migration is not free; small exposure weight
   brs_scale: 30                 # BRS = 100 * (1 - exp(-weighted_impact / scale))
 
-business:                       # illustrative assumptions, shown with their source in the UI
-  downtime_cost_per_hour_usd: 300000   # ITIC 2024 floor for mid-size/large enterprises
-  assumed_outage_hours: 4
+business:                       # cost replay (business.py) only; every value is shown with its source in the UI and report
+  degraded_cost_per_vm_hour_usd: {0: 20000, 1: 2500, 2: 150, 3: 10}  # illustrative: lost revenue/productivity per degraded VM-hour, by tier
+  sev1_tier_max: 0                     # illustrative: a degraded VM at or below this tier opens a Sev-1
+  sev1_response_engineer_hours: 30     # illustrative: incident bridge, communications, post-incident review
+  sev1_sla_credits_usd: 50000          # illustrative: SLA credits and penalties for a tier-0 degradation
+  engineer_rate_usd_per_hour: 150      # illustrative: loaded engineering cost
+  diagnosis_engineer_hours: {manual: 24, automated: 1}  # illustrative: manual when a fleet wave surfaces it (no per-component probe)
+  detection_delay_min: 0               # illustrative: counterfactual fleet post-check detects at the end of the soak
+  missed_detection_delay_min: 240      # illustrative: used when only the statistical canary judge saw the regression
+  rebalance_delay_min: 0               # illustrative: DRS returns a host's VMs this long after exit-maintenance
+  sensitivity_detection_delays_min: [0, 60, 240]  # illustrative: detection delays shown in the sensitivity rows
+  downtime_cost_per_hour_usd: 300000   # sourced: ITIC 2024 floor for mid-size/large enterprises (cross-check only, not in any total)
+  assumed_outage_hours: 4              # illustrative: outage length for the ITIC cross-check
 
 redaction:
   patterns:

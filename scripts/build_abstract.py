@@ -96,8 +96,8 @@ INNOVATION = [
 
 BUSINESS = [
     "**Avoided cost, replayed on the twin:** a risk-ranked canary passes the fault and wave 2 degrades payments-db until "
-    "minute 66: about **$64K** (13.2 degraded VM-hours, a tier-0 Sev-1) vs $458 with BlastRadius, at illustrative, "
-    "sourced rates. Cross-check: one avoided 4-hour Sev-1 at ITIC's $300K/hour floor is $1.2M.",
+    "minute 66: about **$64K** (13.2 degraded VM-hours, a tier-0 Sev-1) vs $458 with BlastRadius, at illustrative "
+    "rates (policy.yaml). Cross-check: one avoided 4-hour Sev-1 at ITIC's $300K/hour floor is $1.2M.",
     "**Operator time:** hours of cross-team impact analysis become a verified 42-asset plan in about one second of compute "
     "(target under 5 minutes end to end with a hosted LLM).",
     "**HPE levers:** stickier GreenLake Intelligence, a reason to run compute, network and virtualization on HPE, a \"safe "

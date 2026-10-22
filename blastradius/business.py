@@ -41,6 +41,7 @@ from .constraints import check_plan, wave_duration
 from .policy import Policy
 from .topology import Topology
 
+# Fallbacks only: the rates are listed, with their source, in policy.yaml (business).
 DEFAULT_VM_HOUR_USD = {0: 20000, 1: 2500, 2: 150, 3: 10}
 DEFAULT_DIAGNOSIS_HOURS = {"manual": 24, "automated": 1}
 # Regression metrics that mean VMs lose service rather than run degraded.
@@ -408,6 +409,11 @@ def counterfactual_impact(lesson: dict, plan: dict, topo: Topology, policy: Poli
 # --------------------------------------------------------------- language
 def assumptions(policy: Policy, rates: dict) -> list[dict]:
     d = policy.get("execution.durations_min", {})
+    bus = policy.get("business", {}) or {}
+
+    def illus(key: str) -> str:  # where an illustrative value came from
+        return "illustrative (policy.yaml)" if key.split(".", 1)[1] in bus else "illustrative (code default)"
+
     dur = ", ".join(f"{k} {v} min" for k, v in d.items())
     vm = ", ".join(f"tier {k} ${v:,.0f}" for k, v in sorted(rates["vm_hour"].items()))
     dh = rates["diag_hours"]
@@ -416,26 +422,26 @@ def assumptions(policy: Policy, rates: dict) -> list[dict]:
          "note": "wave timing; hosts in a wave are flashed and rolled back in parallel, as constraints.wave_duration assumes"},
         {"key": "timeline", "value": "waves back to back from minute 0", "source": "model",
          "note": "the fleet approval wait between the canary and wave 2 is not counted"},
-        {"key": "business.detection_delay_min", "value": rates["detection_delay"], "source": "illustrative",
+        {"key": "business.detection_delay_min", "value": rates["detection_delay"], "source": illus("business.detection_delay_min"),
          "note": "counterfactual detection: the same per-wave post-check at the end of the soak (0) or this many minutes later"},
-        {"key": "business.missed_detection_delay_min", "value": rates["missed_delay"], "source": "illustrative",
+        {"key": "business.missed_detection_delay_min", "value": rates["missed_delay"], "source": illus("business.missed_detection_delay_min"),
          "note": "used instead when only the statistical canary judge saw the regression (fleet waves would miss it)"},
-        {"key": "business.rebalance_delay_min", "value": rates["rebalance_delay"], "source": "illustrative",
+        {"key": "business.rebalance_delay_min", "value": rates["rebalance_delay"], "source": illus("business.rebalance_delay_min"),
          "note": "after exit-maintenance DRS returns each host's VMs (twin placement) after this delay; same for both scenarios"},
         {"key": "exposure_end", "value": "evacuated for rollback", "source": "model",
          "note": "a VM stops being degraded once live-migrated off the affected host; rollback batches follow the original waves"},
-        {"key": "business.degraded_cost_per_vm_hour_usd", "value": vm, "source": "illustrative",
+        {"key": "business.degraded_cost_per_vm_hour_usd", "value": vm, "source": illus("business.degraded_cost_per_vm_hour_usd"),
          "note": "lost revenue and productivity per degraded VM-hour; a degraded VM keeps running at reduced performance"},
-        {"key": "business.sev1_tier_max", "value": rates["sev1_tier_max"], "source": "illustrative",
+        {"key": "business.sev1_tier_max", "value": rates["sev1_tier_max"], "source": illus("business.sev1_tier_max"),
          "note": "any degraded VM at or below this tier opens a Sev-1"},
-        {"key": "business.sev1_response_engineer_hours", "value": rates["sev1_hours"], "source": "illustrative",
+        {"key": "business.sev1_response_engineer_hours", "value": rates["sev1_hours"], "source": illus("business.sev1_response_engineer_hours"),
          "note": "incident bridge, communications and post-incident review"},
-        {"key": "business.sev1_sla_credits_usd", "value": rates["sla_credits"], "source": "illustrative",
+        {"key": "business.sev1_sla_credits_usd", "value": rates["sla_credits"], "source": illus("business.sev1_sla_credits_usd"),
          "note": "SLA credits and penalties for a tier-0 degradation"},
-        {"key": "business.engineer_rate_usd_per_hour", "value": rates["eng_rate"], "source": "illustrative",
+        {"key": "business.engineer_rate_usd_per_hour", "value": rates["eng_rate"], "source": illus("business.engineer_rate_usd_per_hour"),
          "note": "loaded engineering cost"},
         {"key": "business.diagnosis_engineer_hours", "value": f"manual {dh['manual']:g} h, automated {dh['automated']:g} h",
-         "source": "illustrative", "note": "manual when the regression surfaces in a fleet wave (no per-component probe)"},
+         "source": illus("business.diagnosis_engineer_hours"), "note": "manual when the regression surfaces in a fleet wave (no per-component probe)"},
         {"key": "business.downtime_cost_per_hour_usd x business.assumed_outage_hours",
          "value": f"${rates['itic_rate']:,.0f}/h x {rates['itic_hours']:g} h", "source": "ITIC 2024",
          "note": "cross-check only; not used in any total"},

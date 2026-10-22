@@ -562,7 +562,7 @@ with main:
                     st.markdown("##### Business impact, replayed on the twin")
                     h = biz["headline"]
                     k = st.columns(4)
-                    k[0].metric("Avoided (illustrative rates)", f"${h['avoided_usd']:,.0f}")
+                    k[0].metric("Avoided · illustrative rates (policy.yaml)", f"${h['avoided_usd']:,.0f}")
                     k[1].metric("Conventional process", f"${h['counterfactual_usd']:,.0f}",
                                 help="Risk-ranked canary on the greedy wave order, replayed on the twin.")
                     k[2].metric("What happened", f"${h['actual_usd']:,.0f}")
