@@ -575,7 +575,8 @@ def build_graph(sv):
         # Every outcome ends here: the run's write access ends with it.
         sv.authority.revoke_run(state["run_id"])
         atts = state.get("attempts") or []
-        if atts:
+        # The memory metric is about the planner: a first attempt from the deterministic solver, or an empty plan, says nothing.
+        if atts and atts[0]["provenance"] != "deterministic-solver" and any(w["assets"] for w in atts[0]["plan"]["waves"]):
             sv.memory.record_run(state["run_id"], bool(atts[0].get("passed")), len(atts), len(atts[0].get("memory_rules", [])))
         rep = rep_a.run(dict(state))
         log(state, "agent:reporter", "report_signed", {"signature": rep["signature"], "outcome": rep["outcome"], "path": rep["path"]})

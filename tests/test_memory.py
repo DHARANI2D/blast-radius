@@ -173,3 +173,23 @@ def test_memory_conditioned_second_run_passes_on_attempt_one(tmp_path):
     assert s["rules"] >= 15
     sv.reset_lab(forget_lessons=True)  # "Reset lab" forgets them
     assert sv.memory.stats()["rules"] == 0
+
+
+def test_solver_first_attempt_is_not_a_planner_pass(tmp_path):
+    """The first-attempt pass rate is evidence about the planner: a deterministic-solver attempt 1 is not counted."""
+    from blastradius.llm import LLMError
+
+    sv = make_services(tmp_path)
+    orig = sv.llm.complete_json
+
+    def down(role, *a, **k):
+        if role == "planner":
+            raise LLMError("simulated planner outage")
+        return orig(role, *a, **k)
+
+    sv.llm.complete_json = down
+    eng = Engine(sv)
+    r, _ = drive(eng)
+    st = eng.state(r["run_id"])
+    assert st["attempts"][0]["provenance"] == "deterministic-solver" and st["attempts"][0]["passed"]
+    assert sv.memory.stats()["runs"] == 0
