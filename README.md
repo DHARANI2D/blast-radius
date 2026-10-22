@@ -95,8 +95,9 @@ Intent: *"Upgrade iLO 6 and System ROM on clusters PROD-BLR-07 and PROD-BLR-08 a
 | Unsafe plan mutations rejected by the hard constraints | **21/21** |
 | Injected hallucinations caught / plans blocked | **8/8** / 8/8 |
 | Offline claim-extractor paraphrase coverage (canonical / dev / held-out) | 100% / 100% / 11% |
+| False sentences that still pass the gate, labelled Unverifiable (canonical / dev / held-out) | 4/97 / 8/194 / 111/194 |
 
-The benchmark found and fixed 2 dangerous misses, 3 crashes and 6 false blocks in the Verifier and extractor. It also found a missing hard constraint (re-scheduling a host deferred by a learned regression); that `DEFERRED` rule now exists. The weak held-out paraphrase coverage belongs to the offline regex extractor that stands in for the model. The safety-claim gate keeps it from becoming a silent pass. In the UI you can inject a labelled hallucination into the accepted plan and watch it get caught.
+The benchmark found and fixed 2 dangerous misses, 3 crashes and 6 false blocks in the Verifier and extractor. It also found a missing hard constraint (re-scheduling a host deferred by a learned regression); that `DEFERRED` rule now exists. The weak held-out paraphrase coverage belongs to the offline regex extractor that stands in for the model. A false sentence it cannot type is labelled Unverifiable, which lowers the Trust Score but does not by itself block: the safety-claim gate blocks it only when it uses safety language ("safe", "no downtime", "without impact", "at once", "in parallel", "hitless", ...). The last row counts the false sentences that still pass; none of them is labelled Supported. In the UI you can inject a labelled hallucination into the accepted plan and watch it get caught.
 
 ### Canary: cohort coverage, statistics and diagnosis
 

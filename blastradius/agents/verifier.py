@@ -24,9 +24,13 @@ from ..mcp_layer import ToolCallError
 from ..models import ClaimList, Judgement
 from ..topology import Topology
 
-SAFETY_RE = re.compile(r"\b(safe(?:ly|ty)?|no (?:impact|outage|risk|downtime|customer impact)|redundan\w*|dual[- ]homed|single[- ]homed|"
+SAFETY_RE = re.compile(r"\b(safe(?:ly|ty)?|(?:no|zero) (?:[\w-]+ )?(?:impact|outage|risk|downtime|interruption|disruption|data loss)|"
+                       r"without (?:any )?(?:[\w-]+ )?(?:impact\w*|affecting|disrupt\w*|downtime|interrupt\w*|outage|loss)|"
+                       r"(?:un|not |never )(?:affected|impacted|disrupted|interrupted)|non-?disruptive\w*|hitless|seamless\w*|"
+                       r"concurrent\w*|simultaneous\w*|at once|at the same time|in parallel|"
+                       r"redundan\w*|dual[- ]homed|single[- ]homed|"
                        r"fail ?over|capacity|tolerat\w*|outage|isolat\w*|quorum|evacuat\w*|tier[- ]?0|canary|roll ?back|"
-                       r"(?:will not|won't|cannot|can't) (?:break|fail|disrupt))\b", re.I)
+                       r"(?:will not|won't|cannot|can't|does not|doesn't|do not|don't) (?:break|fail|disrupt|affect|impact|interrupt))\b", re.I)
 
 CATEGORY = {
     "pair_safe_together": "safety", "pair_staggered": "safety", "all_dual_homed": "safety",

@@ -99,3 +99,22 @@ def test_judge_may_only_cite_the_evidence_it_was_given(sv, topo):
     cite["ids"] = lambda given: [foreign] + given
     label, _, ev = check(sv, topo, {"waves": []}, "freeform", {}, text)
     assert label == "Supported" and foreign not in ev and ev
+
+
+def test_unchecked_safety_paraphrases_block_the_gate(sv, topo):
+    waves = solve(SERVERS, SWITCHES, topo, {}, sv.policy, COMPS, 480)
+    good = {"waves": waves, "self_confidence": 90,
+            "rationale": "tor-r1-a and tor-r1-b are upgraded in different waves. Update iLO 6 before System ROM."}
+    _, risk = ctx(sv, topo, good)
+    for s in ("tor-r1-a and tor-r1-b may be upgraded concurrently without impact.",
+              "Both tor-r1-a and tor-r1-b can go down at once without affecting workloads.",
+              "The switch pair is upgraded simultaneously with zero downtime.",
+              "The firmware rollout is hitless and seamless for customers.",
+              "Hosts are flashed in parallel; the change is non-disruptive."):
+        res = VerifierAgent(sv).run(dict(good, rationale=good["rationale"] + " " + s), CR, topo, risk)
+        assert not res["passed"] and res["blocked_by"] == ["1 safety claim(s) no evidence could check"], s
+    from blastradius.agents.verifier import SAFETY_RE
+
+    for s in ("Saturday-night application traffic is expected to be low.", "Update iLO 6 before System ROM.",
+              "The plan takes about 165 minutes and fits the window."):
+        assert not SAFETY_RE.search(s), s
