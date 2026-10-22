@@ -219,3 +219,23 @@ def test_rollback_writes_pass_the_policy_guard_and_honour_the_kill_switch(tmp_pa
     steps = st["report"]["manual_steps"]
     assert len(steps) == len(changes) and all(f"revert {c['component']} {c['to']} -> {c['from']}" in " ".join(steps) for c in changes)
     assert "rollback_blocked" in [e["event"] for e in sv.ledger.entries(r["run_id"])]
+
+
+def test_record_incident_is_a_token_gated_write_that_never_overwrites_another_run(tmp_path):
+    sv = make_services(tmp_path)
+    assert "knowledge.record_incident" in sv.bus.describe()["write_tools"]
+    r, _ = drive(Engine(sv))
+    lesson = r["state"]["lesson"]
+    assert [i["id"] for i in sv.kb.learned] == [lesson["id"]]  # the reporter recorded it with a token after the rollback
+    poisoned = {**lesson, "kind": "note"}  # would drop the DEFERRED protection for the affected hosts
+    with pytest.raises(ToolCallError):
+        sv.bus.call("rogue", "knowledge.record_incident", incident=poisoned, run_id=r["run_id"], approval_token="")
+    tok = sv.authority.token(r["run_id"], lesson["id"], "knowledge.record_incident")
+    with pytest.raises(ToolCallError):  # the run has ended: its grant is gone
+        sv.bus.call("rogue", "knowledge.record_incident", incident=poisoned, run_id=r["run_id"], approval_token=tok)
+    sv.authority.grant("other-run", [lesson["id"]], ["knowledge.record_incident"])
+    tok = sv.authority.token("other-run", lesson["id"], "knowledge.record_incident")
+    with pytest.raises(ToolCallError) as exc:
+        sv.bus.call("rogue", "knowledge.record_incident", incident=poisoned, run_id="other-run", approval_token=tok)
+    assert "cannot be overwritten" in str(exc.value)
+    assert sv.kb.learned[0]["kind"] == lesson["kind"]

@@ -510,7 +510,13 @@ def build_graph(sv):
                                         + ("recovered" if check["passed"] else "NOT recovered - page on-call"), "success" if check["passed"] else "error")
         upd: dict[str, Any] = {"rollback": rb, "status": "rolled_back"}
         if lesson:
-            ev = rep_a.learn(lesson)
+            # Learned incidents change which hosts later plans defer, so recording one is a token-gated write too.
+            sv.authority.reinstate_run(state["run_id"])
+            sv.authority.grant(state["run_id"], [lesson["id"]], ["knowledge.record_incident"])
+            try:
+                ev = rep_a.learn(state["run_id"], lesson)
+            finally:
+                sv.authority.revoke_run(state["run_id"])
             log(state, "agent:reporter", "lesson_recorded", {"incident": lesson, "evidence": ev})
             upd["lesson"] = lesson
             tl += _t("reporter", "learned", f"{lesson['id']}: {lesson['symptom']} {lesson['lesson']}", "warn")

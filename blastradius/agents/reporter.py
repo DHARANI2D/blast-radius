@@ -185,8 +185,10 @@ class ReporterAgent:
             "exposed_tier0_vms": sorted(v["name"] for v in vms if v["tier"] == 0),
         }
 
-    def learn(self, incident: dict) -> str:
-        _, ev = self.sv.bus.call(self.name, "knowledge.record_incident", incident=incident)
+    def learn(self, run_id: str, incident: dict) -> str:
+        """Record the lesson; the token is granted for this run and incident only after a rollback (workflow.rollback)."""
+        token = self.sv.authority.token(run_id, incident["id"], "knowledge.record_incident")
+        _, ev = self.sv.bus.call(self.name, "knowledge.record_incident", incident=incident, run_id=run_id, approval_token=token)
         return ev
 
     # --------------------------------------------------------------- report

@@ -109,8 +109,13 @@ class KnowledgeBase:
             out.append(i)
         return out
 
-    def add_learned_incident(self, incident: dict) -> dict:
+    def add_learned_incident(self, incident: dict, run_id: str | None = None) -> dict:
+        """Store a learned incident. An id another run recorded is never overwritten."""
         with self._lock:
+            incident = {**incident, "recorded_by_run": run_id or incident.get("recorded_by_run")}
+            prev = next((i for i in self.learned if i["id"] == incident["id"]), None)
+            if prev and prev.get("recorded_by_run") != incident["recorded_by_run"]:
+                raise ValueError(f"incident {incident['id']} was recorded by run {prev.get('recorded_by_run')}; it cannot be overwritten")
             self.learned = [i for i in self.learned if i["id"] != incident["id"]] + [incident]
             if self.learned_file:
                 self.learned_file.parent.mkdir(parents=True, exist_ok=True)
