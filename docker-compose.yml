@@ -1,0 +1,8 @@
+services:
+  control-tower:
+    build: .
+    ports: ["8501:8501"]
+    env_file:
+      - path: .env
+        required: false
+    volumes: ["./runtime:/app/runtime"]   # ledger, learned incidents, signed reports

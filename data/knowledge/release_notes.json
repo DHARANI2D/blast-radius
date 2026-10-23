@@ -1,0 +1,56 @@
+[
+  {
+    "id": "RN-ILO6-1.64",
+    "title": "iLO 6 firmware v1.64 release notes (synthetic)",
+    "component": "iLO 6",
+    "version": "1.64",
+    "models": ["HPE ProLiant DL380 Gen11", "HPE ProLiant DL360 Gen11"],
+    "released": "2026-09-18",
+    "security_fixes": ["SYN-CVE-2026-1101", "SYN-CVE-2026-1102"],
+    "security_fixes_complete": true,
+    "known_issues": [],
+    "install_notes": "Update iLO 6 before System ROM when both are part of the same baseline. No host reboot is required for iLO; the management processor resets (about 2 minutes).",
+    "text": "iLO 6 v1.64 resolves SYN-CVE-2026-1101 (Redfish session fixation) and SYN-CVE-2026-1102 (SNMP agent buffer over-read). Enhancements: faster firmware staging, improved Redfish task reporting. Install order: update iLO 6 before System ROM. No known issues."
+  },
+  {
+    "id": "RN-ROM-U54-2.32",
+    "title": "System ROM U54 v2.32 for ProLiant DL380 Gen11 (synthetic)",
+    "component": "System ROM",
+    "version": "U54 v2.32",
+    "models": ["HPE ProLiant DL380 Gen11"],
+    "released": "2026-09-24",
+    "security_fixes": ["SYN-CVE-2026-2201", "SYN-CVE-2026-2202"],
+    "security_fixes_complete": true,
+    "known_issues": [],
+    "install_notes": "Requires iLO 6 v1.60 or later. Host reboot required. Apply with the host in maintenance mode.",
+    "text": "System ROM U54 v2.32 for DL380 Gen11 addresses SYN-CVE-2026-2201 (UEFI variable handling) and SYN-CVE-2026-2202 (SMM call-out). Updates PCIe link training defaults for 25GbE adapters. Requires iLO 6 v1.60 or later; update iLO first. Host reboot required."
+  },
+  {
+    "id": "RN-ROM-U63-2.32",
+    "title": "System ROM U63 v2.32 for ProLiant DL360 Gen11 (synthetic)",
+    "component": "System ROM",
+    "version": "U63 v2.32",
+    "models": ["HPE ProLiant DL360 Gen11"],
+    "released": "2026-09-24",
+    "security_fixes": ["SYN-CVE-2026-2201", "SYN-CVE-2026-2202"],
+    "security_fixes_complete": true,
+    "known_issues": [],
+    "install_notes": "Requires iLO 6 v1.60 or later. Host reboot required. Apply with the host in maintenance mode.",
+    "text": "System ROM U63 v2.32 for DL360 Gen11 addresses SYN-CVE-2026-2201 and SYN-CVE-2026-2202. Updates PCIe link training defaults for 25GbE adapters. Requires iLO 6 v1.60 or later; update iLO first. Host reboot required."
+  },
+  {
+    "id": "RN-AOSCX-10.14.1000",
+    "title": "AOS-CX 10.14.1000 release notes (synthetic)",
+    "component": "Switch OS",
+    "version": "10.14.1000",
+    "models": ["HPE Aruba Networking CX 8325-48Y8C", "HPE Aruba Networking CX 9300-32D"],
+    "released": "2026-09-10",
+    "security_fixes": ["SYN-CVE-2026-3301"],
+    "security_fixes_complete": true,
+    "known_issues": [
+      {"id": "KI-CX-0412", "severity": "medium", "summary": "Brief LACP renegotiation (under 3 s) on downstream LAGs while VSX peers run different major versions; resolves when both peers match."}
+    ],
+    "install_notes": "VSX pairs must be upgraded one member at a time (vsx update-software). Upgrading both VSX members simultaneously stops forwarding for every dual-homed downstream device. Allow 20 minutes per member.",
+    "text": "AOS-CX 10.14.1000 resolves SYN-CVE-2026-3301 (management-plane DoS). Upgrade guidance: VSX pairs must be upgraded one member at a time; never reboot both VSX members at once. Known issue KI-CX-0412: brief LACP renegotiation while peers run mixed versions."
+  }
+]

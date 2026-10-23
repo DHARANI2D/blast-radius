@@ -1,0 +1,28 @@
+[
+  {
+    "id": "INC-SYN-2026-0412",
+    "title": "Both VSX members rebooted in one window at HYD-POD-2 (synthetic)",
+    "date": "2026-04-12",
+    "severity": "sev1",
+    "component": "Switch OS",
+    "version": "10.13.1010",
+    "models": ["HPE Aruba Networking CX 8325-48Y8C"],
+    "conditions": {},
+    "symptom": "A change ticket upgraded both VSX members in parallel. Every dual-homed host in the rack lost connectivity for 47 minutes, including the storage VLAN.",
+    "lesson": "Upgrade VSX members in separate waves and confirm the peer is forwarding before starting the second member.",
+    "source": "post-incident review (synthetic)"
+  },
+  {
+    "id": "INC-SYN-2026-0611",
+    "title": "Single-homed host isolated during ToR maintenance (synthetic)",
+    "date": "2026-06-11",
+    "severity": "sev2",
+    "component": "Switch OS",
+    "version": "10.13.1010",
+    "models": ["HPE Aruba Networking CX 8325-48Y8C"],
+    "conditions": {},
+    "symptom": "A host with one err-disabled uplink was isolated when its remaining ToR rebooted; HA did not restart VMs because the host stayed powered on.",
+    "lesson": "Check LLDP for every host before ToR maintenance; evacuate single-homed hosts first.",
+    "source": "post-incident review (synthetic)"
+  }
+]

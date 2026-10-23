@@ -1,0 +1,39 @@
+{
+  "protocolVersion": "1.0",
+  "name": "BlastRadius Change-Safety Agent",
+  "description": "Predicts the cross-domain blast radius of firmware and configuration changes on HPE compute, network and virtualization, plans canary waves and verifies every planner claim against tool evidence (Trust Score). Read-only over A2A: approval and execution happen only in the Control Tower, by a human.",
+  "version": "0.1.0",
+  "provider": {
+    "organization": "HPE Agentic AI Hackathon India 2026 team (PoC)"
+  },
+  "defaultInputModes": [
+    "text/plain",
+    "application/json"
+  ],
+  "defaultOutputModes": [
+    "application/json",
+    "text/markdown"
+  ],
+  "capabilities": {
+    "streaming": false,
+    "pushNotifications": false
+  },
+  "skills": [
+    {
+      "id": "assess-change",
+      "name": "Assess change blast radius",
+      "description": "Natural-language change intent in; dependency graph, per-asset risk, staged wave plan, Trust Score and go/no-go card out. Read-only.",
+      "tags": [
+        "change-management",
+        "firmware",
+        "risk",
+        "dependency-graph"
+      ],
+      "examples": [
+        "Upgrade iLO 6 and System ROM on PROD-BLR-07 and the ToR switch pair to the latest baseline on Saturday"
+      ]
+    }
+  ],
+  "url": "http://127.0.0.1:8765/a2a",
+  "preferredTransport": "JSONRPC"
+}

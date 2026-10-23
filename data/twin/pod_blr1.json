@@ -1,0 +1,8903 @@
+{
+ "_meta": {
+  "site": "BLR-POD-1 (synthetic digital twin)",
+  "generatedBy": "scripts/generate_twin.py",
+  "disclaimer": "Synthetic lab data. Not customer data. Firmware versions, CVE and advisory IDs are fictitious."
+ },
+ "compute": {
+  "servers": [
+   {
+    "id": "srv-0001",
+    "name": "blr-esx-01",
+    "serialNumber": "SYN1R001",
+    "model": "HPE ProLiant DL380 Gen11",
+    "rack": "R1",
+    "rackUnit": 2,
+    "cluster": "PROD-BLR-07",
+    "memoryGB": 1024,
+    "cpuCores": 64,
+    "state": {
+     "health": "OK",
+     "power": "ON"
+    },
+    "firmware": {
+     "iLO 6": "1.58",
+     "System ROM": "U54 v2.16",
+     "NIC BCM57414": "229.1.123.0"
+    },
+    "nics": [
+     {
+      "name": "ens1f0",
+      "speedGbps": 25,
+      "mac": "94:40:c9:01:00:00"
+     },
+     {
+      "name": "ens1f1",
+      "speedGbps": 25,
+      "mac": "94:40:c9:01:00:01"
+     }
+    ],
+    "changeHistory": [
+     {
+      "date": "2026-07-12",
+      "change": "System ROM U54 v2.10 -> v2.16",
+      "result": "success"
+     }
+    ]
+   },
+   {
+    "id": "srv-0002",
+    "name": "blr-esx-02",
+    "serialNumber": "SYN1R002",
+    "model": "HPE ProLiant DL380 Gen11",
+    "rack": "R1",
+    "rackUnit": 4,
+    "cluster": "PROD-BLR-07",
+    "memoryGB": 1024,
+    "cpuCores": 64,
+    "state": {
+     "health": "OK",
+     "power": "ON"
+    },
+    "firmware": {
+     "iLO 6": "1.58",
+     "System ROM": "U54 v2.16",
+     "NIC BCM57414": "229.1.123.0"
+    },
+    "nics": [
+     {
+      "name": "ens1f0",
+      "speedGbps": 25,
+      "mac": "94:40:c9:02:00:00"
+     },
+     {
+      "name": "ens1f1",
+      "speedGbps": 25,
+      "mac": "94:40:c9:02:00:01"
+     }
+    ],
+    "changeHistory": [
+     {
+      "date": "2026-07-12",
+      "change": "System ROM U54 v2.10 -> v2.16",
+      "result": "success"
+     }
+    ]
+   },
+   {
+    "id": "srv-0003",
+    "name": "blr-esx-03",
+    "serialNumber": "SYN1R003",
+    "model": "HPE ProLiant DL380 Gen11",
+    "rack": "R1",
+    "rackUnit": 6,
+    "cluster": "PROD-BLR-07",
+    "memoryGB": 1024,
+    "cpuCores": 64,
+    "state": {
+     "health": "OK",
+     "power": "ON"
+    },
+    "firmware": {
+     "iLO 6": "1.58",
+     "System ROM": "U54 v2.16",
+     "NIC BCM57414": "230.0.156.0"
+    },
+    "nics": [
+     {
+      "name": "ens1f0",
+      "speedGbps": 25,
+      "mac": "94:40:c9:03:00:00"
+     },
+     {
+      "name": "ens1f1",
+      "speedGbps": 25,
+      "mac": "94:40:c9:03:00:01"
+     }
+    ],
+    "changeHistory": [
+     {
+      "date": "2026-07-12",
+      "change": "System ROM U54 v2.10 -> v2.16",
+      "result": "success"
+     }
+    ]
+   },
+   {
+    "id": "srv-0004",
+    "name": "blr-esx-04",
+    "serialNumber": "SYN1R004",
+    "model": "HPE ProLiant DL380 Gen11",
+    "rack": "R1",
+    "rackUnit": 8,
+    "cluster": "PROD-BLR-07",
+    "memoryGB": 1024,
+    "cpuCores": 64,
+    "state": {
+     "health": "OK",
+     "power": "ON"
+    },
+    "firmware": {
+     "iLO 6": "1.58",
+     "System ROM": "U54 v2.16",
+     "NIC BCM57414": "229.1.123.0"
+    },
+    "nics": [
+     {
+      "name": "ens1f0",
+      "speedGbps": 25,
+      "mac": "94:40:c9:04:00:00"
+     },
+     {
+      "name": "ens1f1",
+      "speedGbps": 25,
+      "mac": "94:40:c9:04:00:01"
+     }
+    ],
+    "changeHistory": [
+     {
+      "date": "2026-07-12",
+      "change": "System ROM U54 v2.10 -> v2.16",
+      "result": "success"
+     }
+    ]
+   },
+   {
+    "id": "srv-0005",
+    "name": "blr-esx-05",
+    "serialNumber": "SYN1R005",
+    "model": "HPE ProLiant DL380 Gen11",
+    "rack": "R1",
+    "rackUnit": 10,
+    "cluster": "PROD-BLR-07",
+    "memoryGB": 1024,
+    "cpuCores": 64,
+    "state": {
+     "health": "OK",
+     "power": "ON"
+    },
+    "firmware": {
+     "iLO 6": "1.58",
+     "System ROM": "U54 v2.16",
+     "NIC BCM57414": "229.1.123.0"
+    },
+    "nics": [
+     {
+      "name": "ens1f0",
+      "speedGbps": 25,
+      "mac": "94:40:c9:05:00:00"
+     },
+     {
+      "name": "ens1f1",
+      "speedGbps": 25,
+      "mac": "94:40:c9:05:00:01"
+     }
+    ],
+    "changeHistory": [
+     {
+      "date": "2026-07-12",
+      "change": "System ROM U54 v2.10 -> v2.16",
+      "result": "success"
+     }
+    ]
+   },
+   {
+    "id": "srv-0006",
+    "name": "blr-esx-06",
+    "serialNumber": "SYN1R006",
+    "model": "HPE ProLiant DL380 Gen11",
+    "rack": "R1",
+    "rackUnit": 12,
+    "cluster": "PROD-BLR-07",
+    "memoryGB": 1024,
+    "cpuCores": 64,
+    "state": {
+     "health": "OK",
+     "power": "ON"
+    },
+    "firmware": {
+     "iLO 6": "1.58",
+     "System ROM": "U54 v2.16",
+     "NIC BCM57414": "229.1.123.0"
+    },
+    "nics": [
+     {
+      "name": "ens1f0",
+      "speedGbps": 25,
+      "mac": "94:40:c9:06:00:00"
+     },
+     {
+      "name": "ens1f1",
+      "speedGbps": 25,
+      "mac": "94:40:c9:06:00:01"
+     }
+    ],
+    "changeHistory": [
+     {
+      "date": "2026-07-12",
+      "change": "System ROM U54 v2.10 -> v2.16",
+      "result": "success"
+     }
+    ]
+   },
+   {
+    "id": "srv-0007",
+    "name": "blr-esx-07",
+    "serialNumber": "SYN1R007",
+    "model": "HPE ProLiant DL380 Gen11",
+    "rack": "R1",
+    "rackUnit": 14,
+    "cluster": "PROD-BLR-07",
+    "memoryGB": 1024,
+    "cpuCores": 64,
+    "state": {
+     "health": "OK",
+     "power": "ON"
+    },
+    "firmware": {
+     "iLO 6": "1.58",
+     "System ROM": "U54 v2.16",
+     "NIC BCM57414": "229.1.123.0"
+    },
+    "nics": [
+     {
+      "name": "ens1f0",
+      "speedGbps": 25,
+      "mac": "94:40:c9:07:00:00"
+     },
+     {
+      "name": "ens1f1",
+      "speedGbps": 25,
+      "mac": "94:40:c9:07:00:01"
+     }
+    ],
+    "changeHistory": [
+     {
+      "date": "2026-07-12",
+      "change": "System ROM U54 v2.10 -> v2.16",
+      "result": "success"
+     }
+    ]
+   },
+   {
+    "id": "srv-0008",
+    "name": "blr-esx-08",
+    "serialNumber": "SYN1R008",
+    "model": "HPE ProLiant DL380 Gen11",
+    "rack": "R1",
+    "rackUnit": 16,
+    "cluster": "PROD-BLR-07",
+    "memoryGB": 1024,
+    "cpuCores": 64,
+    "state": {
+     "health": "OK",
+     "power": "ON"
+    },
+    "firmware": {
+     "iLO 6": "1.58",
+     "System ROM": "U54 v2.16",
+     "NIC BCM57414": "229.1.123.0"
+    },
+    "nics": [
+     {
+      "name": "ens1f0",
+      "speedGbps": 25,
+      "mac": "94:40:c9:08:00:00"
+     },
+     {
+      "name": "ens1f1",
+      "speedGbps": 25,
+      "mac": "94:40:c9:08:00:01"
+     }
+    ],
+    "changeHistory": [
+     {
+      "date": "2026-07-12",
+      "change": "System ROM U54 v2.10 -> v2.16",
+      "result": "success"
+     }
+    ]
+   },
+   {
+    "id": "srv-0009",
+    "name": "blr-esx-09",
+    "serialNumber": "SYN1R009",
+    "model": "HPE ProLiant DL380 Gen11",
+    "rack": "R1",
+    "rackUnit": 18,
+    "cluster": "PROD-BLR-07",
+    "memoryGB": 1024,
+    "cpuCores": 64,
+    "state": {
+     "health": "OK",
+     "power": "ON"
+    },
+    "firmware": {
+     "iLO 6": "1.58",
+     "System ROM": "U54 v2.16",
+     "NIC BCM57414": "229.1.123.0"
+    },
+    "nics": [
+     {
+      "name": "ens1f0",
+      "speedGbps": 25,
+      "mac": "94:40:c9:09:00:00"
+     },
+     {
+      "name": "ens1f1",
+      "speedGbps": 25,
+      "mac": "94:40:c9:09:00:01"
+     }
+    ],
+    "changeHistory": [
+     {
+      "date": "2026-07-12",
+      "change": "System ROM U54 v2.10 -> v2.16",
+      "result": "success"
+     }
+    ]
+   },
+   {
+    "id": "srv-0010",
+    "name": "blr-esx-10",
+    "serialNumber": "SYN1R010",
+    "model": "HPE ProLiant DL380 Gen11",
+    "rack": "R1",
+    "rackUnit": 20,
+    "cluster": "PROD-BLR-07",
+    "memoryGB": 1024,
+    "cpuCores": 64,
+    "state": {
+     "health": "OK",
+     "power": "ON"
+    },
+    "firmware": {
+     "iLO 6": "1.58",
+     "System ROM": "U54 v2.16",
+     "NIC BCM57414": "229.1.123.0"
+    },
+    "nics": [
+     {
+      "name": "ens1f0",
+      "speedGbps": 25,
+      "mac": "94:40:c9:0a:00:00"
+     },
+     {
+      "name": "ens1f1",
+      "speedGbps": 25,
+      "mac": "94:40:c9:0a:00:01"
+     }
+    ],
+    "changeHistory": [
+     {
+      "date": "2026-07-12",
+      "change": "System ROM U54 v2.10 -> v2.16",
+      "result": "success"
+     }
+    ]
+   },
+   {
+    "id": "srv-0011",
+    "name": "blr-esx-11",
+    "serialNumber": "SYN1R011",
+    "model": "HPE ProLiant DL380 Gen11",
+    "rack": "R1",
+    "rackUnit": 22,
+    "cluster": "PROD-BLR-07",
+    "memoryGB": 1024,
+    "cpuCores": 64,
+    "state": {
+     "health": "OK",
+     "power": "ON"
+    },
+    "firmware": {
+     "iLO 6": "1.58",
+     "System ROM": "U54 v2.16",
+     "NIC BCM57414": "230.0.156.0"
+    },
+    "nics": [
+     {
+      "name": "ens1f0",
+      "speedGbps": 25,
+      "mac": "94:40:c9:0b:00:00"
+     },
+     {
+      "name": "ens1f1",
+      "speedGbps": 25,
+      "mac": "94:40:c9:0b:00:01"
+     }
+    ],
+    "changeHistory": [
+     {
+      "date": "2026-07-12",
+      "change": "System ROM U54 v2.10 -> v2.16",
+      "result": "success"
+     }
+    ]
+   },
+   {
+    "id": "srv-0012",
+    "name": "blr-esx-12",
+    "serialNumber": "SYN1R012",
+    "model": "HPE ProLiant DL380 Gen11",
+    "rack": "R1",
+    "rackUnit": 24,
+    "cluster": "PROD-BLR-07",
+    "memoryGB": 1024,
+    "cpuCores": 64,
+    "state": {
+     "health": "OK",
+     "power": "ON"
+    },
+    "firmware": {
+     "iLO 6": "1.58",
+     "System ROM": "U54 v2.16",
+     "NIC BCM57414": "229.1.123.0"
+    },
+    "nics": [
+     {
+      "name": "ens1f0",
+      "speedGbps": 25,
+      "mac": "94:40:c9:0c:00:00"
+     },
+     {
+      "name": "ens1f1",
+      "speedGbps": 25,
+      "mac": "94:40:c9:0c:00:01"
+     }
+    ],
+    "changeHistory": [
+     {
+      "date": "2026-07-12",
+      "change": "System ROM U54 v2.10 -> v2.16",
+      "result": "success"
+     },
+     {
+      "date": "2026-08-23",
+      "change": "System ROM U54 v2.16 -> v2.20",
+      "result": "rolled_back",
+      "note": "POST hang after update; reverted via iLO recovery set"
+     }
+    ]
+   },
+   {
+    "id": "srv-0013",
+    "name": "blr-esx-13",
+    "serialNumber": "SYN1R013",
+    "model": "HPE ProLiant DL380 Gen11",
+    "rack": "R1",
+    "rackUnit": 26,
+    "cluster": "PROD-BLR-07",
+    "memoryGB": 1024,
+    "cpuCores": 64,
+    "state": {
+     "health": "OK",
+     "power": "ON"
+    },
+    "firmware": {
+     "iLO 6": "1.58",
+     "System ROM": "U54 v2.16",
+     "NIC BCM57414": "229.1.123.0"
+    },
+    "nics": [
+     {
+      "name": "ens1f0",
+      "speedGbps": 25,
+      "mac": "94:40:c9:0d:00:00"
+     },
+     {
+      "name": "ens1f1",
+      "speedGbps": 25,
+      "mac": "94:40:c9:0d:00:01"
+     }
+    ],
+    "changeHistory": [
+     {
+      "date": "2026-07-12",
+      "change": "System ROM U54 v2.10 -> v2.16",
+      "result": "success"
+     }
+    ]
+   },
+   {
+    "id": "srv-0014",
+    "name": "blr-esx-14",
+    "serialNumber": "SYN1R014",
+    "model": "HPE ProLiant DL380 Gen11",
+    "rack": "R1",
+    "rackUnit": 28,
+    "cluster": "PROD-BLR-07",
+    "memoryGB": 1024,
+    "cpuCores": 64,
+    "state": {
+     "health": "OK",
+     "power": "ON"
+    },
+    "firmware": {
+     "iLO 6": "1.58",
+     "System ROM": "U54 v2.16",
+     "NIC BCM57414": "229.1.123.0"
+    },
+    "nics": [
+     {
+      "name": "ens1f0",
+      "speedGbps": 25,
+      "mac": "94:40:c9:0e:00:00"
+     },
+     {
+      "name": "ens1f1",
+      "speedGbps": 25,
+      "mac": "94:40:c9:0e:00:01"
+     }
+    ],
+    "changeHistory": [
+     {
+      "date": "2026-07-12",
+      "change": "System ROM U54 v2.10 -> v2.16",
+      "result": "success"
+     }
+    ]
+   },
+   {
+    "id": "srv-0015",
+    "name": "blr-esx-15",
+    "serialNumber": "SYN1R015",
+    "model": "HPE ProLiant DL380 Gen11",
+    "rack": "R1",
+    "rackUnit": 30,
+    "cluster": "PROD-BLR-07",
+    "memoryGB": 1024,
+    "cpuCores": 64,
+    "state": {
+     "health": "OK",
+     "power": "ON"
+    },
+    "firmware": {
+     "iLO 6": "1.58",
+     "System ROM": "U54 v2.16",
+     "NIC BCM57414": "229.1.123.0"
+    },
+    "nics": [
+     {
+      "name": "ens1f0",
+      "speedGbps": 25,
+      "mac": "94:40:c9:0f:00:00"
+     },
+     {
+      "name": "ens1f1",
+      "speedGbps": 25,
+      "mac": "94:40:c9:0f:00:01"
+     }
+    ],
+    "changeHistory": [
+     {
+      "date": "2026-07-12",
+      "change": "System ROM U54 v2.10 -> v2.16",
+      "result": "success"
+     }
+    ]
+   },
+   {
+    "id": "srv-0016",
+    "name": "blr-esx-16",
+    "serialNumber": "SYN1R016",
+    "model": "HPE ProLiant DL380 Gen11",
+    "rack": "R1",
+    "rackUnit": 32,
+    "cluster": "PROD-BLR-07",
+    "memoryGB": 1024,
+    "cpuCores": 64,
+    "state": {
+     "health": "OK",
+     "power": "ON"
+    },
+    "firmware": {
+     "iLO 6": "1.58",
+     "System ROM": "U54 v2.16",
+     "NIC BCM57414": "230.0.156.0"
+    },
+    "nics": [
+     {
+      "name": "ens1f0",
+      "speedGbps": 25,
+      "mac": "94:40:c9:10:00:00"
+     },
+     {
+      "name": "ens1f1",
+      "speedGbps": 25,
+      "mac": "94:40:c9:10:00:01"
+     }
+    ],
+    "changeHistory": [
+     {
+      "date": "2026-07-12",
+      "change": "System ROM U54 v2.10 -> v2.16",
+      "result": "success"
+     }
+    ]
+   },
+   {
+    "id": "srv-0017",
+    "name": "blr-esx-17",
+    "serialNumber": "SYN1R017",
+    "model": "HPE ProLiant DL380 Gen11",
+    "rack": "R1",
+    "rackUnit": 34,
+    "cluster": "PROD-BLR-07",
+    "memoryGB": 1024,
+    "cpuCores": 64,
+    "state": {
+     "health": "OK",
+     "power": "ON"
+    },
+    "firmware": {
+     "iLO 6": "1.58",
+     "System ROM": "U54 v2.16",
+     "NIC BCM57414": "229.1.123.0"
+    },
+    "nics": [
+     {
+      "name": "ens1f0",
+      "speedGbps": 25,
+      "mac": "94:40:c9:11:00:00"
+     },
+     {
+      "name": "ens1f1",
+      "speedGbps": 25,
+      "mac": "94:40:c9:11:00:01"
+     }
+    ],
+    "changeHistory": [
+     {
+      "date": "2026-07-12",
+      "change": "System ROM U54 v2.10 -> v2.16",
+      "result": "success"
+     }
+    ]
+   },
+   {
+    "id": "srv-0018",
+    "name": "blr-esx-18",
+    "serialNumber": "SYN1R018",
+    "model": "HPE ProLiant DL380 Gen11",
+    "rack": "R1",
+    "rackUnit": 36,
+    "cluster": "PROD-BLR-07",
+    "memoryGB": 1024,
+    "cpuCores": 64,
+    "state": {
+     "health": "OK",
+     "power": "ON"
+    },
+    "firmware": {
+     "iLO 6": "1.58",
+     "System ROM": "U54 v2.16",
+     "NIC BCM57414": "229.1.123.0"
+    },
+    "nics": [
+     {
+      "name": "ens1f0",
+      "speedGbps": 25,
+      "mac": "94:40:c9:12:00:00"
+     },
+     {
+      "name": "ens1f1",
+      "speedGbps": 25,
+      "mac": "94:40:c9:12:00:01"
+     }
+    ],
+    "changeHistory": [
+     {
+      "date": "2026-07-12",
+      "change": "System ROM U54 v2.10 -> v2.16",
+      "result": "success"
+     }
+    ]
+   },
+   {
+    "id": "srv-0019",
+    "name": "blr-esx-19",
+    "serialNumber": "SYN1R019",
+    "model": "HPE ProLiant DL380 Gen11",
+    "rack": "R1",
+    "rackUnit": 38,
+    "cluster": "PROD-BLR-07",
+    "memoryGB": 1024,
+    "cpuCores": 64,
+    "state": {
+     "health": "OK",
+     "power": "ON"
+    },
+    "firmware": {
+     "iLO 6": "1.58",
+     "System ROM": "U54 v2.16",
+     "NIC BCM57414": "229.1.123.0"
+    },
+    "nics": [
+     {
+      "name": "ens1f0",
+      "speedGbps": 25,
+      "mac": "94:40:c9:13:00:00"
+     },
+     {
+      "name": "ens1f1",
+      "speedGbps": 25,
+      "mac": "94:40:c9:13:00:01"
+     }
+    ],
+    "changeHistory": [
+     {
+      "date": "2026-07-12",
+      "change": "System ROM U54 v2.10 -> v2.16",
+      "result": "success"
+     }
+    ]
+   },
+   {
+    "id": "srv-0020",
+    "name": "blr-esx-20",
+    "serialNumber": "SYN1R020",
+    "model": "HPE ProLiant DL380 Gen11",
+    "rack": "R1",
+    "rackUnit": 40,
+    "cluster": "PROD-BLR-07",
+    "memoryGB": 1024,
+    "cpuCores": 64,
+    "state": {
+     "health": "OK",
+     "power": "ON"
+    },
+    "firmware": {
+     "iLO 6": "1.58",
+     "System ROM": "U54 v2.16",
+     "NIC BCM57414": "230.0.156.0"
+    },
+    "nics": [
+     {
+      "name": "ens1f0",
+      "speedGbps": 25,
+      "mac": "94:40:c9:14:00:00"
+     },
+     {
+      "name": "ens1f1",
+      "speedGbps": 25,
+      "mac": "94:40:c9:14:00:01"
+     }
+    ],
+    "changeHistory": [
+     {
+      "date": "2026-07-12",
+      "change": "System ROM U54 v2.10 -> v2.16",
+      "result": "success"
+     }
+    ]
+   },
+   {
+    "id": "srv-0021",
+    "name": "blr-esx-21",
+    "serialNumber": "SYN2R021",
+    "model": "HPE ProLiant DL360 Gen11",
+    "rack": "R2",
+    "rackUnit": 2,
+    "cluster": "PROD-BLR-08",
+    "memoryGB": 1024,
+    "cpuCores": 64,
+    "state": {
+     "health": "OK",
+     "power": "ON"
+    },
+    "firmware": {
+     "iLO 6": "1.58",
+     "System ROM": "U63 v2.16",
+     "NIC BCM57414": "230.0.156.0"
+    },
+    "nics": [
+     {
+      "name": "ens1f0",
+      "speedGbps": 25,
+      "mac": "94:40:c9:15:00:00"
+     },
+     {
+      "name": "ens1f1",
+      "speedGbps": 25,
+      "mac": "94:40:c9:15:00:01"
+     }
+    ],
+    "changeHistory": [
+     {
+      "date": "2026-07-12",
+      "change": "System ROM U63 v2.10 -> v2.16",
+      "result": "success"
+     }
+    ]
+   },
+   {
+    "id": "srv-0022",
+    "name": "blr-esx-22",
+    "serialNumber": "SYN2R022",
+    "model": "HPE ProLiant DL360 Gen11",
+    "rack": "R2",
+    "rackUnit": 4,
+    "cluster": "PROD-BLR-08",
+    "memoryGB": 1024,
+    "cpuCores": 64,
+    "state": {
+     "health": "OK",
+     "power": "ON"
+    },
+    "firmware": {
+     "iLO 6": "1.58",
+     "System ROM": "U63 v2.16",
+     "NIC BCM57414": "230.0.156.0"
+    },
+    "nics": [
+     {
+      "name": "ens1f0",
+      "speedGbps": 25,
+      "mac": "94:40:c9:16:00:00"
+     },
+     {
+      "name": "ens1f1",
+      "speedGbps": 25,
+      "mac": "94:40:c9:16:00:01"
+     }
+    ],
+    "changeHistory": [
+     {
+      "date": "2026-07-12",
+      "change": "System ROM U63 v2.10 -> v2.16",
+      "result": "success"
+     }
+    ]
+   },
+   {
+    "id": "srv-0023",
+    "name": "blr-esx-23",
+    "serialNumber": "SYN2R023",
+    "model": "HPE ProLiant DL360 Gen11",
+    "rack": "R2",
+    "rackUnit": 6,
+    "cluster": "PROD-BLR-08",
+    "memoryGB": 1024,
+    "cpuCores": 64,
+    "state": {
+     "health": "OK",
+     "power": "ON"
+    },
+    "firmware": {
+     "iLO 6": "1.58",
+     "System ROM": "U63 v2.16",
+     "NIC BCM57414": "230.0.156.0"
+    },
+    "nics": [
+     {
+      "name": "ens1f0",
+      "speedGbps": 25,
+      "mac": "94:40:c9:17:00:00"
+     },
+     {
+      "name": "ens1f1",
+      "speedGbps": 25,
+      "mac": "94:40:c9:17:00:01"
+     }
+    ],
+    "changeHistory": [
+     {
+      "date": "2026-07-12",
+      "change": "System ROM U63 v2.10 -> v2.16",
+      "result": "success"
+     }
+    ]
+   },
+   {
+    "id": "srv-0024",
+    "name": "blr-esx-24",
+    "serialNumber": "SYN2R024",
+    "model": "HPE ProLiant DL360 Gen11",
+    "rack": "R2",
+    "rackUnit": 8,
+    "cluster": "PROD-BLR-08",
+    "memoryGB": 1024,
+    "cpuCores": 64,
+    "state": {
+     "health": "OK",
+     "power": "ON"
+    },
+    "firmware": {
+     "iLO 6": "1.58",
+     "System ROM": "U63 v2.16",
+     "NIC BCM57414": "230.0.156.0"
+    },
+    "nics": [
+     {
+      "name": "ens1f0",
+      "speedGbps": 25,
+      "mac": "94:40:c9:18:00:00"
+     },
+     {
+      "name": "ens1f1",
+      "speedGbps": 25,
+      "mac": "94:40:c9:18:00:01"
+     }
+    ],
+    "changeHistory": [
+     {
+      "date": "2026-07-12",
+      "change": "System ROM U63 v2.10 -> v2.16",
+      "result": "success"
+     }
+    ]
+   },
+   {
+    "id": "srv-0025",
+    "name": "blr-esx-25",
+    "serialNumber": "SYN2R025",
+    "model": "HPE ProLiant DL360 Gen11",
+    "rack": "R2",
+    "rackUnit": 10,
+    "cluster": "PROD-BLR-08",
+    "memoryGB": 1024,
+    "cpuCores": 64,
+    "state": {
+     "health": "OK",
+     "power": "ON"
+    },
+    "firmware": {
+     "iLO 6": "1.58",
+     "System ROM": "U63 v2.16",
+     "NIC BCM57414": "230.0.156.0"
+    },
+    "nics": [
+     {
+      "name": "ens1f0",
+      "speedGbps": 25,
+      "mac": "94:40:c9:19:00:00"
+     },
+     {
+      "name": "ens1f1",
+      "speedGbps": 25,
+      "mac": "94:40:c9:19:00:01"
+     }
+    ],
+    "changeHistory": [
+     {
+      "date": "2026-07-12",
+      "change": "System ROM U63 v2.10 -> v2.16",
+      "result": "success"
+     }
+    ]
+   },
+   {
+    "id": "srv-0026",
+    "name": "blr-esx-26",
+    "serialNumber": "SYN2R026",
+    "model": "HPE ProLiant DL360 Gen11",
+    "rack": "R2",
+    "rackUnit": 12,
+    "cluster": "PROD-BLR-08",
+    "memoryGB": 1024,
+    "cpuCores": 64,
+    "state": {
+     "health": "OK",
+     "power": "ON"
+    },
+    "firmware": {
+     "iLO 6": "1.58",
+     "System ROM": "U63 v2.16",
+     "NIC BCM57414": "230.0.156.0"
+    },
+    "nics": [
+     {
+      "name": "ens1f0",
+      "speedGbps": 25,
+      "mac": "94:40:c9:1a:00:00"
+     },
+     {
+      "name": "ens1f1",
+      "speedGbps": 25,
+      "mac": "94:40:c9:1a:00:01"
+     }
+    ],
+    "changeHistory": [
+     {
+      "date": "2026-07-12",
+      "change": "System ROM U63 v2.10 -> v2.16",
+      "result": "success"
+     }
+    ]
+   },
+   {
+    "id": "srv-0027",
+    "name": "blr-esx-27",
+    "serialNumber": "SYN2R027",
+    "model": "HPE ProLiant DL360 Gen11",
+    "rack": "R2",
+    "rackUnit": 14,
+    "cluster": "PROD-BLR-08",
+    "memoryGB": 1024,
+    "cpuCores": 64,
+    "state": {
+     "health": "OK",
+     "power": "ON"
+    },
+    "firmware": {
+     "iLO 6": "1.58",
+     "System ROM": "U63 v2.16",
+     "NIC BCM57414": "230.0.156.0"
+    },
+    "nics": [
+     {
+      "name": "ens1f0",
+      "speedGbps": 25,
+      "mac": "94:40:c9:1b:00:00"
+     },
+     {
+      "name": "ens1f1",
+      "speedGbps": 25,
+      "mac": "94:40:c9:1b:00:01"
+     }
+    ],
+    "changeHistory": [
+     {
+      "date": "2026-07-12",
+      "change": "System ROM U63 v2.10 -> v2.16",
+      "result": "success"
+     }
+    ]
+   },
+   {
+    "id": "srv-0028",
+    "name": "blr-esx-28",
+    "serialNumber": "SYN2R028",
+    "model": "HPE ProLiant DL360 Gen11",
+    "rack": "R2",
+    "rackUnit": 16,
+    "cluster": "PROD-BLR-08",
+    "memoryGB": 1024,
+    "cpuCores": 64,
+    "state": {
+     "health": "OK",
+     "power": "ON"
+    },
+    "firmware": {
+     "iLO 6": "1.58",
+     "System ROM": "U63 v2.16",
+     "NIC BCM57414": "230.0.156.0"
+    },
+    "nics": [
+     {
+      "name": "ens1f0",
+      "speedGbps": 25,
+      "mac": "94:40:c9:1c:00:00"
+     },
+     {
+      "name": "ens1f1",
+      "speedGbps": 25,
+      "mac": "94:40:c9:1c:00:01"
+     }
+    ],
+    "changeHistory": [
+     {
+      "date": "2026-07-12",
+      "change": "System ROM U63 v2.10 -> v2.16",
+      "result": "success"
+     }
+    ]
+   },
+   {
+    "id": "srv-0029",
+    "name": "blr-esx-29",
+    "serialNumber": "SYN2R029",
+    "model": "HPE ProLiant DL360 Gen11",
+    "rack": "R2",
+    "rackUnit": 18,
+    "cluster": "PROD-BLR-08",
+    "memoryGB": 1024,
+    "cpuCores": 64,
+    "state": {
+     "health": "OK",
+     "power": "ON"
+    },
+    "firmware": {
+     "iLO 6": "1.62",
+     "System ROM": "U63 v2.16",
+     "NIC BCM57414": "230.0.156.0"
+    },
+    "nics": [
+     {
+      "name": "ens1f0",
+      "speedGbps": 25,
+      "mac": "94:40:c9:1d:00:00"
+     },
+     {
+      "name": "ens1f1",
+      "speedGbps": 25,
+      "mac": "94:40:c9:1d:00:01"
+     }
+    ],
+    "changeHistory": [
+     {
+      "date": "2026-07-12",
+      "change": "System ROM U63 v2.10 -> v2.16",
+      "result": "success"
+     }
+    ]
+   },
+   {
+    "id": "srv-0030",
+    "name": "blr-esx-30",
+    "serialNumber": "SYN2R030",
+    "model": "HPE ProLiant DL360 Gen11",
+    "rack": "R2",
+    "rackUnit": 20,
+    "cluster": "PROD-BLR-08",
+    "memoryGB": 1024,
+    "cpuCores": 64,
+    "state": {
+     "health": "OK",
+     "power": "ON"
+    },
+    "firmware": {
+     "iLO 6": "1.58",
+     "System ROM": "U63 v2.16",
+     "NIC BCM57414": "230.0.156.0"
+    },
+    "nics": [
+     {
+      "name": "ens1f0",
+      "speedGbps": 25,
+      "mac": "94:40:c9:1e:00:00"
+     },
+     {
+      "name": "ens1f1",
+      "speedGbps": 25,
+      "mac": "94:40:c9:1e:00:01"
+     }
+    ],
+    "changeHistory": [
+     {
+      "date": "2026-07-12",
+      "change": "System ROM U63 v2.10 -> v2.16",
+      "result": "success"
+     }
+    ]
+   },
+   {
+    "id": "srv-0031",
+    "name": "blr-esx-31",
+    "serialNumber": "SYN2R031",
+    "model": "HPE ProLiant DL360 Gen11",
+    "rack": "R2",
+    "rackUnit": 22,
+    "cluster": "PROD-BLR-08",
+    "memoryGB": 1024,
+    "cpuCores": 64,
+    "state": {
+     "health": "OK",
+     "power": "ON"
+    },
+    "firmware": {
+     "iLO 6": "1.58",
+     "System ROM": "U63 v2.16",
+     "NIC BCM57414": "230.0.156.0"
+    },
+    "nics": [
+     {
+      "name": "ens1f0",
+      "speedGbps": 25,
+      "mac": "94:40:c9:1f:00:00"
+     },
+     {
+      "name": "ens1f1",
+      "speedGbps": 25,
+      "mac": "94:40:c9:1f:00:01"
+     }
+    ],
+    "changeHistory": [
+     {
+      "date": "2026-07-12",
+      "change": "System ROM U63 v2.10 -> v2.16",
+      "result": "success"
+     }
+    ]
+   },
+   {
+    "id": "srv-0032",
+    "name": "blr-esx-32",
+    "serialNumber": "SYN2R032",
+    "model": "HPE ProLiant DL360 Gen11",
+    "rack": "R2",
+    "rackUnit": 24,
+    "cluster": "PROD-BLR-08",
+    "memoryGB": 1024,
+    "cpuCores": 64,
+    "state": {
+     "health": "OK",
+     "power": "ON"
+    },
+    "firmware": {
+     "iLO 6": "1.58",
+     "System ROM": "U63 v2.16",
+     "NIC BCM57414": "230.0.156.0"
+    },
+    "nics": [
+     {
+      "name": "ens1f0",
+      "speedGbps": 25,
+      "mac": "94:40:c9:20:00:00"
+     },
+     {
+      "name": "ens1f1",
+      "speedGbps": 25,
+      "mac": "94:40:c9:20:00:01"
+     }
+    ],
+    "changeHistory": [
+     {
+      "date": "2026-07-12",
+      "change": "System ROM U63 v2.10 -> v2.16",
+      "result": "success"
+     }
+    ]
+   },
+   {
+    "id": "srv-0033",
+    "name": "blr-esx-33",
+    "serialNumber": "SYN2R033",
+    "model": "HPE ProLiant DL360 Gen11",
+    "rack": "R2",
+    "rackUnit": 26,
+    "cluster": "PROD-BLR-08",
+    "memoryGB": 1024,
+    "cpuCores": 64,
+    "state": {
+     "health": "OK",
+     "power": "ON"
+    },
+    "firmware": {
+     "iLO 6": "1.58",
+     "System ROM": "U63 v2.16",
+     "NIC BCM57414": "230.0.156.0"
+    },
+    "nics": [
+     {
+      "name": "ens1f0",
+      "speedGbps": 25,
+      "mac": "94:40:c9:21:00:00"
+     },
+     {
+      "name": "ens1f1",
+      "speedGbps": 25,
+      "mac": "94:40:c9:21:00:01"
+     }
+    ],
+    "changeHistory": [
+     {
+      "date": "2026-07-12",
+      "change": "System ROM U63 v2.10 -> v2.16",
+      "result": "success"
+     }
+    ]
+   },
+   {
+    "id": "srv-0034",
+    "name": "blr-esx-34",
+    "serialNumber": "SYN2R034",
+    "model": "HPE ProLiant DL360 Gen11",
+    "rack": "R2",
+    "rackUnit": 28,
+    "cluster": "PROD-BLR-08",
+    "memoryGB": 1024,
+    "cpuCores": 64,
+    "state": {
+     "health": "OK",
+     "power": "ON"
+    },
+    "firmware": {
+     "iLO 6": "1.58",
+     "System ROM": "U63 v2.16",
+     "NIC BCM57414": "230.0.156.0"
+    },
+    "nics": [
+     {
+      "name": "ens1f0",
+      "speedGbps": 25,
+      "mac": "94:40:c9:22:00:00"
+     },
+     {
+      "name": "ens1f1",
+      "speedGbps": 25,
+      "mac": "94:40:c9:22:00:01"
+     }
+    ],
+    "changeHistory": [
+     {
+      "date": "2026-07-12",
+      "change": "System ROM U63 v2.10 -> v2.16",
+      "result": "success"
+     }
+    ]
+   },
+   {
+    "id": "srv-0035",
+    "name": "blr-esx-35",
+    "serialNumber": "SYN2R035",
+    "model": "HPE ProLiant DL360 Gen11",
+    "rack": "R2",
+    "rackUnit": 30,
+    "cluster": "PROD-BLR-08",
+    "memoryGB": 1024,
+    "cpuCores": 64,
+    "state": {
+     "health": "OK",
+     "power": "ON"
+    },
+    "firmware": {
+     "iLO 6": "1.62",
+     "System ROM": "U63 v2.16",
+     "NIC BCM57414": "230.0.156.0"
+    },
+    "nics": [
+     {
+      "name": "ens1f0",
+      "speedGbps": 25,
+      "mac": "94:40:c9:23:00:00"
+     },
+     {
+      "name": "ens1f1",
+      "speedGbps": 25,
+      "mac": "94:40:c9:23:00:01"
+     }
+    ],
+    "changeHistory": [
+     {
+      "date": "2026-07-12",
+      "change": "System ROM U63 v2.10 -> v2.16",
+      "result": "success"
+     }
+    ]
+   },
+   {
+    "id": "srv-0036",
+    "name": "blr-esx-36",
+    "serialNumber": "SYN2R036",
+    "model": "HPE ProLiant DL360 Gen11",
+    "rack": "R2",
+    "rackUnit": 32,
+    "cluster": "PROD-BLR-08",
+    "memoryGB": 1024,
+    "cpuCores": 64,
+    "state": {
+     "health": "OK",
+     "power": "ON"
+    },
+    "firmware": {
+     "iLO 6": "1.58",
+     "System ROM": "U63 v2.16",
+     "NIC BCM57414": "230.0.156.0"
+    },
+    "nics": [
+     {
+      "name": "ens1f0",
+      "speedGbps": 25,
+      "mac": "94:40:c9:24:00:00"
+     },
+     {
+      "name": "ens1f1",
+      "speedGbps": 25,
+      "mac": "94:40:c9:24:00:01"
+     }
+    ],
+    "changeHistory": [
+     {
+      "date": "2026-07-12",
+      "change": "System ROM U63 v2.10 -> v2.16",
+      "result": "success"
+     }
+    ]
+   },
+   {
+    "id": "srv-0037",
+    "name": "blr-esx-37",
+    "serialNumber": "SYN2R037",
+    "model": "HPE ProLiant DL360 Gen11",
+    "rack": "R2",
+    "rackUnit": 34,
+    "cluster": "PROD-BLR-08",
+    "memoryGB": 1024,
+    "cpuCores": 64,
+    "state": {
+     "health": "OK",
+     "power": "ON"
+    },
+    "firmware": {
+     "iLO 6": "1.58",
+     "System ROM": "U63 v2.16",
+     "NIC BCM57414": "230.0.156.0"
+    },
+    "nics": [
+     {
+      "name": "ens1f0",
+      "speedGbps": 25,
+      "mac": "94:40:c9:25:00:00"
+     },
+     {
+      "name": "ens1f1",
+      "speedGbps": 25,
+      "mac": "94:40:c9:25:00:01"
+     }
+    ],
+    "changeHistory": [
+     {
+      "date": "2026-07-12",
+      "change": "System ROM U63 v2.10 -> v2.16",
+      "result": "success"
+     }
+    ]
+   },
+   {
+    "id": "srv-0038",
+    "name": "blr-esx-38",
+    "serialNumber": "SYN2R038",
+    "model": "HPE ProLiant DL360 Gen11",
+    "rack": "R2",
+    "rackUnit": 36,
+    "cluster": "PROD-BLR-08",
+    "memoryGB": 1024,
+    "cpuCores": 64,
+    "state": {
+     "health": "OK",
+     "power": "ON"
+    },
+    "firmware": {
+     "iLO 6": "1.58",
+     "System ROM": "U63 v2.16",
+     "NIC BCM57414": "230.0.156.0"
+    },
+    "nics": [
+     {
+      "name": "ens1f0",
+      "speedGbps": 25,
+      "mac": "94:40:c9:26:00:00"
+     },
+     {
+      "name": "ens1f1",
+      "speedGbps": 25,
+      "mac": "94:40:c9:26:00:01"
+     }
+    ],
+    "changeHistory": [
+     {
+      "date": "2026-07-12",
+      "change": "System ROM U63 v2.10 -> v2.16",
+      "result": "success"
+     }
+    ]
+   },
+   {
+    "id": "srv-0039",
+    "name": "blr-esx-39",
+    "serialNumber": "SYN2R039",
+    "model": "HPE ProLiant DL360 Gen11",
+    "rack": "R2",
+    "rackUnit": 38,
+    "cluster": "PROD-BLR-08",
+    "memoryGB": 1024,
+    "cpuCores": 64,
+    "state": {
+     "health": "OK",
+     "power": "ON"
+    },
+    "firmware": {
+     "iLO 6": "1.62",
+     "System ROM": "U63 v2.16",
+     "NIC BCM57414": "230.0.156.0"
+    },
+    "nics": [
+     {
+      "name": "ens1f0",
+      "speedGbps": 25,
+      "mac": "94:40:c9:27:00:00"
+     },
+     {
+      "name": "ens1f1",
+      "speedGbps": 25,
+      "mac": "94:40:c9:27:00:01"
+     }
+    ],
+    "changeHistory": [
+     {
+      "date": "2026-07-12",
+      "change": "System ROM U63 v2.10 -> v2.16",
+      "result": "success"
+     }
+    ]
+   },
+   {
+    "id": "srv-0040",
+    "name": "blr-esx-40",
+    "serialNumber": "SYN2R040",
+    "model": "HPE ProLiant DL360 Gen11",
+    "rack": "R2",
+    "rackUnit": 40,
+    "cluster": "PROD-BLR-08",
+    "memoryGB": 1024,
+    "cpuCores": 64,
+    "state": {
+     "health": "OK",
+     "power": "ON"
+    },
+    "firmware": {
+     "iLO 6": "1.58",
+     "System ROM": "U63 v2.16",
+     "NIC BCM57414": "230.0.156.0"
+    },
+    "nics": [
+     {
+      "name": "ens1f0",
+      "speedGbps": 25,
+      "mac": "94:40:c9:28:00:00"
+     },
+     {
+      "name": "ens1f1",
+      "speedGbps": 25,
+      "mac": "94:40:c9:28:00:01"
+     }
+    ],
+    "changeHistory": [
+     {
+      "date": "2026-07-12",
+      "change": "System ROM U63 v2.10 -> v2.16",
+      "result": "success"
+     }
+    ]
+   }
+  ],
+  "baselines": [
+   {
+    "name": "BLR-Baseline-2026.10",
+    "spp": "SPP 2026.09.0 (synthetic)",
+    "released": "2026-09-30",
+    "latest": true,
+    "components": {
+     "HPE ProLiant DL380 Gen11": {
+      "iLO 6": "1.64",
+      "System ROM": "U54 v2.32",
+      "NIC BCM57414": "230.0.156.0"
+     },
+     "HPE ProLiant DL360 Gen11": {
+      "iLO 6": "1.64",
+      "System ROM": "U63 v2.32",
+      "NIC BCM57414": "230.0.156.0"
+     }
+    }
+   },
+   {
+    "name": "BLR-Baseline-2026.07",
+    "spp": "SPP 2026.06.0 (synthetic)",
+    "released": "2026-06-30",
+    "latest": false,
+    "components": {
+     "HPE ProLiant DL380 Gen11": {
+      "iLO 6": "1.58",
+      "System ROM": "U54 v2.16",
+      "NIC BCM57414": "229.1.123.0"
+     },
+     "HPE ProLiant DL360 Gen11": {
+      "iLO 6": "1.58",
+      "System ROM": "U63 v2.16",
+      "NIC BCM57414": "230.0.156.0"
+     }
+    }
+   }
+  ]
+ },
+ "network": {
+  "switches": [
+   {
+    "name": "spine-1",
+    "serial": "SYNSPINE1",
+    "model": "HPE Aruba Networking CX 9300-32D",
+    "os": "AOS-CX",
+    "firmware": "10.13.1010",
+    "role": "spine",
+    "rack": "R0",
+    "status": "UP",
+    "redundancy": {
+     "type": "VSX",
+     "peer": "spine-2"
+    },
+    "cpuPct": 17
+   },
+   {
+    "name": "spine-2",
+    "serial": "SYNSPINE2",
+    "model": "HPE Aruba Networking CX 9300-32D",
+    "os": "AOS-CX",
+    "firmware": "10.13.1010",
+    "role": "spine",
+    "rack": "R0",
+    "status": "UP",
+    "redundancy": {
+     "type": "VSX",
+     "peer": "spine-1"
+    },
+    "cpuPct": 15
+   },
+   {
+    "name": "tor-r1-a",
+    "serial": "SYNTORR1A",
+    "model": "HPE Aruba Networking CX 8325-48Y8C",
+    "os": "AOS-CX",
+    "firmware": "10.13.1010",
+    "role": "tor",
+    "rack": "R1",
+    "status": "UP",
+    "redundancy": {
+     "type": "VSX",
+     "peer": "tor-r1-b"
+    },
+    "cpuPct": 18
+   },
+   {
+    "name": "tor-r1-b",
+    "serial": "SYNTORR1B",
+    "model": "HPE Aruba Networking CX 8325-48Y8C",
+    "os": "AOS-CX",
+    "firmware": "10.13.1010",
+    "role": "tor",
+    "rack": "R1",
+    "status": "UP",
+    "redundancy": {
+     "type": "VSX",
+     "peer": "tor-r1-a"
+    },
+    "cpuPct": 9
+   },
+   {
+    "name": "tor-r2-a",
+    "serial": "SYNTORR2A",
+    "model": "HPE Juniper Networking QFX5120-48Y",
+    "os": "Junos",
+    "firmware": "23.4R2-S3",
+    "role": "tor",
+    "rack": "R2",
+    "status": "UP",
+    "redundancy": {
+     "type": "MC-LAG",
+     "peer": "tor-r2-b"
+    },
+    "cpuPct": 15
+   },
+   {
+    "name": "tor-r2-b",
+    "serial": "SYNTORR2B",
+    "model": "HPE Juniper Networking QFX5120-48Y",
+    "os": "Junos",
+    "firmware": "23.4R2-S3",
+    "role": "tor",
+    "rack": "R2",
+    "status": "UP",
+    "redundancy": {
+     "type": "MC-LAG",
+     "peer": "tor-r2-a"
+    },
+    "cpuPct": 15
+   }
+  ],
+  "ports": [
+   {
+    "switch": "tor-r1-a",
+    "port": "1/1/1",
+    "description": "blr-esx-01 ens1f0",
+    "status": "up",
+    "speed": "25G",
+    "vlans": [
+     110,
+     120,
+     300
+    ],
+    "lldp": {
+     "neighbor": "blr-esx-01",
+     "neighborPort": "ens1f0"
+    }
+   },
+   {
+    "switch": "tor-r1-b",
+    "port": "1/1/1",
+    "description": "blr-esx-01 ens1f1",
+    "status": "up",
+    "speed": "25G",
+    "vlans": [
+     110,
+     120,
+     300
+    ],
+    "lldp": {
+     "neighbor": "blr-esx-01",
+     "neighborPort": "ens1f1"
+    }
+   },
+   {
+    "switch": "tor-r1-a",
+    "port": "1/1/2",
+    "description": "blr-esx-02 ens1f0",
+    "status": "up",
+    "speed": "25G",
+    "vlans": [
+     110,
+     120,
+     300
+    ],
+    "lldp": {
+     "neighbor": "blr-esx-02",
+     "neighborPort": "ens1f0"
+    }
+   },
+   {
+    "switch": "tor-r1-b",
+    "port": "1/1/2",
+    "description": "blr-esx-02 ens1f1",
+    "status": "up",
+    "speed": "25G",
+    "vlans": [
+     110,
+     120,
+     300
+    ],
+    "lldp": {
+     "neighbor": "blr-esx-02",
+     "neighborPort": "ens1f1"
+    }
+   },
+   {
+    "switch": "tor-r1-a",
+    "port": "1/1/3",
+    "description": "blr-esx-03 ens1f0",
+    "status": "up",
+    "speed": "25G",
+    "vlans": [
+     110,
+     120,
+     300
+    ],
+    "lldp": {
+     "neighbor": "blr-esx-03",
+     "neighborPort": "ens1f0"
+    }
+   },
+   {
+    "switch": "tor-r1-b",
+    "port": "1/1/3",
+    "description": "blr-esx-03 ens1f1",
+    "status": "up",
+    "speed": "25G",
+    "vlans": [
+     110,
+     120,
+     300
+    ],
+    "lldp": {
+     "neighbor": "blr-esx-03",
+     "neighborPort": "ens1f1"
+    }
+   },
+   {
+    "switch": "tor-r1-a",
+    "port": "1/1/4",
+    "description": "blr-esx-04 ens1f0",
+    "status": "up",
+    "speed": "25G",
+    "vlans": [
+     110,
+     120,
+     300
+    ],
+    "lldp": {
+     "neighbor": "blr-esx-04",
+     "neighborPort": "ens1f0"
+    }
+   },
+   {
+    "switch": "tor-r1-b",
+    "port": "1/1/4",
+    "description": "blr-esx-04 ens1f1",
+    "status": "up",
+    "speed": "25G",
+    "vlans": [
+     110,
+     120,
+     300
+    ],
+    "lldp": {
+     "neighbor": "blr-esx-04",
+     "neighborPort": "ens1f1"
+    }
+   },
+   {
+    "switch": "tor-r1-a",
+    "port": "1/1/5",
+    "description": "blr-esx-05 ens1f0",
+    "status": "up",
+    "speed": "25G",
+    "vlans": [
+     110,
+     120,
+     300
+    ],
+    "lldp": {
+     "neighbor": "blr-esx-05",
+     "neighborPort": "ens1f0"
+    }
+   },
+   {
+    "switch": "tor-r1-b",
+    "port": "1/1/5",
+    "description": "blr-esx-05 ens1f1",
+    "status": "up",
+    "speed": "25G",
+    "vlans": [
+     110,
+     120,
+     300
+    ],
+    "lldp": {
+     "neighbor": "blr-esx-05",
+     "neighborPort": "ens1f1"
+    }
+   },
+   {
+    "switch": "tor-r1-a",
+    "port": "1/1/6",
+    "description": "blr-esx-06 ens1f0",
+    "status": "up",
+    "speed": "25G",
+    "vlans": [
+     110,
+     120,
+     300
+    ],
+    "lldp": {
+     "neighbor": "blr-esx-06",
+     "neighborPort": "ens1f0"
+    }
+   },
+   {
+    "switch": "tor-r1-b",
+    "port": "1/1/6",
+    "description": "blr-esx-06 ens1f1",
+    "status": "up",
+    "speed": "25G",
+    "vlans": [
+     110,
+     120,
+     300
+    ],
+    "lldp": {
+     "neighbor": "blr-esx-06",
+     "neighborPort": "ens1f1"
+    }
+   },
+   {
+    "switch": "tor-r1-a",
+    "port": "1/1/7",
+    "description": "blr-esx-07 ens1f0",
+    "status": "up",
+    "speed": "25G",
+    "vlans": [
+     110,
+     120,
+     300
+    ],
+    "lldp": {
+     "neighbor": "blr-esx-07",
+     "neighborPort": "ens1f0"
+    }
+   },
+   {
+    "switch": "tor-r1-b",
+    "port": "1/1/7",
+    "description": "blr-esx-07 ens1f1",
+    "status": "down",
+    "speed": "25G",
+    "vlans": [
+     110,
+     120,
+     300
+    ],
+    "lldp": null,
+    "note": "err-disabled (link-flap) since 2026-09-28; ticket never raised"
+   },
+   {
+    "switch": "tor-r1-a",
+    "port": "1/1/8",
+    "description": "blr-esx-08 ens1f0",
+    "status": "up",
+    "speed": "25G",
+    "vlans": [
+     110,
+     120,
+     300
+    ],
+    "lldp": {
+     "neighbor": "blr-esx-08",
+     "neighborPort": "ens1f0"
+    }
+   },
+   {
+    "switch": "tor-r1-b",
+    "port": "1/1/8",
+    "description": "blr-esx-08 ens1f1",
+    "status": "up",
+    "speed": "25G",
+    "vlans": [
+     110,
+     120,
+     300
+    ],
+    "lldp": {
+     "neighbor": "blr-esx-08",
+     "neighborPort": "ens1f1"
+    }
+   },
+   {
+    "switch": "tor-r1-a",
+    "port": "1/1/9",
+    "description": "blr-esx-09 ens1f0",
+    "status": "up",
+    "speed": "25G",
+    "vlans": [
+     110,
+     120,
+     300
+    ],
+    "lldp": {
+     "neighbor": "blr-esx-09",
+     "neighborPort": "ens1f0"
+    }
+   },
+   {
+    "switch": "tor-r1-b",
+    "port": "1/1/9",
+    "description": "blr-esx-09 ens1f1",
+    "status": "up",
+    "speed": "25G",
+    "vlans": [
+     110,
+     120,
+     300
+    ],
+    "lldp": {
+     "neighbor": "blr-esx-09",
+     "neighborPort": "ens1f1"
+    }
+   },
+   {
+    "switch": "tor-r1-a",
+    "port": "1/1/10",
+    "description": "blr-esx-10 ens1f0",
+    "status": "up",
+    "speed": "25G",
+    "vlans": [
+     110,
+     120,
+     300
+    ],
+    "lldp": {
+     "neighbor": "blr-esx-10",
+     "neighborPort": "ens1f0"
+    }
+   },
+   {
+    "switch": "tor-r1-b",
+    "port": "1/1/10",
+    "description": "blr-esx-10 ens1f1",
+    "status": "up",
+    "speed": "25G",
+    "vlans": [
+     110,
+     120,
+     300
+    ],
+    "lldp": {
+     "neighbor": "blr-esx-10",
+     "neighborPort": "ens1f1"
+    }
+   },
+   {
+    "switch": "tor-r1-a",
+    "port": "1/1/11",
+    "description": "blr-esx-11 ens1f0",
+    "status": "up",
+    "speed": "25G",
+    "vlans": [
+     110,
+     120,
+     300
+    ],
+    "lldp": {
+     "neighbor": "blr-esx-11",
+     "neighborPort": "ens1f0"
+    }
+   },
+   {
+    "switch": "tor-r1-b",
+    "port": "1/1/11",
+    "description": "blr-esx-11 ens1f1",
+    "status": "up",
+    "speed": "25G",
+    "vlans": [
+     110,
+     120,
+     300
+    ],
+    "lldp": {
+     "neighbor": "blr-esx-11",
+     "neighborPort": "ens1f1"
+    }
+   },
+   {
+    "switch": "tor-r1-a",
+    "port": "1/1/12",
+    "description": "blr-esx-12 ens1f0",
+    "status": "up",
+    "speed": "25G",
+    "vlans": [
+     110,
+     120,
+     300
+    ],
+    "lldp": {
+     "neighbor": "blr-esx-12",
+     "neighborPort": "ens1f0"
+    }
+   },
+   {
+    "switch": "tor-r1-b",
+    "port": "1/1/12",
+    "description": "blr-esx-12 ens1f1",
+    "status": "up",
+    "speed": "25G",
+    "vlans": [
+     110,
+     120,
+     300
+    ],
+    "lldp": {
+     "neighbor": "blr-esx-12",
+     "neighborPort": "ens1f1"
+    }
+   },
+   {
+    "switch": "tor-r1-a",
+    "port": "1/1/13",
+    "description": "blr-esx-13 ens1f0",
+    "status": "up",
+    "speed": "25G",
+    "vlans": [
+     110,
+     120,
+     300
+    ],
+    "lldp": {
+     "neighbor": "blr-esx-13",
+     "neighborPort": "ens1f0"
+    }
+   },
+   {
+    "switch": "tor-r1-b",
+    "port": "1/1/13",
+    "description": "blr-esx-13 ens1f1",
+    "status": "up",
+    "speed": "25G",
+    "vlans": [
+     110,
+     120,
+     300
+    ],
+    "lldp": {
+     "neighbor": "blr-esx-13",
+     "neighborPort": "ens1f1"
+    }
+   },
+   {
+    "switch": "tor-r1-a",
+    "port": "1/1/14",
+    "description": "blr-esx-14 ens1f0",
+    "status": "up",
+    "speed": "25G",
+    "vlans": [
+     110,
+     120,
+     300
+    ],
+    "lldp": {
+     "neighbor": "blr-esx-14",
+     "neighborPort": "ens1f0"
+    }
+   },
+   {
+    "switch": "tor-r1-b",
+    "port": "1/1/14",
+    "description": "blr-esx-14 ens1f1",
+    "status": "up",
+    "speed": "25G",
+    "vlans": [
+     110,
+     120,
+     300
+    ],
+    "lldp": {
+     "neighbor": "blr-esx-14",
+     "neighborPort": "ens1f1"
+    }
+   },
+   {
+    "switch": "tor-r1-a",
+    "port": "1/1/15",
+    "description": "blr-esx-15 ens1f0",
+    "status": "up",
+    "speed": "25G",
+    "vlans": [
+     110,
+     120,
+     300
+    ],
+    "lldp": {
+     "neighbor": "blr-esx-15",
+     "neighborPort": "ens1f0"
+    }
+   },
+   {
+    "switch": "tor-r1-b",
+    "port": "1/1/15",
+    "description": "blr-esx-15 ens1f1",
+    "status": "up",
+    "speed": "25G",
+    "vlans": [
+     110,
+     120,
+     300
+    ],
+    "lldp": {
+     "neighbor": "blr-esx-15",
+     "neighborPort": "ens1f1"
+    }
+   },
+   {
+    "switch": "tor-r1-a",
+    "port": "1/1/16",
+    "description": "blr-esx-16 ens1f0",
+    "status": "up",
+    "speed": "25G",
+    "vlans": [
+     110,
+     120,
+     300
+    ],
+    "lldp": {
+     "neighbor": "blr-esx-16",
+     "neighborPort": "ens1f0"
+    }
+   },
+   {
+    "switch": "tor-r1-b",
+    "port": "1/1/16",
+    "description": "blr-esx-16 ens1f1",
+    "status": "up",
+    "speed": "25G",
+    "vlans": [
+     110,
+     120,
+     300
+    ],
+    "lldp": {
+     "neighbor": "blr-esx-16",
+     "neighborPort": "ens1f1"
+    }
+   },
+   {
+    "switch": "tor-r1-a",
+    "port": "1/1/17",
+    "description": "blr-esx-17 ens1f0",
+    "status": "up",
+    "speed": "25G",
+    "vlans": [
+     110,
+     120,
+     300
+    ],
+    "lldp": {
+     "neighbor": "blr-esx-17",
+     "neighborPort": "ens1f0"
+    }
+   },
+   {
+    "switch": "tor-r1-b",
+    "port": "1/1/17",
+    "description": "blr-esx-17 ens1f1",
+    "status": "up",
+    "speed": "25G",
+    "vlans": [
+     110,
+     120,
+     300
+    ],
+    "lldp": {
+     "neighbor": "blr-esx-17",
+     "neighborPort": "ens1f1"
+    }
+   },
+   {
+    "switch": "tor-r1-a",
+    "port": "1/1/18",
+    "description": "blr-esx-18 ens1f0",
+    "status": "up",
+    "speed": "25G",
+    "vlans": [
+     110,
+     120,
+     300
+    ],
+    "lldp": {
+     "neighbor": "blr-esx-18",
+     "neighborPort": "ens1f0"
+    }
+   },
+   {
+    "switch": "tor-r1-b",
+    "port": "1/1/18",
+    "description": "blr-esx-18 ens1f1",
+    "status": "up",
+    "speed": "25G",
+    "vlans": [
+     110,
+     120,
+     300
+    ],
+    "lldp": {
+     "neighbor": "blr-esx-18",
+     "neighborPort": "ens1f1"
+    }
+   },
+   {
+    "switch": "tor-r1-a",
+    "port": "1/1/19",
+    "description": "blr-esx-19 ens1f0",
+    "status": "up",
+    "speed": "25G",
+    "vlans": [
+     110,
+     120,
+     300
+    ],
+    "lldp": {
+     "neighbor": "blr-esx-19",
+     "neighborPort": "ens1f0"
+    }
+   },
+   {
+    "switch": "tor-r1-b",
+    "port": "1/1/19",
+    "description": "blr-esx-19 ens1f1",
+    "status": "up",
+    "speed": "25G",
+    "vlans": [
+     110,
+     120,
+     300
+    ],
+    "lldp": {
+     "neighbor": "blr-esx-19",
+     "neighborPort": "ens1f1"
+    }
+   },
+   {
+    "switch": "tor-r1-a",
+    "port": "1/1/20",
+    "description": "blr-esx-20 ens1f0",
+    "status": "up",
+    "speed": "25G",
+    "vlans": [
+     110,
+     120,
+     300
+    ],
+    "lldp": {
+     "neighbor": "blr-esx-20",
+     "neighborPort": "ens1f0"
+    }
+   },
+   {
+    "switch": "tor-r1-b",
+    "port": "1/1/20",
+    "description": "blr-esx-20 ens1f1",
+    "status": "up",
+    "speed": "25G",
+    "vlans": [
+     110,
+     120,
+     300
+    ],
+    "lldp": {
+     "neighbor": "blr-esx-20",
+     "neighborPort": "ens1f1"
+    }
+   },
+   {
+    "switch": "tor-r2-a",
+    "port": "xe-0/0/1",
+    "description": "blr-esx-21 ens1f0",
+    "status": "up",
+    "speed": "25G",
+    "vlans": [
+     110,
+     120,
+     300
+    ],
+    "lldp": {
+     "neighbor": "blr-esx-21",
+     "neighborPort": "ens1f0"
+    }
+   },
+   {
+    "switch": "tor-r2-b",
+    "port": "xe-0/0/1",
+    "description": "blr-esx-21 ens1f1",
+    "status": "up",
+    "speed": "25G",
+    "vlans": [
+     110,
+     120,
+     300
+    ],
+    "lldp": {
+     "neighbor": "blr-esx-21",
+     "neighborPort": "ens1f1"
+    }
+   },
+   {
+    "switch": "tor-r2-a",
+    "port": "xe-0/0/2",
+    "description": "blr-esx-22 ens1f0",
+    "status": "up",
+    "speed": "25G",
+    "vlans": [
+     110,
+     120,
+     300
+    ],
+    "lldp": {
+     "neighbor": "blr-esx-22",
+     "neighborPort": "ens1f0"
+    }
+   },
+   {
+    "switch": "tor-r2-b",
+    "port": "xe-0/0/2",
+    "description": "blr-esx-22 ens1f1",
+    "status": "up",
+    "speed": "25G",
+    "vlans": [
+     110,
+     120,
+     300
+    ],
+    "lldp": {
+     "neighbor": "blr-esx-22",
+     "neighborPort": "ens1f1"
+    }
+   },
+   {
+    "switch": "tor-r2-a",
+    "port": "xe-0/0/3",
+    "description": "blr-esx-23 ens1f0",
+    "status": "up",
+    "speed": "25G",
+    "vlans": [
+     110,
+     120,
+     300
+    ],
+    "lldp": {
+     "neighbor": "blr-esx-23",
+     "neighborPort": "ens1f0"
+    }
+   },
+   {
+    "switch": "tor-r2-b",
+    "port": "xe-0/0/3",
+    "description": "blr-esx-23 ens1f1",
+    "status": "up",
+    "speed": "25G",
+    "vlans": [
+     110,
+     120,
+     300
+    ],
+    "lldp": {
+     "neighbor": "blr-esx-23",
+     "neighborPort": "ens1f1"
+    }
+   },
+   {
+    "switch": "tor-r2-a",
+    "port": "xe-0/0/4",
+    "description": "blr-esx-24 ens1f0",
+    "status": "up",
+    "speed": "25G",
+    "vlans": [
+     110,
+     120,
+     300
+    ],
+    "lldp": {
+     "neighbor": "blr-esx-24",
+     "neighborPort": "ens1f0"
+    }
+   },
+   {
+    "switch": "tor-r2-b",
+    "port": "xe-0/0/4",
+    "description": "blr-esx-24 ens1f1",
+    "status": "up",
+    "speed": "25G",
+    "vlans": [
+     110,
+     120,
+     300
+    ],
+    "lldp": {
+     "neighbor": "blr-esx-24",
+     "neighborPort": "ens1f1"
+    }
+   },
+   {
+    "switch": "tor-r2-a",
+    "port": "xe-0/0/5",
+    "description": "blr-esx-25 ens1f0",
+    "status": "up",
+    "speed": "25G",
+    "vlans": [
+     110,
+     120,
+     300
+    ],
+    "lldp": {
+     "neighbor": "blr-esx-25",
+     "neighborPort": "ens1f0"
+    }
+   },
+   {
+    "switch": "tor-r2-b",
+    "port": "xe-0/0/5",
+    "description": "blr-esx-25 ens1f1",
+    "status": "up",
+    "speed": "25G",
+    "vlans": [
+     110,
+     120,
+     300
+    ],
+    "lldp": {
+     "neighbor": "blr-esx-25",
+     "neighborPort": "ens1f1"
+    }
+   },
+   {
+    "switch": "tor-r2-a",
+    "port": "xe-0/0/6",
+    "description": "blr-esx-26 ens1f0",
+    "status": "up",
+    "speed": "25G",
+    "vlans": [
+     110,
+     120,
+     300
+    ],
+    "lldp": {
+     "neighbor": "blr-esx-26",
+     "neighborPort": "ens1f0"
+    }
+   },
+   {
+    "switch": "tor-r2-b",
+    "port": "xe-0/0/6",
+    "description": "blr-esx-26 ens1f1",
+    "status": "up",
+    "speed": "25G",
+    "vlans": [
+     110,
+     120,
+     300
+    ],
+    "lldp": {
+     "neighbor": "blr-esx-26",
+     "neighborPort": "ens1f1"
+    }
+   },
+   {
+    "switch": "tor-r2-a",
+    "port": "xe-0/0/7",
+    "description": "blr-esx-27 ens1f0",
+    "status": "up",
+    "speed": "25G",
+    "vlans": [
+     110,
+     120,
+     300
+    ],
+    "lldp": {
+     "neighbor": "blr-esx-27",
+     "neighborPort": "ens1f0"
+    }
+   },
+   {
+    "switch": "tor-r2-b",
+    "port": "xe-0/0/7",
+    "description": "blr-esx-27 ens1f1",
+    "status": "up",
+    "speed": "25G",
+    "vlans": [
+     110,
+     120,
+     300
+    ],
+    "lldp": {
+     "neighbor": "blr-esx-27",
+     "neighborPort": "ens1f1"
+    }
+   },
+   {
+    "switch": "tor-r2-a",
+    "port": "xe-0/0/8",
+    "description": "blr-esx-28 ens1f0",
+    "status": "up",
+    "speed": "25G",
+    "vlans": [
+     110,
+     120,
+     300
+    ],
+    "lldp": {
+     "neighbor": "blr-esx-28",
+     "neighborPort": "ens1f0"
+    }
+   },
+   {
+    "switch": "tor-r2-b",
+    "port": "xe-0/0/8",
+    "description": "blr-esx-28 ens1f1",
+    "status": "up",
+    "speed": "25G",
+    "vlans": [
+     110,
+     120,
+     300
+    ],
+    "lldp": {
+     "neighbor": "blr-esx-28",
+     "neighborPort": "ens1f1"
+    }
+   },
+   {
+    "switch": "tor-r2-a",
+    "port": "xe-0/0/9",
+    "description": "blr-esx-29 ens1f0",
+    "status": "up",
+    "speed": "25G",
+    "vlans": [
+     110,
+     120,
+     300
+    ],
+    "lldp": {
+     "neighbor": "blr-esx-29",
+     "neighborPort": "ens1f0"
+    }
+   },
+   {
+    "switch": "tor-r2-b",
+    "port": "xe-0/0/9",
+    "description": "blr-esx-29 ens1f1",
+    "status": "up",
+    "speed": "25G",
+    "vlans": [
+     110,
+     120,
+     300
+    ],
+    "lldp": {
+     "neighbor": "blr-esx-29",
+     "neighborPort": "ens1f1"
+    }
+   },
+   {
+    "switch": "tor-r2-a",
+    "port": "xe-0/0/10",
+    "description": "blr-esx-30 ens1f0",
+    "status": "up",
+    "speed": "25G",
+    "vlans": [
+     110,
+     120,
+     300
+    ],
+    "lldp": {
+     "neighbor": "blr-esx-30",
+     "neighborPort": "ens1f0"
+    }
+   },
+   {
+    "switch": "tor-r2-b",
+    "port": "xe-0/0/10",
+    "description": "blr-esx-30 ens1f1",
+    "status": "up",
+    "speed": "25G",
+    "vlans": [
+     110,
+     120,
+     300
+    ],
+    "lldp": {
+     "neighbor": "blr-esx-30",
+     "neighborPort": "ens1f1"
+    }
+   },
+   {
+    "switch": "tor-r2-a",
+    "port": "xe-0/0/11",
+    "description": "blr-esx-31 ens1f0",
+    "status": "up",
+    "speed": "25G",
+    "vlans": [
+     110,
+     120,
+     300
+    ],
+    "lldp": {
+     "neighbor": "blr-esx-31",
+     "neighborPort": "ens1f0"
+    }
+   },
+   {
+    "switch": "tor-r2-b",
+    "port": "xe-0/0/11",
+    "description": "blr-esx-31 ens1f1",
+    "status": "up",
+    "speed": "25G",
+    "vlans": [
+     110,
+     120,
+     300
+    ],
+    "lldp": {
+     "neighbor": "blr-esx-31",
+     "neighborPort": "ens1f1"
+    }
+   },
+   {
+    "switch": "tor-r2-a",
+    "port": "xe-0/0/12",
+    "description": "blr-esx-32 ens1f0",
+    "status": "up",
+    "speed": "25G",
+    "vlans": [
+     110,
+     120,
+     300
+    ],
+    "lldp": {
+     "neighbor": "blr-esx-32",
+     "neighborPort": "ens1f0"
+    }
+   },
+   {
+    "switch": "tor-r2-b",
+    "port": "xe-0/0/12",
+    "description": "blr-esx-32 ens1f1",
+    "status": "up",
+    "speed": "25G",
+    "vlans": [
+     110,
+     120,
+     300
+    ],
+    "lldp": {
+     "neighbor": "blr-esx-32",
+     "neighborPort": "ens1f1"
+    }
+   },
+   {
+    "switch": "tor-r2-a",
+    "port": "xe-0/0/13",
+    "description": "blr-esx-33 ens1f0",
+    "status": "up",
+    "speed": "25G",
+    "vlans": [
+     110,
+     120,
+     300
+    ],
+    "lldp": {
+     "neighbor": "blr-esx-33",
+     "neighborPort": "ens1f0"
+    }
+   },
+   {
+    "switch": "tor-r2-b",
+    "port": "xe-0/0/13",
+    "description": "blr-esx-33 ens1f1",
+    "status": "up",
+    "speed": "25G",
+    "vlans": [
+     110,
+     120,
+     300
+    ],
+    "lldp": {
+     "neighbor": "blr-esx-33",
+     "neighborPort": "ens1f1"
+    }
+   },
+   {
+    "switch": "tor-r2-a",
+    "port": "xe-0/0/14",
+    "description": "blr-esx-34 ens1f0",
+    "status": "up",
+    "speed": "25G",
+    "vlans": [
+     110,
+     120,
+     300
+    ],
+    "lldp": {
+     "neighbor": "blr-esx-34",
+     "neighborPort": "ens1f0"
+    }
+   },
+   {
+    "switch": "tor-r2-b",
+    "port": "xe-0/0/14",
+    "description": "blr-esx-34 ens1f1",
+    "status": "up",
+    "speed": "25G",
+    "vlans": [
+     110,
+     120,
+     300
+    ],
+    "lldp": {
+     "neighbor": "blr-esx-34",
+     "neighborPort": "ens1f1"
+    }
+   },
+   {
+    "switch": "tor-r2-a",
+    "port": "xe-0/0/15",
+    "description": "blr-esx-35 ens1f0",
+    "status": "up",
+    "speed": "25G",
+    "vlans": [
+     110,
+     120,
+     300
+    ],
+    "lldp": {
+     "neighbor": "blr-esx-35",
+     "neighborPort": "ens1f0"
+    }
+   },
+   {
+    "switch": "tor-r2-b",
+    "port": "xe-0/0/15",
+    "description": "blr-esx-35 ens1f1",
+    "status": "up",
+    "speed": "25G",
+    "vlans": [
+     110,
+     120,
+     300
+    ],
+    "lldp": {
+     "neighbor": "blr-esx-35",
+     "neighborPort": "ens1f1"
+    }
+   },
+   {
+    "switch": "tor-r2-a",
+    "port": "xe-0/0/16",
+    "description": "blr-esx-36 ens1f0",
+    "status": "up",
+    "speed": "25G",
+    "vlans": [
+     110,
+     120,
+     300
+    ],
+    "lldp": {
+     "neighbor": "blr-esx-36",
+     "neighborPort": "ens1f0"
+    }
+   },
+   {
+    "switch": "tor-r2-b",
+    "port": "xe-0/0/16",
+    "description": "blr-esx-36 ens1f1",
+    "status": "up",
+    "speed": "25G",
+    "vlans": [
+     110,
+     120,
+     300
+    ],
+    "lldp": {
+     "neighbor": "blr-esx-36",
+     "neighborPort": "ens1f1"
+    }
+   },
+   {
+    "switch": "tor-r2-a",
+    "port": "xe-0/0/17",
+    "description": "blr-esx-37 ens1f0",
+    "status": "up",
+    "speed": "25G",
+    "vlans": [
+     110,
+     120,
+     300
+    ],
+    "lldp": {
+     "neighbor": "blr-esx-37",
+     "neighborPort": "ens1f0"
+    }
+   },
+   {
+    "switch": "tor-r2-b",
+    "port": "xe-0/0/17",
+    "description": "blr-esx-37 ens1f1",
+    "status": "up",
+    "speed": "25G",
+    "vlans": [
+     110,
+     120,
+     300
+    ],
+    "lldp": {
+     "neighbor": "blr-esx-37",
+     "neighborPort": "ens1f1"
+    }
+   },
+   {
+    "switch": "tor-r2-a",
+    "port": "xe-0/0/18",
+    "description": "blr-esx-38 ens1f0",
+    "status": "up",
+    "speed": "25G",
+    "vlans": [
+     110,
+     120,
+     300
+    ],
+    "lldp": {
+     "neighbor": "blr-esx-38",
+     "neighborPort": "ens1f0"
+    }
+   },
+   {
+    "switch": "tor-r2-b",
+    "port": "xe-0/0/18",
+    "description": "blr-esx-38 ens1f1",
+    "status": "up",
+    "speed": "25G",
+    "vlans": [
+     110,
+     120,
+     300
+    ],
+    "lldp": {
+     "neighbor": "blr-esx-38",
+     "neighborPort": "ens1f1"
+    }
+   },
+   {
+    "switch": "tor-r2-a",
+    "port": "xe-0/0/19",
+    "description": "blr-esx-39 ens1f0",
+    "status": "up",
+    "speed": "25G",
+    "vlans": [
+     110,
+     120,
+     300
+    ],
+    "lldp": {
+     "neighbor": "blr-esx-39",
+     "neighborPort": "ens1f0"
+    }
+   },
+   {
+    "switch": "tor-r2-b",
+    "port": "xe-0/0/19",
+    "description": "blr-esx-39 ens1f1",
+    "status": "up",
+    "speed": "25G",
+    "vlans": [
+     110,
+     120,
+     300
+    ],
+    "lldp": {
+     "neighbor": "blr-esx-39",
+     "neighborPort": "ens1f1"
+    }
+   },
+   {
+    "switch": "tor-r2-a",
+    "port": "xe-0/0/20",
+    "description": "blr-esx-40 ens1f0",
+    "status": "up",
+    "speed": "25G",
+    "vlans": [
+     110,
+     120,
+     300
+    ],
+    "lldp": {
+     "neighbor": "blr-esx-40",
+     "neighborPort": "ens1f0"
+    }
+   },
+   {
+    "switch": "tor-r2-b",
+    "port": "xe-0/0/20",
+    "description": "blr-esx-40 ens1f1",
+    "status": "up",
+    "speed": "25G",
+    "vlans": [
+     110,
+     120,
+     300
+    ],
+    "lldp": {
+     "neighbor": "blr-esx-40",
+     "neighborPort": "ens1f1"
+    }
+   },
+   {
+    "switch": "tor-r1-a",
+    "port": "1/1/45",
+    "description": "alletra-mp-blr-01 ctrl-a:p1",
+    "status": "up",
+    "speed": "25G",
+    "vlans": [
+     300
+    ],
+    "lldp": {
+     "neighbor": "alletra-mp-blr-01",
+     "neighborPort": "ctrl-a:p1"
+    }
+   },
+   {
+    "switch": "tor-r1-b",
+    "port": "1/1/45",
+    "description": "alletra-mp-blr-01 ctrl-b:p1",
+    "status": "up",
+    "speed": "25G",
+    "vlans": [
+     300
+    ],
+    "lldp": {
+     "neighbor": "alletra-mp-blr-01",
+     "neighborPort": "ctrl-b:p1"
+    }
+   },
+   {
+    "switch": "tor-r1-a",
+    "port": "1/1/49",
+    "description": "spine-1 1/1/1",
+    "status": "up",
+    "speed": "100G",
+    "vlans": [
+     110,
+     120,
+     300
+    ],
+    "lldp": {
+     "neighbor": "spine-1",
+     "neighborPort": "1/1/1"
+    }
+   },
+   {
+    "switch": "tor-r1-a",
+    "port": "1/1/50",
+    "description": "spine-2 1/1/1",
+    "status": "up",
+    "speed": "100G",
+    "vlans": [
+     110,
+     120,
+     300
+    ],
+    "lldp": {
+     "neighbor": "spine-2",
+     "neighborPort": "1/1/1"
+    }
+   },
+   {
+    "switch": "tor-r1-a",
+    "port": "1/1/51",
+    "description": "tor-r1-b 1/1/51",
+    "status": "up",
+    "speed": "100G",
+    "vlans": [
+     110,
+     120,
+     300
+    ],
+    "lldp": {
+     "neighbor": "tor-r1-b",
+     "neighborPort": "1/1/51"
+    }
+   },
+   {
+    "switch": "tor-r1-b",
+    "port": "1/1/49",
+    "description": "spine-1 1/1/2",
+    "status": "up",
+    "speed": "100G",
+    "vlans": [
+     110,
+     120,
+     300
+    ],
+    "lldp": {
+     "neighbor": "spine-1",
+     "neighborPort": "1/1/2"
+    }
+   },
+   {
+    "switch": "tor-r1-b",
+    "port": "1/1/50",
+    "description": "spine-2 1/1/2",
+    "status": "up",
+    "speed": "100G",
+    "vlans": [
+     110,
+     120,
+     300
+    ],
+    "lldp": {
+     "neighbor": "spine-2",
+     "neighborPort": "1/1/2"
+    }
+   },
+   {
+    "switch": "tor-r1-b",
+    "port": "1/1/51",
+    "description": "tor-r1-a 1/1/51",
+    "status": "up",
+    "speed": "100G",
+    "vlans": [
+     110,
+     120,
+     300
+    ],
+    "lldp": {
+     "neighbor": "tor-r1-a",
+     "neighborPort": "1/1/51"
+    }
+   },
+   {
+    "switch": "tor-r2-a",
+    "port": "et-0/0/49",
+    "description": "spine-1 1/1/3",
+    "status": "up",
+    "speed": "100G",
+    "vlans": [
+     110,
+     120,
+     300
+    ],
+    "lldp": {
+     "neighbor": "spine-1",
+     "neighborPort": "1/1/3"
+    }
+   },
+   {
+    "switch": "tor-r2-a",
+    "port": "et-0/0/50",
+    "description": "spine-2 1/1/3",
+    "status": "up",
+    "speed": "100G",
+    "vlans": [
+     110,
+     120,
+     300
+    ],
+    "lldp": {
+     "neighbor": "spine-2",
+     "neighborPort": "1/1/3"
+    }
+   },
+   {
+    "switch": "tor-r2-a",
+    "port": "et-0/0/51",
+    "description": "tor-r2-b et-0/0/51",
+    "status": "up",
+    "speed": "100G",
+    "vlans": [
+     110,
+     120,
+     300
+    ],
+    "lldp": {
+     "neighbor": "tor-r2-b",
+     "neighborPort": "et-0/0/51"
+    }
+   },
+   {
+    "switch": "tor-r2-b",
+    "port": "et-0/0/49",
+    "description": "spine-1 1/1/4",
+    "status": "up",
+    "speed": "100G",
+    "vlans": [
+     110,
+     120,
+     300
+    ],
+    "lldp": {
+     "neighbor": "spine-1",
+     "neighborPort": "1/1/4"
+    }
+   },
+   {
+    "switch": "tor-r2-b",
+    "port": "et-0/0/50",
+    "description": "spine-2 1/1/4",
+    "status": "up",
+    "speed": "100G",
+    "vlans": [
+     110,
+     120,
+     300
+    ],
+    "lldp": {
+     "neighbor": "spine-2",
+     "neighborPort": "1/1/4"
+    }
+   },
+   {
+    "switch": "tor-r2-b",
+    "port": "et-0/0/51",
+    "description": "tor-r2-a et-0/0/51",
+    "status": "up",
+    "speed": "100G",
+    "vlans": [
+     110,
+     120,
+     300
+    ],
+    "lldp": {
+     "neighbor": "tor-r2-a",
+     "neighborPort": "et-0/0/51"
+    }
+   },
+   {
+    "switch": "spine-1",
+    "port": "1/1/32",
+    "description": "spine-2 1/1/32",
+    "status": "up",
+    "speed": "25G",
+    "vlans": [
+     110,
+     120,
+     300
+    ],
+    "lldp": {
+     "neighbor": "spine-2",
+     "neighborPort": "1/1/32"
+    }
+   },
+   {
+    "switch": "spine-2",
+    "port": "1/1/32",
+    "description": "spine-1 1/1/32",
+    "status": "up",
+    "speed": "25G",
+    "vlans": [
+     110,
+     120,
+     300
+    ],
+    "lldp": {
+     "neighbor": "spine-1",
+     "neighborPort": "1/1/32"
+    }
+   }
+  ],
+  "baselines": [
+   {
+    "name": "NET-Baseline-2026.10",
+    "latest": true,
+    "components": {
+     "HPE Aruba Networking CX 8325-48Y8C": {
+      "Switch OS": "10.14.1000"
+     },
+     "HPE Aruba Networking CX 9300-32D": {
+      "Switch OS": "10.14.1000"
+     },
+     "HPE Juniper Networking QFX5120-48Y": {
+      "Switch OS": "23.4R2-S4"
+     }
+    }
+   }
+  ]
+ },
+ "virtualization": {
+  "clusters": [
+   {
+    "name": "PROD-BLR-07",
+    "platform": "HPE Morpheus VM Essentials",
+    "ha": {
+     "enabled": true,
+     "failoverHosts": 1
+    },
+    "maxMemoryUtilPct": 85,
+    "hosts": [
+     "blr-esx-01",
+     "blr-esx-02",
+     "blr-esx-03",
+     "blr-esx-04",
+     "blr-esx-05",
+     "blr-esx-06",
+     "blr-esx-07",
+     "blr-esx-08",
+     "blr-esx-09",
+     "blr-esx-10",
+     "blr-esx-11",
+     "blr-esx-12",
+     "blr-esx-13",
+     "blr-esx-14",
+     "blr-esx-15",
+     "blr-esx-16",
+     "blr-esx-17",
+     "blr-esx-18",
+     "blr-esx-19",
+     "blr-esx-20"
+    ]
+   },
+   {
+    "name": "PROD-BLR-08",
+    "platform": "VMware vSphere (managed by HPE Morpheus)",
+    "ha": {
+     "enabled": true,
+     "failoverHosts": 1
+    },
+    "maxMemoryUtilPct": 85,
+    "hosts": [
+     "blr-esx-21",
+     "blr-esx-22",
+     "blr-esx-23",
+     "blr-esx-24",
+     "blr-esx-25",
+     "blr-esx-26",
+     "blr-esx-27",
+     "blr-esx-28",
+     "blr-esx-29",
+     "blr-esx-30",
+     "blr-esx-31",
+     "blr-esx-32",
+     "blr-esx-33",
+     "blr-esx-34",
+     "blr-esx-35",
+     "blr-esx-36",
+     "blr-esx-37",
+     "blr-esx-38",
+     "blr-esx-39",
+     "blr-esx-40"
+    ]
+   }
+  ],
+  "datastores": [
+   {
+    "name": "ds-blr07-gold",
+    "array": "alletra-mp-blr-01",
+    "protocol": "iSCSI",
+    "vlan": 300
+   },
+   {
+    "name": "ds-blr08-gold",
+    "array": "alletra-mp-blr-01",
+    "protocol": "iSCSI",
+    "vlan": 300
+   }
+  ],
+  "vms": [
+   {
+    "name": "inventory-01",
+    "host": "blr-esx-01",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "inventory",
+    "tier": 2,
+    "vcpu": 8,
+    "memoryGB": 64,
+    "powerState": "on"
+   },
+   {
+    "name": "dev-sandbox-01",
+    "host": "blr-esx-01",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "dev-sandbox",
+    "tier": 3,
+    "vcpu": 4,
+    "memoryGB": 32,
+    "powerState": "on"
+   },
+   {
+    "name": "analytics-01",
+    "host": "blr-esx-01",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "analytics",
+    "tier": 2,
+    "vcpu": 16,
+    "memoryGB": 64,
+    "powerState": "on"
+   },
+   {
+    "name": "analytics-02",
+    "host": "blr-esx-01",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "analytics",
+    "tier": 2,
+    "vcpu": 16,
+    "memoryGB": 64,
+    "powerState": "on"
+   },
+   {
+    "name": "analytics-03",
+    "host": "blr-esx-01",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "analytics",
+    "tier": 2,
+    "vcpu": 16,
+    "memoryGB": 64,
+    "powerState": "on"
+   },
+   {
+    "name": "dev-sandbox-02",
+    "host": "blr-esx-01",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "dev-sandbox",
+    "tier": 3,
+    "vcpu": 4,
+    "memoryGB": 32,
+    "powerState": "on"
+   },
+   {
+    "name": "analytics-04",
+    "host": "blr-esx-01",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "analytics",
+    "tier": 2,
+    "vcpu": 16,
+    "memoryGB": 64,
+    "powerState": "on"
+   },
+   {
+    "name": "ci-runner-01",
+    "host": "blr-esx-01",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "ci-runners",
+    "tier": 3,
+    "vcpu": 8,
+    "memoryGB": 32,
+    "powerState": "on"
+   },
+   {
+    "name": "inventory-02",
+    "host": "blr-esx-01",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "inventory",
+    "tier": 2,
+    "vcpu": 8,
+    "memoryGB": 32,
+    "powerState": "on"
+   },
+   {
+    "name": "inventory-03",
+    "host": "blr-esx-01",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "inventory",
+    "tier": 2,
+    "vcpu": 8,
+    "memoryGB": 32,
+    "powerState": "on"
+   },
+   {
+    "name": "analytics-05",
+    "host": "blr-esx-01",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "analytics",
+    "tier": 2,
+    "vcpu": 16,
+    "memoryGB": 64,
+    "powerState": "on"
+   },
+   {
+    "name": "observability-01",
+    "host": "blr-esx-02",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "observability",
+    "tier": 2,
+    "vcpu": 8,
+    "memoryGB": 128,
+    "powerState": "on"
+   },
+   {
+    "name": "ci-runner-02",
+    "host": "blr-esx-02",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "ci-runners",
+    "tier": 3,
+    "vcpu": 8,
+    "memoryGB": 16,
+    "powerState": "on"
+   },
+   {
+    "name": "ci-runner-03",
+    "host": "blr-esx-02",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "ci-runners",
+    "tier": 3,
+    "vcpu": 8,
+    "memoryGB": 16,
+    "powerState": "on"
+   },
+   {
+    "name": "ci-runner-04",
+    "host": "blr-esx-02",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "ci-runners",
+    "tier": 3,
+    "vcpu": 8,
+    "memoryGB": 32,
+    "powerState": "on"
+   },
+   {
+    "name": "analytics-06",
+    "host": "blr-esx-02",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "analytics",
+    "tier": 2,
+    "vcpu": 16,
+    "memoryGB": 64,
+    "powerState": "on"
+   },
+   {
+    "name": "analytics-07",
+    "host": "blr-esx-02",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "analytics",
+    "tier": 2,
+    "vcpu": 16,
+    "memoryGB": 128,
+    "powerState": "on"
+   },
+   {
+    "name": "dev-sandbox-03",
+    "host": "blr-esx-02",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "dev-sandbox",
+    "tier": 3,
+    "vcpu": 4,
+    "memoryGB": 16,
+    "powerState": "on"
+   },
+   {
+    "name": "analytics-08",
+    "host": "blr-esx-02",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "analytics",
+    "tier": 2,
+    "vcpu": 16,
+    "memoryGB": 64,
+    "powerState": "on"
+   },
+   {
+    "name": "dev-sandbox-04",
+    "host": "blr-esx-02",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "dev-sandbox",
+    "tier": 3,
+    "vcpu": 4,
+    "memoryGB": 16,
+    "powerState": "on"
+   },
+   {
+    "name": "dev-sandbox-05",
+    "host": "blr-esx-02",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "dev-sandbox",
+    "tier": 3,
+    "vcpu": 4,
+    "memoryGB": 32,
+    "powerState": "on"
+   },
+   {
+    "name": "inventory-04",
+    "host": "blr-esx-02",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "inventory",
+    "tier": 2,
+    "vcpu": 8,
+    "memoryGB": 32,
+    "powerState": "on"
+   },
+   {
+    "name": "inventory-05",
+    "host": "blr-esx-02",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "inventory",
+    "tier": 2,
+    "vcpu": 8,
+    "memoryGB": 64,
+    "powerState": "on"
+   },
+   {
+    "name": "dev-sandbox-06",
+    "host": "blr-esx-03",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "dev-sandbox",
+    "tier": 3,
+    "vcpu": 4,
+    "memoryGB": 16,
+    "powerState": "on"
+   },
+   {
+    "name": "ci-runner-05",
+    "host": "blr-esx-03",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "ci-runners",
+    "tier": 3,
+    "vcpu": 8,
+    "memoryGB": 32,
+    "powerState": "on"
+   },
+   {
+    "name": "ci-runner-06",
+    "host": "blr-esx-03",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "ci-runners",
+    "tier": 3,
+    "vcpu": 8,
+    "memoryGB": 32,
+    "powerState": "on"
+   },
+   {
+    "name": "dev-sandbox-07",
+    "host": "blr-esx-03",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "dev-sandbox",
+    "tier": 3,
+    "vcpu": 4,
+    "memoryGB": 32,
+    "powerState": "on"
+   },
+   {
+    "name": "ci-runner-07",
+    "host": "blr-esx-03",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "ci-runners",
+    "tier": 3,
+    "vcpu": 8,
+    "memoryGB": 16,
+    "powerState": "on"
+   },
+   {
+    "name": "dev-sandbox-08",
+    "host": "blr-esx-03",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "dev-sandbox",
+    "tier": 3,
+    "vcpu": 4,
+    "memoryGB": 32,
+    "powerState": "on"
+   },
+   {
+    "name": "ci-runner-08",
+    "host": "blr-esx-03",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "ci-runners",
+    "tier": 3,
+    "vcpu": 8,
+    "memoryGB": 32,
+    "powerState": "on"
+   },
+   {
+    "name": "ci-runner-09",
+    "host": "blr-esx-03",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "ci-runners",
+    "tier": 3,
+    "vcpu": 8,
+    "memoryGB": 16,
+    "powerState": "on"
+   },
+   {
+    "name": "dev-sandbox-09",
+    "host": "blr-esx-03",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "dev-sandbox",
+    "tier": 3,
+    "vcpu": 4,
+    "memoryGB": 16,
+    "powerState": "on"
+   },
+   {
+    "name": "ci-runner-10",
+    "host": "blr-esx-03",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "ci-runners",
+    "tier": 3,
+    "vcpu": 8,
+    "memoryGB": 16,
+    "powerState": "on"
+   },
+   {
+    "name": "ci-runner-11",
+    "host": "blr-esx-03",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "ci-runners",
+    "tier": 3,
+    "vcpu": 8,
+    "memoryGB": 32,
+    "powerState": "on"
+   },
+   {
+    "name": "ci-runner-12",
+    "host": "blr-esx-03",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "ci-runners",
+    "tier": 3,
+    "vcpu": 8,
+    "memoryGB": 16,
+    "powerState": "on"
+   },
+   {
+    "name": "ci-runner-13",
+    "host": "blr-esx-03",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "ci-runners",
+    "tier": 3,
+    "vcpu": 8,
+    "memoryGB": 16,
+    "powerState": "on"
+   },
+   {
+    "name": "dev-sandbox-10",
+    "host": "blr-esx-03",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "dev-sandbox",
+    "tier": 3,
+    "vcpu": 4,
+    "memoryGB": 32,
+    "powerState": "on"
+   },
+   {
+    "name": "ci-runner-14",
+    "host": "blr-esx-03",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "ci-runners",
+    "tier": 3,
+    "vcpu": 8,
+    "memoryGB": 32,
+    "powerState": "on"
+   },
+   {
+    "name": "dev-sandbox-11",
+    "host": "blr-esx-03",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "dev-sandbox",
+    "tier": 3,
+    "vcpu": 4,
+    "memoryGB": 16,
+    "powerState": "on"
+   },
+   {
+    "name": "dev-sandbox-12",
+    "host": "blr-esx-03",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "dev-sandbox",
+    "tier": 3,
+    "vcpu": 4,
+    "memoryGB": 32,
+    "powerState": "on"
+   },
+   {
+    "name": "dev-sandbox-13",
+    "host": "blr-esx-03",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "dev-sandbox",
+    "tier": 3,
+    "vcpu": 4,
+    "memoryGB": 16,
+    "powerState": "on"
+   },
+   {
+    "name": "ci-runner-15",
+    "host": "blr-esx-03",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "ci-runners",
+    "tier": 3,
+    "vcpu": 8,
+    "memoryGB": 32,
+    "powerState": "on"
+   },
+   {
+    "name": "ci-runner-16",
+    "host": "blr-esx-03",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "ci-runners",
+    "tier": 3,
+    "vcpu": 8,
+    "memoryGB": 32,
+    "powerState": "on"
+   },
+   {
+    "name": "dev-sandbox-14",
+    "host": "blr-esx-03",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "dev-sandbox",
+    "tier": 3,
+    "vcpu": 4,
+    "memoryGB": 16,
+    "powerState": "on"
+   },
+   {
+    "name": "dev-sandbox-15",
+    "host": "blr-esx-03",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "dev-sandbox",
+    "tier": 3,
+    "vcpu": 4,
+    "memoryGB": 32,
+    "powerState": "on"
+   },
+   {
+    "name": "ci-runner-17",
+    "host": "blr-esx-03",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "ci-runners",
+    "tier": 3,
+    "vcpu": 8,
+    "memoryGB": 32,
+    "powerState": "on"
+   },
+   {
+    "name": "payments-api-01",
+    "host": "blr-esx-04",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "payments",
+    "tier": 0,
+    "vcpu": 8,
+    "memoryGB": 32,
+    "powerState": "on"
+   },
+   {
+    "name": "ci-runner-18",
+    "host": "blr-esx-04",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "ci-runners",
+    "tier": 3,
+    "vcpu": 8,
+    "memoryGB": 16,
+    "powerState": "on"
+   },
+   {
+    "name": "inventory-06",
+    "host": "blr-esx-04",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "inventory",
+    "tier": 2,
+    "vcpu": 8,
+    "memoryGB": 64,
+    "powerState": "on"
+   },
+   {
+    "name": "analytics-09",
+    "host": "blr-esx-04",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "analytics",
+    "tier": 2,
+    "vcpu": 16,
+    "memoryGB": 64,
+    "powerState": "on"
+   },
+   {
+    "name": "ci-runner-19",
+    "host": "blr-esx-04",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "ci-runners",
+    "tier": 3,
+    "vcpu": 8,
+    "memoryGB": 32,
+    "powerState": "on"
+   },
+   {
+    "name": "analytics-10",
+    "host": "blr-esx-04",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "analytics",
+    "tier": 2,
+    "vcpu": 16,
+    "memoryGB": 64,
+    "powerState": "on"
+   },
+   {
+    "name": "inventory-07",
+    "host": "blr-esx-04",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "inventory",
+    "tier": 2,
+    "vcpu": 8,
+    "memoryGB": 32,
+    "powerState": "on"
+   },
+   {
+    "name": "ci-runner-20",
+    "host": "blr-esx-04",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "ci-runners",
+    "tier": 3,
+    "vcpu": 8,
+    "memoryGB": 16,
+    "powerState": "on"
+   },
+   {
+    "name": "analytics-11",
+    "host": "blr-esx-04",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "analytics",
+    "tier": 2,
+    "vcpu": 16,
+    "memoryGB": 64,
+    "powerState": "on"
+   },
+   {
+    "name": "analytics-12",
+    "host": "blr-esx-04",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "analytics",
+    "tier": 2,
+    "vcpu": 16,
+    "memoryGB": 64,
+    "powerState": "on"
+   },
+   {
+    "name": "dev-sandbox-16",
+    "host": "blr-esx-04",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "dev-sandbox",
+    "tier": 3,
+    "vcpu": 4,
+    "memoryGB": 32,
+    "powerState": "on"
+   },
+   {
+    "name": "dev-sandbox-17",
+    "host": "blr-esx-04",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "dev-sandbox",
+    "tier": 3,
+    "vcpu": 4,
+    "memoryGB": 32,
+    "powerState": "on"
+   },
+   {
+    "name": "ci-runner-21",
+    "host": "blr-esx-04",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "ci-runners",
+    "tier": 3,
+    "vcpu": 8,
+    "memoryGB": 32,
+    "powerState": "on"
+   },
+   {
+    "name": "orders-db-01",
+    "host": "blr-esx-05",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "orders",
+    "tier": 1,
+    "vcpu": 16,
+    "memoryGB": 192,
+    "powerState": "on"
+   },
+   {
+    "name": "analytics-13",
+    "host": "blr-esx-05",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "analytics",
+    "tier": 2,
+    "vcpu": 16,
+    "memoryGB": 64,
+    "powerState": "on"
+   },
+   {
+    "name": "ci-runner-22",
+    "host": "blr-esx-05",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "ci-runners",
+    "tier": 3,
+    "vcpu": 8,
+    "memoryGB": 16,
+    "powerState": "on"
+   },
+   {
+    "name": "dev-sandbox-18",
+    "host": "blr-esx-05",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "dev-sandbox",
+    "tier": 3,
+    "vcpu": 4,
+    "memoryGB": 16,
+    "powerState": "on"
+   },
+   {
+    "name": "dev-sandbox-19",
+    "host": "blr-esx-05",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "dev-sandbox",
+    "tier": 3,
+    "vcpu": 4,
+    "memoryGB": 32,
+    "powerState": "on"
+   },
+   {
+    "name": "inventory-08",
+    "host": "blr-esx-05",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "inventory",
+    "tier": 2,
+    "vcpu": 8,
+    "memoryGB": 32,
+    "powerState": "on"
+   },
+   {
+    "name": "ci-runner-23",
+    "host": "blr-esx-05",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "ci-runners",
+    "tier": 3,
+    "vcpu": 8,
+    "memoryGB": 32,
+    "powerState": "on"
+   },
+   {
+    "name": "analytics-14",
+    "host": "blr-esx-05",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "analytics",
+    "tier": 2,
+    "vcpu": 16,
+    "memoryGB": 64,
+    "powerState": "on"
+   },
+   {
+    "name": "analytics-15",
+    "host": "blr-esx-05",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "analytics",
+    "tier": 2,
+    "vcpu": 16,
+    "memoryGB": 64,
+    "powerState": "on"
+   },
+   {
+    "name": "analytics-16",
+    "host": "blr-esx-05",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "analytics",
+    "tier": 2,
+    "vcpu": 16,
+    "memoryGB": 64,
+    "powerState": "on"
+   },
+   {
+    "name": "inventory-09",
+    "host": "blr-esx-05",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "inventory",
+    "tier": 2,
+    "vcpu": 8,
+    "memoryGB": 32,
+    "powerState": "on"
+   },
+   {
+    "name": "ci-runner-24",
+    "host": "blr-esx-06",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "ci-runners",
+    "tier": 3,
+    "vcpu": 8,
+    "memoryGB": 32,
+    "powerState": "on"
+   },
+   {
+    "name": "dev-sandbox-20",
+    "host": "blr-esx-06",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "dev-sandbox",
+    "tier": 3,
+    "vcpu": 4,
+    "memoryGB": 16,
+    "powerState": "on"
+   },
+   {
+    "name": "analytics-17",
+    "host": "blr-esx-06",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "analytics",
+    "tier": 2,
+    "vcpu": 16,
+    "memoryGB": 128,
+    "powerState": "on"
+   },
+   {
+    "name": "dev-sandbox-21",
+    "host": "blr-esx-06",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "dev-sandbox",
+    "tier": 3,
+    "vcpu": 4,
+    "memoryGB": 16,
+    "powerState": "on"
+   },
+   {
+    "name": "analytics-18",
+    "host": "blr-esx-06",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "analytics",
+    "tier": 2,
+    "vcpu": 16,
+    "memoryGB": 64,
+    "powerState": "on"
+   },
+   {
+    "name": "dev-sandbox-22",
+    "host": "blr-esx-06",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "dev-sandbox",
+    "tier": 3,
+    "vcpu": 4,
+    "memoryGB": 32,
+    "powerState": "on"
+   },
+   {
+    "name": "inventory-10",
+    "host": "blr-esx-06",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "inventory",
+    "tier": 2,
+    "vcpu": 8,
+    "memoryGB": 32,
+    "powerState": "on"
+   },
+   {
+    "name": "dev-sandbox-23",
+    "host": "blr-esx-06",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "dev-sandbox",
+    "tier": 3,
+    "vcpu": 4,
+    "memoryGB": 32,
+    "powerState": "on"
+   },
+   {
+    "name": "inventory-11",
+    "host": "blr-esx-06",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "inventory",
+    "tier": 2,
+    "vcpu": 8,
+    "memoryGB": 64,
+    "powerState": "on"
+   },
+   {
+    "name": "analytics-19",
+    "host": "blr-esx-06",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "analytics",
+    "tier": 2,
+    "vcpu": 16,
+    "memoryGB": 64,
+    "powerState": "on"
+   },
+   {
+    "name": "dev-sandbox-24",
+    "host": "blr-esx-06",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "dev-sandbox",
+    "tier": 3,
+    "vcpu": 4,
+    "memoryGB": 32,
+    "powerState": "on"
+   },
+   {
+    "name": "payments-db-01",
+    "host": "blr-esx-07",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "payments",
+    "tier": 0,
+    "vcpu": 16,
+    "memoryGB": 256,
+    "powerState": "on"
+   },
+   {
+    "name": "dev-sandbox-25",
+    "host": "blr-esx-07",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "dev-sandbox",
+    "tier": 3,
+    "vcpu": 4,
+    "memoryGB": 16,
+    "powerState": "on"
+   },
+   {
+    "name": "dev-sandbox-26",
+    "host": "blr-esx-07",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "dev-sandbox",
+    "tier": 3,
+    "vcpu": 4,
+    "memoryGB": 32,
+    "powerState": "on"
+   },
+   {
+    "name": "dev-sandbox-27",
+    "host": "blr-esx-07",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "dev-sandbox",
+    "tier": 3,
+    "vcpu": 4,
+    "memoryGB": 16,
+    "powerState": "on"
+   },
+   {
+    "name": "inventory-12",
+    "host": "blr-esx-07",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "inventory",
+    "tier": 2,
+    "vcpu": 8,
+    "memoryGB": 64,
+    "powerState": "on"
+   },
+   {
+    "name": "dev-sandbox-28",
+    "host": "blr-esx-07",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "dev-sandbox",
+    "tier": 3,
+    "vcpu": 4,
+    "memoryGB": 32,
+    "powerState": "on"
+   },
+   {
+    "name": "inventory-13",
+    "host": "blr-esx-07",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "inventory",
+    "tier": 2,
+    "vcpu": 8,
+    "memoryGB": 32,
+    "powerState": "on"
+   },
+   {
+    "name": "ci-runner-25",
+    "host": "blr-esx-07",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "ci-runners",
+    "tier": 3,
+    "vcpu": 8,
+    "memoryGB": 16,
+    "powerState": "on"
+   },
+   {
+    "name": "inventory-14",
+    "host": "blr-esx-07",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "inventory",
+    "tier": 2,
+    "vcpu": 8,
+    "memoryGB": 32,
+    "powerState": "on"
+   },
+   {
+    "name": "dev-sandbox-29",
+    "host": "blr-esx-07",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "dev-sandbox",
+    "tier": 3,
+    "vcpu": 4,
+    "memoryGB": 32,
+    "powerState": "on"
+   },
+   {
+    "name": "analytics-20",
+    "host": "blr-esx-08",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "analytics",
+    "tier": 2,
+    "vcpu": 16,
+    "memoryGB": 64,
+    "powerState": "on"
+   },
+   {
+    "name": "inventory-15",
+    "host": "blr-esx-08",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "inventory",
+    "tier": 2,
+    "vcpu": 8,
+    "memoryGB": 32,
+    "powerState": "on"
+   },
+   {
+    "name": "analytics-21",
+    "host": "blr-esx-08",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "analytics",
+    "tier": 2,
+    "vcpu": 16,
+    "memoryGB": 128,
+    "powerState": "on"
+   },
+   {
+    "name": "inventory-16",
+    "host": "blr-esx-08",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "inventory",
+    "tier": 2,
+    "vcpu": 8,
+    "memoryGB": 64,
+    "powerState": "on"
+   },
+   {
+    "name": "analytics-22",
+    "host": "blr-esx-08",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "analytics",
+    "tier": 2,
+    "vcpu": 16,
+    "memoryGB": 128,
+    "powerState": "on"
+   },
+   {
+    "name": "ci-runner-26",
+    "host": "blr-esx-08",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "ci-runners",
+    "tier": 3,
+    "vcpu": 8,
+    "memoryGB": 16,
+    "powerState": "on"
+   },
+   {
+    "name": "dev-sandbox-30",
+    "host": "blr-esx-08",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "dev-sandbox",
+    "tier": 3,
+    "vcpu": 4,
+    "memoryGB": 32,
+    "powerState": "on"
+   },
+   {
+    "name": "ci-runner-27",
+    "host": "blr-esx-08",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "ci-runners",
+    "tier": 3,
+    "vcpu": 8,
+    "memoryGB": 16,
+    "powerState": "on"
+   },
+   {
+    "name": "inventory-17",
+    "host": "blr-esx-08",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "inventory",
+    "tier": 2,
+    "vcpu": 8,
+    "memoryGB": 64,
+    "powerState": "on"
+   },
+   {
+    "name": "payments-api-02",
+    "host": "blr-esx-09",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "payments",
+    "tier": 0,
+    "vcpu": 8,
+    "memoryGB": 32,
+    "powerState": "on"
+   },
+   {
+    "name": "ci-runner-28",
+    "host": "blr-esx-09",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "ci-runners",
+    "tier": 3,
+    "vcpu": 8,
+    "memoryGB": 32,
+    "powerState": "on"
+   },
+   {
+    "name": "analytics-23",
+    "host": "blr-esx-09",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "analytics",
+    "tier": 2,
+    "vcpu": 16,
+    "memoryGB": 128,
+    "powerState": "on"
+   },
+   {
+    "name": "inventory-18",
+    "host": "blr-esx-09",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "inventory",
+    "tier": 2,
+    "vcpu": 8,
+    "memoryGB": 64,
+    "powerState": "on"
+   },
+   {
+    "name": "dev-sandbox-31",
+    "host": "blr-esx-09",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "dev-sandbox",
+    "tier": 3,
+    "vcpu": 4,
+    "memoryGB": 32,
+    "powerState": "on"
+   },
+   {
+    "name": "dev-sandbox-32",
+    "host": "blr-esx-09",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "dev-sandbox",
+    "tier": 3,
+    "vcpu": 4,
+    "memoryGB": 16,
+    "powerState": "on"
+   },
+   {
+    "name": "ci-runner-29",
+    "host": "blr-esx-09",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "ci-runners",
+    "tier": 3,
+    "vcpu": 8,
+    "memoryGB": 32,
+    "powerState": "on"
+   },
+   {
+    "name": "analytics-24",
+    "host": "blr-esx-09",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "analytics",
+    "tier": 2,
+    "vcpu": 16,
+    "memoryGB": 64,
+    "powerState": "on"
+   },
+   {
+    "name": "ci-runner-30",
+    "host": "blr-esx-09",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "ci-runners",
+    "tier": 3,
+    "vcpu": 8,
+    "memoryGB": 16,
+    "powerState": "on"
+   },
+   {
+    "name": "inventory-19",
+    "host": "blr-esx-09",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "inventory",
+    "tier": 2,
+    "vcpu": 8,
+    "memoryGB": 64,
+    "powerState": "on"
+   },
+   {
+    "name": "analytics-25",
+    "host": "blr-esx-09",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "analytics",
+    "tier": 2,
+    "vcpu": 16,
+    "memoryGB": 128,
+    "powerState": "on"
+   },
+   {
+    "name": "dev-sandbox-33",
+    "host": "blr-esx-10",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "dev-sandbox",
+    "tier": 3,
+    "vcpu": 4,
+    "memoryGB": 32,
+    "powerState": "on"
+   },
+   {
+    "name": "analytics-26",
+    "host": "blr-esx-10",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "analytics",
+    "tier": 2,
+    "vcpu": 16,
+    "memoryGB": 128,
+    "powerState": "on"
+   },
+   {
+    "name": "ci-runner-31",
+    "host": "blr-esx-10",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "ci-runners",
+    "tier": 3,
+    "vcpu": 8,
+    "memoryGB": 32,
+    "powerState": "on"
+   },
+   {
+    "name": "dev-sandbox-34",
+    "host": "blr-esx-10",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "dev-sandbox",
+    "tier": 3,
+    "vcpu": 4,
+    "memoryGB": 16,
+    "powerState": "on"
+   },
+   {
+    "name": "ci-runner-32",
+    "host": "blr-esx-10",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "ci-runners",
+    "tier": 3,
+    "vcpu": 8,
+    "memoryGB": 16,
+    "powerState": "on"
+   },
+   {
+    "name": "inventory-20",
+    "host": "blr-esx-10",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "inventory",
+    "tier": 2,
+    "vcpu": 8,
+    "memoryGB": 32,
+    "powerState": "on"
+   },
+   {
+    "name": "analytics-27",
+    "host": "blr-esx-10",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "analytics",
+    "tier": 2,
+    "vcpu": 16,
+    "memoryGB": 64,
+    "powerState": "on"
+   },
+   {
+    "name": "analytics-28",
+    "host": "blr-esx-10",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "analytics",
+    "tier": 2,
+    "vcpu": 16,
+    "memoryGB": 64,
+    "powerState": "on"
+   },
+   {
+    "name": "analytics-29",
+    "host": "blr-esx-10",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "analytics",
+    "tier": 2,
+    "vcpu": 16,
+    "memoryGB": 128,
+    "powerState": "on"
+   },
+   {
+    "name": "dev-sandbox-35",
+    "host": "blr-esx-11",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "dev-sandbox",
+    "tier": 3,
+    "vcpu": 4,
+    "memoryGB": 32,
+    "powerState": "on"
+   },
+   {
+    "name": "dev-sandbox-36",
+    "host": "blr-esx-11",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "dev-sandbox",
+    "tier": 3,
+    "vcpu": 4,
+    "memoryGB": 32,
+    "powerState": "on"
+   },
+   {
+    "name": "dev-sandbox-37",
+    "host": "blr-esx-11",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "dev-sandbox",
+    "tier": 3,
+    "vcpu": 4,
+    "memoryGB": 16,
+    "powerState": "on"
+   },
+   {
+    "name": "ci-runner-33",
+    "host": "blr-esx-11",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "ci-runners",
+    "tier": 3,
+    "vcpu": 8,
+    "memoryGB": 16,
+    "powerState": "on"
+   },
+   {
+    "name": "dev-sandbox-38",
+    "host": "blr-esx-11",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "dev-sandbox",
+    "tier": 3,
+    "vcpu": 4,
+    "memoryGB": 32,
+    "powerState": "on"
+   },
+   {
+    "name": "ci-runner-34",
+    "host": "blr-esx-11",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "ci-runners",
+    "tier": 3,
+    "vcpu": 8,
+    "memoryGB": 32,
+    "powerState": "on"
+   },
+   {
+    "name": "dev-sandbox-39",
+    "host": "blr-esx-11",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "dev-sandbox",
+    "tier": 3,
+    "vcpu": 4,
+    "memoryGB": 32,
+    "powerState": "on"
+   },
+   {
+    "name": "ci-runner-35",
+    "host": "blr-esx-11",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "ci-runners",
+    "tier": 3,
+    "vcpu": 8,
+    "memoryGB": 16,
+    "powerState": "on"
+   },
+   {
+    "name": "dev-sandbox-40",
+    "host": "blr-esx-11",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "dev-sandbox",
+    "tier": 3,
+    "vcpu": 4,
+    "memoryGB": 32,
+    "powerState": "on"
+   },
+   {
+    "name": "dev-sandbox-41",
+    "host": "blr-esx-11",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "dev-sandbox",
+    "tier": 3,
+    "vcpu": 4,
+    "memoryGB": 16,
+    "powerState": "on"
+   },
+   {
+    "name": "dev-sandbox-42",
+    "host": "blr-esx-11",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "dev-sandbox",
+    "tier": 3,
+    "vcpu": 4,
+    "memoryGB": 32,
+    "powerState": "on"
+   },
+   {
+    "name": "dev-sandbox-43",
+    "host": "blr-esx-11",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "dev-sandbox",
+    "tier": 3,
+    "vcpu": 4,
+    "memoryGB": 16,
+    "powerState": "on"
+   },
+   {
+    "name": "ci-runner-36",
+    "host": "blr-esx-11",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "ci-runners",
+    "tier": 3,
+    "vcpu": 8,
+    "memoryGB": 32,
+    "powerState": "on"
+   },
+   {
+    "name": "ci-runner-37",
+    "host": "blr-esx-11",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "ci-runners",
+    "tier": 3,
+    "vcpu": 8,
+    "memoryGB": 32,
+    "powerState": "on"
+   },
+   {
+    "name": "ci-runner-38",
+    "host": "blr-esx-11",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "ci-runners",
+    "tier": 3,
+    "vcpu": 8,
+    "memoryGB": 16,
+    "powerState": "on"
+   },
+   {
+    "name": "ci-runner-39",
+    "host": "blr-esx-11",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "ci-runners",
+    "tier": 3,
+    "vcpu": 8,
+    "memoryGB": 32,
+    "powerState": "on"
+   },
+   {
+    "name": "ci-runner-40",
+    "host": "blr-esx-11",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "ci-runners",
+    "tier": 3,
+    "vcpu": 8,
+    "memoryGB": 16,
+    "powerState": "on"
+   },
+   {
+    "name": "dev-sandbox-44",
+    "host": "blr-esx-11",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "dev-sandbox",
+    "tier": 3,
+    "vcpu": 4,
+    "memoryGB": 16,
+    "powerState": "on"
+   },
+   {
+    "name": "dev-sandbox-45",
+    "host": "blr-esx-11",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "dev-sandbox",
+    "tier": 3,
+    "vcpu": 4,
+    "memoryGB": 16,
+    "powerState": "on"
+   },
+   {
+    "name": "dev-sandbox-46",
+    "host": "blr-esx-11",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "dev-sandbox",
+    "tier": 3,
+    "vcpu": 4,
+    "memoryGB": 16,
+    "powerState": "on"
+   },
+   {
+    "name": "ci-runner-41",
+    "host": "blr-esx-11",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "ci-runners",
+    "tier": 3,
+    "vcpu": 8,
+    "memoryGB": 16,
+    "powerState": "on"
+   },
+   {
+    "name": "ci-runner-42",
+    "host": "blr-esx-11",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "ci-runners",
+    "tier": 3,
+    "vcpu": 8,
+    "memoryGB": 32,
+    "powerState": "on"
+   },
+   {
+    "name": "dev-sandbox-47",
+    "host": "blr-esx-11",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "dev-sandbox",
+    "tier": 3,
+    "vcpu": 4,
+    "memoryGB": 16,
+    "powerState": "on"
+   },
+   {
+    "name": "dev-sandbox-48",
+    "host": "blr-esx-11",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "dev-sandbox",
+    "tier": 3,
+    "vcpu": 4,
+    "memoryGB": 16,
+    "powerState": "on"
+   },
+   {
+    "name": "ci-runner-43",
+    "host": "blr-esx-11",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "ci-runners",
+    "tier": 3,
+    "vcpu": 8,
+    "memoryGB": 16,
+    "powerState": "on"
+   },
+   {
+    "name": "dev-sandbox-49",
+    "host": "blr-esx-11",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "dev-sandbox",
+    "tier": 3,
+    "vcpu": 4,
+    "memoryGB": 16,
+    "powerState": "on"
+   },
+   {
+    "name": "orders-app-01",
+    "host": "blr-esx-12",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "orders",
+    "tier": 1,
+    "vcpu": 8,
+    "memoryGB": 64,
+    "powerState": "on"
+   },
+   {
+    "name": "orders-app-02",
+    "host": "blr-esx-12",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "orders",
+    "tier": 1,
+    "vcpu": 8,
+    "memoryGB": 64,
+    "powerState": "on"
+   },
+   {
+    "name": "ci-runner-44",
+    "host": "blr-esx-12",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "ci-runners",
+    "tier": 3,
+    "vcpu": 8,
+    "memoryGB": 16,
+    "powerState": "on"
+   },
+   {
+    "name": "analytics-30",
+    "host": "blr-esx-12",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "analytics",
+    "tier": 2,
+    "vcpu": 16,
+    "memoryGB": 64,
+    "powerState": "on"
+   },
+   {
+    "name": "inventory-21",
+    "host": "blr-esx-12",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "inventory",
+    "tier": 2,
+    "vcpu": 8,
+    "memoryGB": 64,
+    "powerState": "on"
+   },
+   {
+    "name": "inventory-22",
+    "host": "blr-esx-12",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "inventory",
+    "tier": 2,
+    "vcpu": 8,
+    "memoryGB": 64,
+    "powerState": "on"
+   },
+   {
+    "name": "inventory-23",
+    "host": "blr-esx-12",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "inventory",
+    "tier": 2,
+    "vcpu": 8,
+    "memoryGB": 64,
+    "powerState": "on"
+   },
+   {
+    "name": "ci-runner-45",
+    "host": "blr-esx-12",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "ci-runners",
+    "tier": 3,
+    "vcpu": 8,
+    "memoryGB": 32,
+    "powerState": "on"
+   },
+   {
+    "name": "dev-sandbox-50",
+    "host": "blr-esx-12",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "dev-sandbox",
+    "tier": 3,
+    "vcpu": 4,
+    "memoryGB": 32,
+    "powerState": "on"
+   },
+   {
+    "name": "ci-runner-46",
+    "host": "blr-esx-12",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "ci-runners",
+    "tier": 3,
+    "vcpu": 8,
+    "memoryGB": 32,
+    "powerState": "on"
+   },
+   {
+    "name": "analytics-31",
+    "host": "blr-esx-12",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "analytics",
+    "tier": 2,
+    "vcpu": 16,
+    "memoryGB": 64,
+    "powerState": "on"
+   },
+   {
+    "name": "inventory-24",
+    "host": "blr-esx-13",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "inventory",
+    "tier": 2,
+    "vcpu": 8,
+    "memoryGB": 32,
+    "powerState": "on"
+   },
+   {
+    "name": "analytics-32",
+    "host": "blr-esx-13",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "analytics",
+    "tier": 2,
+    "vcpu": 16,
+    "memoryGB": 128,
+    "powerState": "on"
+   },
+   {
+    "name": "inventory-25",
+    "host": "blr-esx-13",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "inventory",
+    "tier": 2,
+    "vcpu": 8,
+    "memoryGB": 32,
+    "powerState": "on"
+   },
+   {
+    "name": "inventory-26",
+    "host": "blr-esx-13",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "inventory",
+    "tier": 2,
+    "vcpu": 8,
+    "memoryGB": 32,
+    "powerState": "on"
+   },
+   {
+    "name": "analytics-33",
+    "host": "blr-esx-13",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "analytics",
+    "tier": 2,
+    "vcpu": 16,
+    "memoryGB": 64,
+    "powerState": "on"
+   },
+   {
+    "name": "dev-sandbox-51",
+    "host": "blr-esx-13",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "dev-sandbox",
+    "tier": 3,
+    "vcpu": 4,
+    "memoryGB": 32,
+    "powerState": "on"
+   },
+   {
+    "name": "dev-sandbox-52",
+    "host": "blr-esx-13",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "dev-sandbox",
+    "tier": 3,
+    "vcpu": 4,
+    "memoryGB": 32,
+    "powerState": "on"
+   },
+   {
+    "name": "ci-runner-47",
+    "host": "blr-esx-13",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "ci-runners",
+    "tier": 3,
+    "vcpu": 8,
+    "memoryGB": 16,
+    "powerState": "on"
+   },
+   {
+    "name": "inventory-27",
+    "host": "blr-esx-13",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "inventory",
+    "tier": 2,
+    "vcpu": 8,
+    "memoryGB": 64,
+    "powerState": "on"
+   },
+   {
+    "name": "dev-sandbox-53",
+    "host": "blr-esx-13",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "dev-sandbox",
+    "tier": 3,
+    "vcpu": 4,
+    "memoryGB": 16,
+    "powerState": "on"
+   },
+   {
+    "name": "inventory-28",
+    "host": "blr-esx-13",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "inventory",
+    "tier": 2,
+    "vcpu": 8,
+    "memoryGB": 64,
+    "powerState": "on"
+   },
+   {
+    "name": "dev-sandbox-54",
+    "host": "blr-esx-13",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "dev-sandbox",
+    "tier": 3,
+    "vcpu": 4,
+    "memoryGB": 16,
+    "powerState": "on"
+   },
+   {
+    "name": "inventory-29",
+    "host": "blr-esx-13",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "inventory",
+    "tier": 2,
+    "vcpu": 8,
+    "memoryGB": 64,
+    "powerState": "on"
+   },
+   {
+    "name": "portal-web-01",
+    "host": "blr-esx-14",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "customer-portal",
+    "tier": 1,
+    "vcpu": 4,
+    "memoryGB": 32,
+    "powerState": "on"
+   },
+   {
+    "name": "portal-web-02",
+    "host": "blr-esx-14",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "customer-portal",
+    "tier": 1,
+    "vcpu": 4,
+    "memoryGB": 32,
+    "powerState": "on"
+   },
+   {
+    "name": "analytics-34",
+    "host": "blr-esx-14",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "analytics",
+    "tier": 2,
+    "vcpu": 16,
+    "memoryGB": 64,
+    "powerState": "on"
+   },
+   {
+    "name": "inventory-30",
+    "host": "blr-esx-14",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "inventory",
+    "tier": 2,
+    "vcpu": 8,
+    "memoryGB": 64,
+    "powerState": "on"
+   },
+   {
+    "name": "analytics-35",
+    "host": "blr-esx-14",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "analytics",
+    "tier": 2,
+    "vcpu": 16,
+    "memoryGB": 128,
+    "powerState": "on"
+   },
+   {
+    "name": "ci-runner-48",
+    "host": "blr-esx-14",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "ci-runners",
+    "tier": 3,
+    "vcpu": 8,
+    "memoryGB": 32,
+    "powerState": "on"
+   },
+   {
+    "name": "dev-sandbox-55",
+    "host": "blr-esx-14",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "dev-sandbox",
+    "tier": 3,
+    "vcpu": 4,
+    "memoryGB": 16,
+    "powerState": "on"
+   },
+   {
+    "name": "analytics-36",
+    "host": "blr-esx-14",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "analytics",
+    "tier": 2,
+    "vcpu": 16,
+    "memoryGB": 64,
+    "powerState": "on"
+   },
+   {
+    "name": "analytics-37",
+    "host": "blr-esx-14",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "analytics",
+    "tier": 2,
+    "vcpu": 16,
+    "memoryGB": 64,
+    "powerState": "on"
+   },
+   {
+    "name": "dev-sandbox-56",
+    "host": "blr-esx-14",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "dev-sandbox",
+    "tier": 3,
+    "vcpu": 4,
+    "memoryGB": 16,
+    "powerState": "on"
+   },
+   {
+    "name": "analytics-38",
+    "host": "blr-esx-15",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "analytics",
+    "tier": 2,
+    "vcpu": 16,
+    "memoryGB": 64,
+    "powerState": "on"
+   },
+   {
+    "name": "ci-runner-49",
+    "host": "blr-esx-15",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "ci-runners",
+    "tier": 3,
+    "vcpu": 8,
+    "memoryGB": 32,
+    "powerState": "on"
+   },
+   {
+    "name": "ci-runner-50",
+    "host": "blr-esx-15",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "ci-runners",
+    "tier": 3,
+    "vcpu": 8,
+    "memoryGB": 32,
+    "powerState": "on"
+   },
+   {
+    "name": "dev-sandbox-57",
+    "host": "blr-esx-15",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "dev-sandbox",
+    "tier": 3,
+    "vcpu": 4,
+    "memoryGB": 32,
+    "powerState": "on"
+   },
+   {
+    "name": "dev-sandbox-58",
+    "host": "blr-esx-15",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "dev-sandbox",
+    "tier": 3,
+    "vcpu": 4,
+    "memoryGB": 16,
+    "powerState": "on"
+   },
+   {
+    "name": "inventory-31",
+    "host": "blr-esx-15",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "inventory",
+    "tier": 2,
+    "vcpu": 8,
+    "memoryGB": 32,
+    "powerState": "on"
+   },
+   {
+    "name": "dev-sandbox-59",
+    "host": "blr-esx-15",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "dev-sandbox",
+    "tier": 3,
+    "vcpu": 4,
+    "memoryGB": 32,
+    "powerState": "on"
+   },
+   {
+    "name": "analytics-39",
+    "host": "blr-esx-15",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "analytics",
+    "tier": 2,
+    "vcpu": 16,
+    "memoryGB": 128,
+    "powerState": "on"
+   },
+   {
+    "name": "inventory-32",
+    "host": "blr-esx-15",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "inventory",
+    "tier": 2,
+    "vcpu": 8,
+    "memoryGB": 64,
+    "powerState": "on"
+   },
+   {
+    "name": "inventory-33",
+    "host": "blr-esx-15",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "inventory",
+    "tier": 2,
+    "vcpu": 8,
+    "memoryGB": 32,
+    "powerState": "on"
+   },
+   {
+    "name": "ci-runner-51",
+    "host": "blr-esx-15",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "ci-runners",
+    "tier": 3,
+    "vcpu": 8,
+    "memoryGB": 32,
+    "powerState": "on"
+   },
+   {
+    "name": "dev-sandbox-60",
+    "host": "blr-esx-15",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "dev-sandbox",
+    "tier": 3,
+    "vcpu": 4,
+    "memoryGB": 16,
+    "powerState": "on"
+   },
+   {
+    "name": "ci-runner-52",
+    "host": "blr-esx-15",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "ci-runners",
+    "tier": 3,
+    "vcpu": 8,
+    "memoryGB": 16,
+    "powerState": "on"
+   },
+   {
+    "name": "analytics-40",
+    "host": "blr-esx-16",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "analytics",
+    "tier": 2,
+    "vcpu": 16,
+    "memoryGB": 128,
+    "powerState": "on"
+   },
+   {
+    "name": "inventory-34",
+    "host": "blr-esx-16",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "inventory",
+    "tier": 2,
+    "vcpu": 8,
+    "memoryGB": 64,
+    "powerState": "on"
+   },
+   {
+    "name": "inventory-35",
+    "host": "blr-esx-16",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "inventory",
+    "tier": 2,
+    "vcpu": 8,
+    "memoryGB": 64,
+    "powerState": "on"
+   },
+   {
+    "name": "dev-sandbox-61",
+    "host": "blr-esx-16",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "dev-sandbox",
+    "tier": 3,
+    "vcpu": 4,
+    "memoryGB": 32,
+    "powerState": "on"
+   },
+   {
+    "name": "dev-sandbox-62",
+    "host": "blr-esx-16",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "dev-sandbox",
+    "tier": 3,
+    "vcpu": 4,
+    "memoryGB": 16,
+    "powerState": "on"
+   },
+   {
+    "name": "analytics-41",
+    "host": "blr-esx-16",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "analytics",
+    "tier": 2,
+    "vcpu": 16,
+    "memoryGB": 64,
+    "powerState": "on"
+   },
+   {
+    "name": "ci-runner-53",
+    "host": "blr-esx-16",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "ci-runners",
+    "tier": 3,
+    "vcpu": 8,
+    "memoryGB": 32,
+    "powerState": "on"
+   },
+   {
+    "name": "inventory-36",
+    "host": "blr-esx-16",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "inventory",
+    "tier": 2,
+    "vcpu": 8,
+    "memoryGB": 64,
+    "powerState": "on"
+   },
+   {
+    "name": "inventory-37",
+    "host": "blr-esx-16",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "inventory",
+    "tier": 2,
+    "vcpu": 8,
+    "memoryGB": 32,
+    "powerState": "on"
+   },
+   {
+    "name": "dev-sandbox-63",
+    "host": "blr-esx-16",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "dev-sandbox",
+    "tier": 3,
+    "vcpu": 4,
+    "memoryGB": 32,
+    "powerState": "on"
+   },
+   {
+    "name": "inventory-38",
+    "host": "blr-esx-16",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "inventory",
+    "tier": 2,
+    "vcpu": 8,
+    "memoryGB": 64,
+    "powerState": "on"
+   },
+   {
+    "name": "inventory-39",
+    "host": "blr-esx-17",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "inventory",
+    "tier": 2,
+    "vcpu": 8,
+    "memoryGB": 32,
+    "powerState": "on"
+   },
+   {
+    "name": "dev-sandbox-64",
+    "host": "blr-esx-17",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "dev-sandbox",
+    "tier": 3,
+    "vcpu": 4,
+    "memoryGB": 16,
+    "powerState": "on"
+   },
+   {
+    "name": "inventory-40",
+    "host": "blr-esx-17",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "inventory",
+    "tier": 2,
+    "vcpu": 8,
+    "memoryGB": 64,
+    "powerState": "on"
+   },
+   {
+    "name": "analytics-42",
+    "host": "blr-esx-17",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "analytics",
+    "tier": 2,
+    "vcpu": 16,
+    "memoryGB": 128,
+    "powerState": "on"
+   },
+   {
+    "name": "inventory-41",
+    "host": "blr-esx-17",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "inventory",
+    "tier": 2,
+    "vcpu": 8,
+    "memoryGB": 64,
+    "powerState": "on"
+   },
+   {
+    "name": "analytics-43",
+    "host": "blr-esx-17",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "analytics",
+    "tier": 2,
+    "vcpu": 16,
+    "memoryGB": 128,
+    "powerState": "on"
+   },
+   {
+    "name": "dev-sandbox-65",
+    "host": "blr-esx-17",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "dev-sandbox",
+    "tier": 3,
+    "vcpu": 4,
+    "memoryGB": 32,
+    "powerState": "on"
+   },
+   {
+    "name": "analytics-44",
+    "host": "blr-esx-17",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "analytics",
+    "tier": 2,
+    "vcpu": 16,
+    "memoryGB": 64,
+    "powerState": "on"
+   },
+   {
+    "name": "inventory-42",
+    "host": "blr-esx-17",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "inventory",
+    "tier": 2,
+    "vcpu": 8,
+    "memoryGB": 64,
+    "powerState": "on"
+   },
+   {
+    "name": "portal-web-03",
+    "host": "blr-esx-18",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "customer-portal",
+    "tier": 1,
+    "vcpu": 4,
+    "memoryGB": 32,
+    "powerState": "on"
+   },
+   {
+    "name": "analytics-45",
+    "host": "blr-esx-18",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "analytics",
+    "tier": 2,
+    "vcpu": 16,
+    "memoryGB": 64,
+    "powerState": "on"
+   },
+   {
+    "name": "inventory-43",
+    "host": "blr-esx-18",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "inventory",
+    "tier": 2,
+    "vcpu": 8,
+    "memoryGB": 64,
+    "powerState": "on"
+   },
+   {
+    "name": "ci-runner-54",
+    "host": "blr-esx-18",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "ci-runners",
+    "tier": 3,
+    "vcpu": 8,
+    "memoryGB": 16,
+    "powerState": "on"
+   },
+   {
+    "name": "analytics-46",
+    "host": "blr-esx-18",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "analytics",
+    "tier": 2,
+    "vcpu": 16,
+    "memoryGB": 128,
+    "powerState": "on"
+   },
+   {
+    "name": "dev-sandbox-66",
+    "host": "blr-esx-18",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "dev-sandbox",
+    "tier": 3,
+    "vcpu": 4,
+    "memoryGB": 16,
+    "powerState": "on"
+   },
+   {
+    "name": "analytics-47",
+    "host": "blr-esx-18",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "analytics",
+    "tier": 2,
+    "vcpu": 16,
+    "memoryGB": 64,
+    "powerState": "on"
+   },
+   {
+    "name": "analytics-48",
+    "host": "blr-esx-18",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "analytics",
+    "tier": 2,
+    "vcpu": 16,
+    "memoryGB": 64,
+    "powerState": "on"
+   },
+   {
+    "name": "dev-sandbox-67",
+    "host": "blr-esx-18",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "dev-sandbox",
+    "tier": 3,
+    "vcpu": 4,
+    "memoryGB": 32,
+    "powerState": "on"
+   },
+   {
+    "name": "ci-runner-55",
+    "host": "blr-esx-18",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "ci-runners",
+    "tier": 3,
+    "vcpu": 8,
+    "memoryGB": 32,
+    "powerState": "on"
+   },
+   {
+    "name": "inventory-44",
+    "host": "blr-esx-18",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "inventory",
+    "tier": 2,
+    "vcpu": 8,
+    "memoryGB": 32,
+    "powerState": "on"
+   },
+   {
+    "name": "analytics-49",
+    "host": "blr-esx-19",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "analytics",
+    "tier": 2,
+    "vcpu": 16,
+    "memoryGB": 128,
+    "powerState": "on"
+   },
+   {
+    "name": "ci-runner-56",
+    "host": "blr-esx-19",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "ci-runners",
+    "tier": 3,
+    "vcpu": 8,
+    "memoryGB": 32,
+    "powerState": "on"
+   },
+   {
+    "name": "analytics-50",
+    "host": "blr-esx-19",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "analytics",
+    "tier": 2,
+    "vcpu": 16,
+    "memoryGB": 64,
+    "powerState": "on"
+   },
+   {
+    "name": "ci-runner-57",
+    "host": "blr-esx-19",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "ci-runners",
+    "tier": 3,
+    "vcpu": 8,
+    "memoryGB": 16,
+    "powerState": "on"
+   },
+   {
+    "name": "ci-runner-58",
+    "host": "blr-esx-19",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "ci-runners",
+    "tier": 3,
+    "vcpu": 8,
+    "memoryGB": 16,
+    "powerState": "on"
+   },
+   {
+    "name": "analytics-51",
+    "host": "blr-esx-19",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "analytics",
+    "tier": 2,
+    "vcpu": 16,
+    "memoryGB": 128,
+    "powerState": "on"
+   },
+   {
+    "name": "inventory-45",
+    "host": "blr-esx-19",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "inventory",
+    "tier": 2,
+    "vcpu": 8,
+    "memoryGB": 64,
+    "powerState": "on"
+   },
+   {
+    "name": "dev-sandbox-68",
+    "host": "blr-esx-19",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "dev-sandbox",
+    "tier": 3,
+    "vcpu": 4,
+    "memoryGB": 16,
+    "powerState": "on"
+   },
+   {
+    "name": "dev-sandbox-69",
+    "host": "blr-esx-19",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "dev-sandbox",
+    "tier": 3,
+    "vcpu": 4,
+    "memoryGB": 16,
+    "powerState": "on"
+   },
+   {
+    "name": "ci-runner-59",
+    "host": "blr-esx-19",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "ci-runners",
+    "tier": 3,
+    "vcpu": 8,
+    "memoryGB": 32,
+    "powerState": "on"
+   },
+   {
+    "name": "dev-sandbox-70",
+    "host": "blr-esx-19",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "dev-sandbox",
+    "tier": 3,
+    "vcpu": 4,
+    "memoryGB": 16,
+    "powerState": "on"
+   },
+   {
+    "name": "inventory-46",
+    "host": "blr-esx-19",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "inventory",
+    "tier": 2,
+    "vcpu": 8,
+    "memoryGB": 64,
+    "powerState": "on"
+   },
+   {
+    "name": "dev-sandbox-71",
+    "host": "blr-esx-20",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "dev-sandbox",
+    "tier": 3,
+    "vcpu": 4,
+    "memoryGB": 16,
+    "powerState": "on"
+   },
+   {
+    "name": "analytics-52",
+    "host": "blr-esx-20",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "analytics",
+    "tier": 2,
+    "vcpu": 16,
+    "memoryGB": 128,
+    "powerState": "on"
+   },
+   {
+    "name": "analytics-53",
+    "host": "blr-esx-20",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "analytics",
+    "tier": 2,
+    "vcpu": 16,
+    "memoryGB": 64,
+    "powerState": "on"
+   },
+   {
+    "name": "inventory-47",
+    "host": "blr-esx-20",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "inventory",
+    "tier": 2,
+    "vcpu": 8,
+    "memoryGB": 64,
+    "powerState": "on"
+   },
+   {
+    "name": "dev-sandbox-72",
+    "host": "blr-esx-20",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "dev-sandbox",
+    "tier": 3,
+    "vcpu": 4,
+    "memoryGB": 32,
+    "powerState": "on"
+   },
+   {
+    "name": "inventory-48",
+    "host": "blr-esx-20",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "inventory",
+    "tier": 2,
+    "vcpu": 8,
+    "memoryGB": 32,
+    "powerState": "on"
+   },
+   {
+    "name": "analytics-54",
+    "host": "blr-esx-20",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "analytics",
+    "tier": 2,
+    "vcpu": 16,
+    "memoryGB": 64,
+    "powerState": "on"
+   },
+   {
+    "name": "analytics-55",
+    "host": "blr-esx-20",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "analytics",
+    "tier": 2,
+    "vcpu": 16,
+    "memoryGB": 64,
+    "powerState": "on"
+   },
+   {
+    "name": "inventory-49",
+    "host": "blr-esx-20",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "inventory",
+    "tier": 2,
+    "vcpu": 8,
+    "memoryGB": 32,
+    "powerState": "on"
+   },
+   {
+    "name": "ci-runner-60",
+    "host": "blr-esx-20",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "ci-runners",
+    "tier": 3,
+    "vcpu": 8,
+    "memoryGB": 32,
+    "powerState": "on"
+   },
+   {
+    "name": "inventory-50",
+    "host": "blr-esx-20",
+    "cluster": "PROD-BLR-07",
+    "datastore": "ds-blr07-gold",
+    "service": "inventory",
+    "tier": 2,
+    "vcpu": 8,
+    "memoryGB": 64,
+    "powerState": "on"
+   },
+   {
+    "name": "dev-sandbox-73",
+    "host": "blr-esx-21",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "dev-sandbox",
+    "tier": 3,
+    "vcpu": 4,
+    "memoryGB": 16,
+    "powerState": "on"
+   },
+   {
+    "name": "dev-sandbox-74",
+    "host": "blr-esx-21",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "dev-sandbox",
+    "tier": 3,
+    "vcpu": 4,
+    "memoryGB": 16,
+    "powerState": "on"
+   },
+   {
+    "name": "ci-runner-61",
+    "host": "blr-esx-21",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "ci-runners",
+    "tier": 3,
+    "vcpu": 8,
+    "memoryGB": 16,
+    "powerState": "on"
+   },
+   {
+    "name": "ci-runner-62",
+    "host": "blr-esx-21",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "ci-runners",
+    "tier": 3,
+    "vcpu": 8,
+    "memoryGB": 16,
+    "powerState": "on"
+   },
+   {
+    "name": "dev-sandbox-75",
+    "host": "blr-esx-21",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "dev-sandbox",
+    "tier": 3,
+    "vcpu": 4,
+    "memoryGB": 16,
+    "powerState": "on"
+   },
+   {
+    "name": "ci-runner-63",
+    "host": "blr-esx-21",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "ci-runners",
+    "tier": 3,
+    "vcpu": 8,
+    "memoryGB": 16,
+    "powerState": "on"
+   },
+   {
+    "name": "ci-runner-64",
+    "host": "blr-esx-21",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "ci-runners",
+    "tier": 3,
+    "vcpu": 8,
+    "memoryGB": 32,
+    "powerState": "on"
+   },
+   {
+    "name": "dev-sandbox-76",
+    "host": "blr-esx-21",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "dev-sandbox",
+    "tier": 3,
+    "vcpu": 4,
+    "memoryGB": 32,
+    "powerState": "on"
+   },
+   {
+    "name": "dev-sandbox-77",
+    "host": "blr-esx-21",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "dev-sandbox",
+    "tier": 3,
+    "vcpu": 4,
+    "memoryGB": 32,
+    "powerState": "on"
+   },
+   {
+    "name": "dev-sandbox-78",
+    "host": "blr-esx-21",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "dev-sandbox",
+    "tier": 3,
+    "vcpu": 4,
+    "memoryGB": 32,
+    "powerState": "on"
+   },
+   {
+    "name": "dev-sandbox-79",
+    "host": "blr-esx-21",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "dev-sandbox",
+    "tier": 3,
+    "vcpu": 4,
+    "memoryGB": 32,
+    "powerState": "on"
+   },
+   {
+    "name": "dev-sandbox-80",
+    "host": "blr-esx-21",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "dev-sandbox",
+    "tier": 3,
+    "vcpu": 4,
+    "memoryGB": 32,
+    "powerState": "on"
+   },
+   {
+    "name": "ci-runner-65",
+    "host": "blr-esx-21",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "ci-runners",
+    "tier": 3,
+    "vcpu": 8,
+    "memoryGB": 32,
+    "powerState": "on"
+   },
+   {
+    "name": "ci-runner-66",
+    "host": "blr-esx-21",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "ci-runners",
+    "tier": 3,
+    "vcpu": 8,
+    "memoryGB": 16,
+    "powerState": "on"
+   },
+   {
+    "name": "ci-runner-67",
+    "host": "blr-esx-21",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "ci-runners",
+    "tier": 3,
+    "vcpu": 8,
+    "memoryGB": 16,
+    "powerState": "on"
+   },
+   {
+    "name": "dev-sandbox-81",
+    "host": "blr-esx-21",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "dev-sandbox",
+    "tier": 3,
+    "vcpu": 4,
+    "memoryGB": 16,
+    "powerState": "on"
+   },
+   {
+    "name": "ci-runner-68",
+    "host": "blr-esx-21",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "ci-runners",
+    "tier": 3,
+    "vcpu": 8,
+    "memoryGB": 32,
+    "powerState": "on"
+   },
+   {
+    "name": "dev-sandbox-82",
+    "host": "blr-esx-21",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "dev-sandbox",
+    "tier": 3,
+    "vcpu": 4,
+    "memoryGB": 32,
+    "powerState": "on"
+   },
+   {
+    "name": "ci-runner-69",
+    "host": "blr-esx-21",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "ci-runners",
+    "tier": 3,
+    "vcpu": 8,
+    "memoryGB": 32,
+    "powerState": "on"
+   },
+   {
+    "name": "ci-runner-70",
+    "host": "blr-esx-21",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "ci-runners",
+    "tier": 3,
+    "vcpu": 8,
+    "memoryGB": 16,
+    "powerState": "on"
+   },
+   {
+    "name": "ci-runner-71",
+    "host": "blr-esx-21",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "ci-runners",
+    "tier": 3,
+    "vcpu": 8,
+    "memoryGB": 32,
+    "powerState": "on"
+   },
+   {
+    "name": "observability-02",
+    "host": "blr-esx-22",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "observability",
+    "tier": 2,
+    "vcpu": 8,
+    "memoryGB": 128,
+    "powerState": "on"
+   },
+   {
+    "name": "inventory-51",
+    "host": "blr-esx-22",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "inventory",
+    "tier": 2,
+    "vcpu": 8,
+    "memoryGB": 64,
+    "powerState": "on"
+   },
+   {
+    "name": "inventory-52",
+    "host": "blr-esx-22",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "inventory",
+    "tier": 2,
+    "vcpu": 8,
+    "memoryGB": 64,
+    "powerState": "on"
+   },
+   {
+    "name": "inventory-53",
+    "host": "blr-esx-22",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "inventory",
+    "tier": 2,
+    "vcpu": 8,
+    "memoryGB": 32,
+    "powerState": "on"
+   },
+   {
+    "name": "analytics-56",
+    "host": "blr-esx-22",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "analytics",
+    "tier": 2,
+    "vcpu": 16,
+    "memoryGB": 64,
+    "powerState": "on"
+   },
+   {
+    "name": "ci-runner-72",
+    "host": "blr-esx-22",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "ci-runners",
+    "tier": 3,
+    "vcpu": 8,
+    "memoryGB": 32,
+    "powerState": "on"
+   },
+   {
+    "name": "analytics-57",
+    "host": "blr-esx-22",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "analytics",
+    "tier": 2,
+    "vcpu": 16,
+    "memoryGB": 64,
+    "powerState": "on"
+   },
+   {
+    "name": "inventory-54",
+    "host": "blr-esx-22",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "inventory",
+    "tier": 2,
+    "vcpu": 8,
+    "memoryGB": 64,
+    "powerState": "on"
+   },
+   {
+    "name": "ci-runner-73",
+    "host": "blr-esx-23",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "ci-runners",
+    "tier": 3,
+    "vcpu": 8,
+    "memoryGB": 32,
+    "powerState": "on"
+   },
+   {
+    "name": "analytics-58",
+    "host": "blr-esx-23",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "analytics",
+    "tier": 2,
+    "vcpu": 16,
+    "memoryGB": 64,
+    "powerState": "on"
+   },
+   {
+    "name": "analytics-59",
+    "host": "blr-esx-23",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "analytics",
+    "tier": 2,
+    "vcpu": 16,
+    "memoryGB": 64,
+    "powerState": "on"
+   },
+   {
+    "name": "inventory-55",
+    "host": "blr-esx-23",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "inventory",
+    "tier": 2,
+    "vcpu": 8,
+    "memoryGB": 32,
+    "powerState": "on"
+   },
+   {
+    "name": "ci-runner-74",
+    "host": "blr-esx-23",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "ci-runners",
+    "tier": 3,
+    "vcpu": 8,
+    "memoryGB": 16,
+    "powerState": "on"
+   },
+   {
+    "name": "ci-runner-75",
+    "host": "blr-esx-23",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "ci-runners",
+    "tier": 3,
+    "vcpu": 8,
+    "memoryGB": 32,
+    "powerState": "on"
+   },
+   {
+    "name": "dev-sandbox-83",
+    "host": "blr-esx-23",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "dev-sandbox",
+    "tier": 3,
+    "vcpu": 4,
+    "memoryGB": 32,
+    "powerState": "on"
+   },
+   {
+    "name": "analytics-60",
+    "host": "blr-esx-23",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "analytics",
+    "tier": 2,
+    "vcpu": 16,
+    "memoryGB": 64,
+    "powerState": "on"
+   },
+   {
+    "name": "dev-sandbox-84",
+    "host": "blr-esx-23",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "dev-sandbox",
+    "tier": 3,
+    "vcpu": 4,
+    "memoryGB": 16,
+    "powerState": "on"
+   },
+   {
+    "name": "ci-runner-76",
+    "host": "blr-esx-23",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "ci-runners",
+    "tier": 3,
+    "vcpu": 8,
+    "memoryGB": 32,
+    "powerState": "on"
+   },
+   {
+    "name": "ci-runner-77",
+    "host": "blr-esx-23",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "ci-runners",
+    "tier": 3,
+    "vcpu": 8,
+    "memoryGB": 32,
+    "powerState": "on"
+   },
+   {
+    "name": "ci-runner-78",
+    "host": "blr-esx-23",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "ci-runners",
+    "tier": 3,
+    "vcpu": 8,
+    "memoryGB": 32,
+    "powerState": "on"
+   },
+   {
+    "name": "ci-runner-79",
+    "host": "blr-esx-23",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "ci-runners",
+    "tier": 3,
+    "vcpu": 8,
+    "memoryGB": 16,
+    "powerState": "on"
+   },
+   {
+    "name": "analytics-61",
+    "host": "blr-esx-23",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "analytics",
+    "tier": 2,
+    "vcpu": 16,
+    "memoryGB": 64,
+    "powerState": "on"
+   },
+   {
+    "name": "payments-api-03",
+    "host": "blr-esx-24",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "payments",
+    "tier": 0,
+    "vcpu": 8,
+    "memoryGB": 32,
+    "powerState": "on"
+   },
+   {
+    "name": "dev-sandbox-85",
+    "host": "blr-esx-24",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "dev-sandbox",
+    "tier": 3,
+    "vcpu": 4,
+    "memoryGB": 16,
+    "powerState": "on"
+   },
+   {
+    "name": "ci-runner-80",
+    "host": "blr-esx-24",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "ci-runners",
+    "tier": 3,
+    "vcpu": 8,
+    "memoryGB": 32,
+    "powerState": "on"
+   },
+   {
+    "name": "inventory-56",
+    "host": "blr-esx-24",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "inventory",
+    "tier": 2,
+    "vcpu": 8,
+    "memoryGB": 64,
+    "powerState": "on"
+   },
+   {
+    "name": "inventory-57",
+    "host": "blr-esx-24",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "inventory",
+    "tier": 2,
+    "vcpu": 8,
+    "memoryGB": 64,
+    "powerState": "on"
+   },
+   {
+    "name": "inventory-58",
+    "host": "blr-esx-24",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "inventory",
+    "tier": 2,
+    "vcpu": 8,
+    "memoryGB": 64,
+    "powerState": "on"
+   },
+   {
+    "name": "inventory-59",
+    "host": "blr-esx-24",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "inventory",
+    "tier": 2,
+    "vcpu": 8,
+    "memoryGB": 64,
+    "powerState": "on"
+   },
+   {
+    "name": "analytics-62",
+    "host": "blr-esx-24",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "analytics",
+    "tier": 2,
+    "vcpu": 16,
+    "memoryGB": 128,
+    "powerState": "on"
+   },
+   {
+    "name": "analytics-63",
+    "host": "blr-esx-24",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "analytics",
+    "tier": 2,
+    "vcpu": 16,
+    "memoryGB": 64,
+    "powerState": "on"
+   },
+   {
+    "name": "dev-sandbox-86",
+    "host": "blr-esx-24",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "dev-sandbox",
+    "tier": 3,
+    "vcpu": 4,
+    "memoryGB": 16,
+    "powerState": "on"
+   },
+   {
+    "name": "inventory-60",
+    "host": "blr-esx-24",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "inventory",
+    "tier": 2,
+    "vcpu": 8,
+    "memoryGB": 32,
+    "powerState": "on"
+   },
+   {
+    "name": "orders-db-02",
+    "host": "blr-esx-25",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "orders",
+    "tier": 1,
+    "vcpu": 16,
+    "memoryGB": 192,
+    "powerState": "on"
+   },
+   {
+    "name": "analytics-64",
+    "host": "blr-esx-25",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "analytics",
+    "tier": 2,
+    "vcpu": 16,
+    "memoryGB": 64,
+    "powerState": "on"
+   },
+   {
+    "name": "analytics-65",
+    "host": "blr-esx-25",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "analytics",
+    "tier": 2,
+    "vcpu": 16,
+    "memoryGB": 64,
+    "powerState": "on"
+   },
+   {
+    "name": "analytics-66",
+    "host": "blr-esx-25",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "analytics",
+    "tier": 2,
+    "vcpu": 16,
+    "memoryGB": 128,
+    "powerState": "on"
+   },
+   {
+    "name": "ci-runner-81",
+    "host": "blr-esx-25",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "ci-runners",
+    "tier": 3,
+    "vcpu": 8,
+    "memoryGB": 16,
+    "powerState": "on"
+   },
+   {
+    "name": "ci-runner-82",
+    "host": "blr-esx-25",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "ci-runners",
+    "tier": 3,
+    "vcpu": 8,
+    "memoryGB": 32,
+    "powerState": "on"
+   },
+   {
+    "name": "dev-sandbox-87",
+    "host": "blr-esx-25",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "dev-sandbox",
+    "tier": 3,
+    "vcpu": 4,
+    "memoryGB": 32,
+    "powerState": "on"
+   },
+   {
+    "name": "ci-runner-83",
+    "host": "blr-esx-25",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "ci-runners",
+    "tier": 3,
+    "vcpu": 8,
+    "memoryGB": 16,
+    "powerState": "on"
+   },
+   {
+    "name": "dev-sandbox-88",
+    "host": "blr-esx-25",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "dev-sandbox",
+    "tier": 3,
+    "vcpu": 4,
+    "memoryGB": 32,
+    "powerState": "on"
+   },
+   {
+    "name": "analytics-67",
+    "host": "blr-esx-26",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "analytics",
+    "tier": 2,
+    "vcpu": 16,
+    "memoryGB": 128,
+    "powerState": "on"
+   },
+   {
+    "name": "ci-runner-84",
+    "host": "blr-esx-26",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "ci-runners",
+    "tier": 3,
+    "vcpu": 8,
+    "memoryGB": 16,
+    "powerState": "on"
+   },
+   {
+    "name": "ci-runner-85",
+    "host": "blr-esx-26",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "ci-runners",
+    "tier": 3,
+    "vcpu": 8,
+    "memoryGB": 16,
+    "powerState": "on"
+   },
+   {
+    "name": "ci-runner-86",
+    "host": "blr-esx-26",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "ci-runners",
+    "tier": 3,
+    "vcpu": 8,
+    "memoryGB": 32,
+    "powerState": "on"
+   },
+   {
+    "name": "analytics-68",
+    "host": "blr-esx-26",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "analytics",
+    "tier": 2,
+    "vcpu": 16,
+    "memoryGB": 128,
+    "powerState": "on"
+   },
+   {
+    "name": "analytics-69",
+    "host": "blr-esx-26",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "analytics",
+    "tier": 2,
+    "vcpu": 16,
+    "memoryGB": 64,
+    "powerState": "on"
+   },
+   {
+    "name": "dev-sandbox-89",
+    "host": "blr-esx-26",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "dev-sandbox",
+    "tier": 3,
+    "vcpu": 4,
+    "memoryGB": 16,
+    "powerState": "on"
+   },
+   {
+    "name": "analytics-70",
+    "host": "blr-esx-26",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "analytics",
+    "tier": 2,
+    "vcpu": 16,
+    "memoryGB": 128,
+    "powerState": "on"
+   },
+   {
+    "name": "dev-sandbox-90",
+    "host": "blr-esx-26",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "dev-sandbox",
+    "tier": 3,
+    "vcpu": 4,
+    "memoryGB": 32,
+    "powerState": "on"
+   },
+   {
+    "name": "ci-runner-87",
+    "host": "blr-esx-26",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "ci-runners",
+    "tier": 3,
+    "vcpu": 8,
+    "memoryGB": 32,
+    "powerState": "on"
+   },
+   {
+    "name": "payments-db-02",
+    "host": "blr-esx-27",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "payments",
+    "tier": 0,
+    "vcpu": 16,
+    "memoryGB": 256,
+    "powerState": "on"
+   },
+   {
+    "name": "ci-runner-88",
+    "host": "blr-esx-27",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "ci-runners",
+    "tier": 3,
+    "vcpu": 8,
+    "memoryGB": 32,
+    "powerState": "on"
+   },
+   {
+    "name": "inventory-61",
+    "host": "blr-esx-27",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "inventory",
+    "tier": 2,
+    "vcpu": 8,
+    "memoryGB": 64,
+    "powerState": "on"
+   },
+   {
+    "name": "ci-runner-89",
+    "host": "blr-esx-27",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "ci-runners",
+    "tier": 3,
+    "vcpu": 8,
+    "memoryGB": 16,
+    "powerState": "on"
+   },
+   {
+    "name": "inventory-62",
+    "host": "blr-esx-27",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "inventory",
+    "tier": 2,
+    "vcpu": 8,
+    "memoryGB": 64,
+    "powerState": "on"
+   },
+   {
+    "name": "dev-sandbox-91",
+    "host": "blr-esx-27",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "dev-sandbox",
+    "tier": 3,
+    "vcpu": 4,
+    "memoryGB": 16,
+    "powerState": "on"
+   },
+   {
+    "name": "ci-runner-90",
+    "host": "blr-esx-27",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "ci-runners",
+    "tier": 3,
+    "vcpu": 8,
+    "memoryGB": 16,
+    "powerState": "on"
+   },
+   {
+    "name": "ci-runner-91",
+    "host": "blr-esx-27",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "ci-runners",
+    "tier": 3,
+    "vcpu": 8,
+    "memoryGB": 32,
+    "powerState": "on"
+   },
+   {
+    "name": "dev-sandbox-92",
+    "host": "blr-esx-27",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "dev-sandbox",
+    "tier": 3,
+    "vcpu": 4,
+    "memoryGB": 16,
+    "powerState": "on"
+   },
+   {
+    "name": "ci-runner-92",
+    "host": "blr-esx-28",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "ci-runners",
+    "tier": 3,
+    "vcpu": 8,
+    "memoryGB": 32,
+    "powerState": "on"
+   },
+   {
+    "name": "ci-runner-93",
+    "host": "blr-esx-28",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "ci-runners",
+    "tier": 3,
+    "vcpu": 8,
+    "memoryGB": 16,
+    "powerState": "on"
+   },
+   {
+    "name": "dev-sandbox-93",
+    "host": "blr-esx-28",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "dev-sandbox",
+    "tier": 3,
+    "vcpu": 4,
+    "memoryGB": 32,
+    "powerState": "on"
+   },
+   {
+    "name": "dev-sandbox-94",
+    "host": "blr-esx-28",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "dev-sandbox",
+    "tier": 3,
+    "vcpu": 4,
+    "memoryGB": 32,
+    "powerState": "on"
+   },
+   {
+    "name": "ci-runner-94",
+    "host": "blr-esx-28",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "ci-runners",
+    "tier": 3,
+    "vcpu": 8,
+    "memoryGB": 16,
+    "powerState": "on"
+   },
+   {
+    "name": "inventory-63",
+    "host": "blr-esx-28",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "inventory",
+    "tier": 2,
+    "vcpu": 8,
+    "memoryGB": 64,
+    "powerState": "on"
+   },
+   {
+    "name": "analytics-71",
+    "host": "blr-esx-28",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "analytics",
+    "tier": 2,
+    "vcpu": 16,
+    "memoryGB": 128,
+    "powerState": "on"
+   },
+   {
+    "name": "inventory-64",
+    "host": "blr-esx-28",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "inventory",
+    "tier": 2,
+    "vcpu": 8,
+    "memoryGB": 64,
+    "powerState": "on"
+   },
+   {
+    "name": "dev-sandbox-95",
+    "host": "blr-esx-28",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "dev-sandbox",
+    "tier": 3,
+    "vcpu": 4,
+    "memoryGB": 32,
+    "powerState": "on"
+   },
+   {
+    "name": "analytics-72",
+    "host": "blr-esx-28",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "analytics",
+    "tier": 2,
+    "vcpu": 16,
+    "memoryGB": 64,
+    "powerState": "on"
+   },
+   {
+    "name": "ci-runner-95",
+    "host": "blr-esx-28",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "ci-runners",
+    "tier": 3,
+    "vcpu": 8,
+    "memoryGB": 16,
+    "powerState": "on"
+   },
+   {
+    "name": "inventory-65",
+    "host": "blr-esx-28",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "inventory",
+    "tier": 2,
+    "vcpu": 8,
+    "memoryGB": 64,
+    "powerState": "on"
+   },
+   {
+    "name": "dev-sandbox-96",
+    "host": "blr-esx-28",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "dev-sandbox",
+    "tier": 3,
+    "vcpu": 4,
+    "memoryGB": 32,
+    "powerState": "on"
+   },
+   {
+    "name": "dev-sandbox-97",
+    "host": "blr-esx-29",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "dev-sandbox",
+    "tier": 3,
+    "vcpu": 4,
+    "memoryGB": 16,
+    "powerState": "on"
+   },
+   {
+    "name": "inventory-66",
+    "host": "blr-esx-29",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "inventory",
+    "tier": 2,
+    "vcpu": 8,
+    "memoryGB": 32,
+    "powerState": "on"
+   },
+   {
+    "name": "dev-sandbox-98",
+    "host": "blr-esx-29",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "dev-sandbox",
+    "tier": 3,
+    "vcpu": 4,
+    "memoryGB": 16,
+    "powerState": "on"
+   },
+   {
+    "name": "dev-sandbox-99",
+    "host": "blr-esx-29",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "dev-sandbox",
+    "tier": 3,
+    "vcpu": 4,
+    "memoryGB": 16,
+    "powerState": "on"
+   },
+   {
+    "name": "dev-sandbox-100",
+    "host": "blr-esx-29",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "dev-sandbox",
+    "tier": 3,
+    "vcpu": 4,
+    "memoryGB": 16,
+    "powerState": "on"
+   },
+   {
+    "name": "ci-runner-96",
+    "host": "blr-esx-29",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "ci-runners",
+    "tier": 3,
+    "vcpu": 8,
+    "memoryGB": 16,
+    "powerState": "on"
+   },
+   {
+    "name": "ci-runner-97",
+    "host": "blr-esx-29",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "ci-runners",
+    "tier": 3,
+    "vcpu": 8,
+    "memoryGB": 16,
+    "powerState": "on"
+   },
+   {
+    "name": "analytics-73",
+    "host": "blr-esx-29",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "analytics",
+    "tier": 2,
+    "vcpu": 16,
+    "memoryGB": 128,
+    "powerState": "on"
+   },
+   {
+    "name": "dev-sandbox-101",
+    "host": "blr-esx-29",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "dev-sandbox",
+    "tier": 3,
+    "vcpu": 4,
+    "memoryGB": 32,
+    "powerState": "on"
+   },
+   {
+    "name": "dev-sandbox-102",
+    "host": "blr-esx-29",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "dev-sandbox",
+    "tier": 3,
+    "vcpu": 4,
+    "memoryGB": 32,
+    "powerState": "on"
+   },
+   {
+    "name": "ci-runner-98",
+    "host": "blr-esx-29",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "ci-runners",
+    "tier": 3,
+    "vcpu": 8,
+    "memoryGB": 32,
+    "powerState": "on"
+   },
+   {
+    "name": "analytics-74",
+    "host": "blr-esx-29",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "analytics",
+    "tier": 2,
+    "vcpu": 16,
+    "memoryGB": 128,
+    "powerState": "on"
+   },
+   {
+    "name": "inventory-67",
+    "host": "blr-esx-29",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "inventory",
+    "tier": 2,
+    "vcpu": 8,
+    "memoryGB": 32,
+    "powerState": "on"
+   },
+   {
+    "name": "analytics-75",
+    "host": "blr-esx-29",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "analytics",
+    "tier": 2,
+    "vcpu": 16,
+    "memoryGB": 64,
+    "powerState": "on"
+   },
+   {
+    "name": "orders-app-03",
+    "host": "blr-esx-30",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "orders",
+    "tier": 1,
+    "vcpu": 8,
+    "memoryGB": 64,
+    "powerState": "on"
+   },
+   {
+    "name": "orders-app-04",
+    "host": "blr-esx-30",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "orders",
+    "tier": 1,
+    "vcpu": 8,
+    "memoryGB": 64,
+    "powerState": "on"
+   },
+   {
+    "name": "inventory-68",
+    "host": "blr-esx-30",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "inventory",
+    "tier": 2,
+    "vcpu": 8,
+    "memoryGB": 64,
+    "powerState": "on"
+   },
+   {
+    "name": "dev-sandbox-103",
+    "host": "blr-esx-30",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "dev-sandbox",
+    "tier": 3,
+    "vcpu": 4,
+    "memoryGB": 32,
+    "powerState": "on"
+   },
+   {
+    "name": "analytics-76",
+    "host": "blr-esx-30",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "analytics",
+    "tier": 2,
+    "vcpu": 16,
+    "memoryGB": 64,
+    "powerState": "on"
+   },
+   {
+    "name": "dev-sandbox-104",
+    "host": "blr-esx-30",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "dev-sandbox",
+    "tier": 3,
+    "vcpu": 4,
+    "memoryGB": 16,
+    "powerState": "on"
+   },
+   {
+    "name": "ci-runner-99",
+    "host": "blr-esx-30",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "ci-runners",
+    "tier": 3,
+    "vcpu": 8,
+    "memoryGB": 16,
+    "powerState": "on"
+   },
+   {
+    "name": "ci-runner-100",
+    "host": "blr-esx-30",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "ci-runners",
+    "tier": 3,
+    "vcpu": 8,
+    "memoryGB": 32,
+    "powerState": "on"
+   },
+   {
+    "name": "dev-sandbox-105",
+    "host": "blr-esx-30",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "dev-sandbox",
+    "tier": 3,
+    "vcpu": 4,
+    "memoryGB": 32,
+    "powerState": "on"
+   },
+   {
+    "name": "inventory-69",
+    "host": "blr-esx-30",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "inventory",
+    "tier": 2,
+    "vcpu": 8,
+    "memoryGB": 32,
+    "powerState": "on"
+   },
+   {
+    "name": "dev-sandbox-106",
+    "host": "blr-esx-30",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "dev-sandbox",
+    "tier": 3,
+    "vcpu": 4,
+    "memoryGB": 32,
+    "powerState": "on"
+   },
+   {
+    "name": "inventory-70",
+    "host": "blr-esx-30",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "inventory",
+    "tier": 2,
+    "vcpu": 8,
+    "memoryGB": 64,
+    "powerState": "on"
+   },
+   {
+    "name": "dev-sandbox-107",
+    "host": "blr-esx-30",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "dev-sandbox",
+    "tier": 3,
+    "vcpu": 4,
+    "memoryGB": 32,
+    "powerState": "on"
+   },
+   {
+    "name": "dev-sandbox-108",
+    "host": "blr-esx-30",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "dev-sandbox",
+    "tier": 3,
+    "vcpu": 4,
+    "memoryGB": 16,
+    "powerState": "on"
+   },
+   {
+    "name": "inventory-71",
+    "host": "blr-esx-30",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "inventory",
+    "tier": 2,
+    "vcpu": 8,
+    "memoryGB": 32,
+    "powerState": "on"
+   },
+   {
+    "name": "inventory-72",
+    "host": "blr-esx-31",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "inventory",
+    "tier": 2,
+    "vcpu": 8,
+    "memoryGB": 64,
+    "powerState": "on"
+   },
+   {
+    "name": "ci-runner-101",
+    "host": "blr-esx-31",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "ci-runners",
+    "tier": 3,
+    "vcpu": 8,
+    "memoryGB": 16,
+    "powerState": "on"
+   },
+   {
+    "name": "ci-runner-102",
+    "host": "blr-esx-31",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "ci-runners",
+    "tier": 3,
+    "vcpu": 8,
+    "memoryGB": 16,
+    "powerState": "on"
+   },
+   {
+    "name": "analytics-77",
+    "host": "blr-esx-31",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "analytics",
+    "tier": 2,
+    "vcpu": 16,
+    "memoryGB": 64,
+    "powerState": "on"
+   },
+   {
+    "name": "inventory-73",
+    "host": "blr-esx-31",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "inventory",
+    "tier": 2,
+    "vcpu": 8,
+    "memoryGB": 64,
+    "powerState": "on"
+   },
+   {
+    "name": "ci-runner-103",
+    "host": "blr-esx-31",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "ci-runners",
+    "tier": 3,
+    "vcpu": 8,
+    "memoryGB": 32,
+    "powerState": "on"
+   },
+   {
+    "name": "analytics-78",
+    "host": "blr-esx-31",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "analytics",
+    "tier": 2,
+    "vcpu": 16,
+    "memoryGB": 128,
+    "powerState": "on"
+   },
+   {
+    "name": "inventory-74",
+    "host": "blr-esx-31",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "inventory",
+    "tier": 2,
+    "vcpu": 8,
+    "memoryGB": 64,
+    "powerState": "on"
+   },
+   {
+    "name": "ci-runner-104",
+    "host": "blr-esx-31",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "ci-runners",
+    "tier": 3,
+    "vcpu": 8,
+    "memoryGB": 32,
+    "powerState": "on"
+   },
+   {
+    "name": "analytics-79",
+    "host": "blr-esx-31",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "analytics",
+    "tier": 2,
+    "vcpu": 16,
+    "memoryGB": 128,
+    "powerState": "on"
+   },
+   {
+    "name": "ci-runner-105",
+    "host": "blr-esx-32",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "ci-runners",
+    "tier": 3,
+    "vcpu": 8,
+    "memoryGB": 16,
+    "powerState": "on"
+   },
+   {
+    "name": "inventory-75",
+    "host": "blr-esx-32",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "inventory",
+    "tier": 2,
+    "vcpu": 8,
+    "memoryGB": 32,
+    "powerState": "on"
+   },
+   {
+    "name": "dev-sandbox-109",
+    "host": "blr-esx-32",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "dev-sandbox",
+    "tier": 3,
+    "vcpu": 4,
+    "memoryGB": 32,
+    "powerState": "on"
+   },
+   {
+    "name": "inventory-76",
+    "host": "blr-esx-32",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "inventory",
+    "tier": 2,
+    "vcpu": 8,
+    "memoryGB": 32,
+    "powerState": "on"
+   },
+   {
+    "name": "inventory-77",
+    "host": "blr-esx-32",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "inventory",
+    "tier": 2,
+    "vcpu": 8,
+    "memoryGB": 64,
+    "powerState": "on"
+   },
+   {
+    "name": "ci-runner-106",
+    "host": "blr-esx-32",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "ci-runners",
+    "tier": 3,
+    "vcpu": 8,
+    "memoryGB": 16,
+    "powerState": "on"
+   },
+   {
+    "name": "dev-sandbox-110",
+    "host": "blr-esx-32",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "dev-sandbox",
+    "tier": 3,
+    "vcpu": 4,
+    "memoryGB": 32,
+    "powerState": "on"
+   },
+   {
+    "name": "inventory-78",
+    "host": "blr-esx-32",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "inventory",
+    "tier": 2,
+    "vcpu": 8,
+    "memoryGB": 32,
+    "powerState": "on"
+   },
+   {
+    "name": "analytics-80",
+    "host": "blr-esx-32",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "analytics",
+    "tier": 2,
+    "vcpu": 16,
+    "memoryGB": 64,
+    "powerState": "on"
+   },
+   {
+    "name": "inventory-79",
+    "host": "blr-esx-32",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "inventory",
+    "tier": 2,
+    "vcpu": 8,
+    "memoryGB": 32,
+    "powerState": "on"
+   },
+   {
+    "name": "inventory-80",
+    "host": "blr-esx-32",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "inventory",
+    "tier": 2,
+    "vcpu": 8,
+    "memoryGB": 32,
+    "powerState": "on"
+   },
+   {
+    "name": "ci-runner-107",
+    "host": "blr-esx-32",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "ci-runners",
+    "tier": 3,
+    "vcpu": 8,
+    "memoryGB": 32,
+    "powerState": "on"
+   },
+   {
+    "name": "analytics-81",
+    "host": "blr-esx-32",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "analytics",
+    "tier": 2,
+    "vcpu": 16,
+    "memoryGB": 64,
+    "powerState": "on"
+   },
+   {
+    "name": "ci-runner-108",
+    "host": "blr-esx-32",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "ci-runners",
+    "tier": 3,
+    "vcpu": 8,
+    "memoryGB": 32,
+    "powerState": "on"
+   },
+   {
+    "name": "analytics-82",
+    "host": "blr-esx-32",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "analytics",
+    "tier": 2,
+    "vcpu": 16,
+    "memoryGB": 64,
+    "powerState": "on"
+   },
+   {
+    "name": "payments-api-04",
+    "host": "blr-esx-33",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "payments",
+    "tier": 0,
+    "vcpu": 8,
+    "memoryGB": 32,
+    "powerState": "on"
+   },
+   {
+    "name": "ci-runner-109",
+    "host": "blr-esx-33",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "ci-runners",
+    "tier": 3,
+    "vcpu": 8,
+    "memoryGB": 16,
+    "powerState": "on"
+   },
+   {
+    "name": "ci-runner-110",
+    "host": "blr-esx-33",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "ci-runners",
+    "tier": 3,
+    "vcpu": 8,
+    "memoryGB": 16,
+    "powerState": "on"
+   },
+   {
+    "name": "dev-sandbox-111",
+    "host": "blr-esx-33",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "dev-sandbox",
+    "tier": 3,
+    "vcpu": 4,
+    "memoryGB": 16,
+    "powerState": "on"
+   },
+   {
+    "name": "dev-sandbox-112",
+    "host": "blr-esx-33",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "dev-sandbox",
+    "tier": 3,
+    "vcpu": 4,
+    "memoryGB": 32,
+    "powerState": "on"
+   },
+   {
+    "name": "analytics-83",
+    "host": "blr-esx-33",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "analytics",
+    "tier": 2,
+    "vcpu": 16,
+    "memoryGB": 128,
+    "powerState": "on"
+   },
+   {
+    "name": "dev-sandbox-113",
+    "host": "blr-esx-33",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "dev-sandbox",
+    "tier": 3,
+    "vcpu": 4,
+    "memoryGB": 32,
+    "powerState": "on"
+   },
+   {
+    "name": "inventory-81",
+    "host": "blr-esx-33",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "inventory",
+    "tier": 2,
+    "vcpu": 8,
+    "memoryGB": 32,
+    "powerState": "on"
+   },
+   {
+    "name": "inventory-82",
+    "host": "blr-esx-33",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "inventory",
+    "tier": 2,
+    "vcpu": 8,
+    "memoryGB": 64,
+    "powerState": "on"
+   },
+   {
+    "name": "ci-runner-111",
+    "host": "blr-esx-33",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "ci-runners",
+    "tier": 3,
+    "vcpu": 8,
+    "memoryGB": 16,
+    "powerState": "on"
+   },
+   {
+    "name": "analytics-84",
+    "host": "blr-esx-33",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "analytics",
+    "tier": 2,
+    "vcpu": 16,
+    "memoryGB": 128,
+    "powerState": "on"
+   },
+   {
+    "name": "inventory-83",
+    "host": "blr-esx-33",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "inventory",
+    "tier": 2,
+    "vcpu": 8,
+    "memoryGB": 64,
+    "powerState": "on"
+   },
+   {
+    "name": "inventory-84",
+    "host": "blr-esx-34",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "inventory",
+    "tier": 2,
+    "vcpu": 8,
+    "memoryGB": 64,
+    "powerState": "on"
+   },
+   {
+    "name": "analytics-85",
+    "host": "blr-esx-34",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "analytics",
+    "tier": 2,
+    "vcpu": 16,
+    "memoryGB": 128,
+    "powerState": "on"
+   },
+   {
+    "name": "analytics-86",
+    "host": "blr-esx-34",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "analytics",
+    "tier": 2,
+    "vcpu": 16,
+    "memoryGB": 64,
+    "powerState": "on"
+   },
+   {
+    "name": "dev-sandbox-114",
+    "host": "blr-esx-34",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "dev-sandbox",
+    "tier": 3,
+    "vcpu": 4,
+    "memoryGB": 16,
+    "powerState": "on"
+   },
+   {
+    "name": "inventory-85",
+    "host": "blr-esx-34",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "inventory",
+    "tier": 2,
+    "vcpu": 8,
+    "memoryGB": 32,
+    "powerState": "on"
+   },
+   {
+    "name": "analytics-87",
+    "host": "blr-esx-34",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "analytics",
+    "tier": 2,
+    "vcpu": 16,
+    "memoryGB": 128,
+    "powerState": "on"
+   },
+   {
+    "name": "analytics-88",
+    "host": "blr-esx-34",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "analytics",
+    "tier": 2,
+    "vcpu": 16,
+    "memoryGB": 64,
+    "powerState": "on"
+   },
+   {
+    "name": "dev-sandbox-115",
+    "host": "blr-esx-34",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "dev-sandbox",
+    "tier": 3,
+    "vcpu": 4,
+    "memoryGB": 32,
+    "powerState": "on"
+   },
+   {
+    "name": "dev-sandbox-116",
+    "host": "blr-esx-34",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "dev-sandbox",
+    "tier": 3,
+    "vcpu": 4,
+    "memoryGB": 32,
+    "powerState": "on"
+   },
+   {
+    "name": "dev-sandbox-117",
+    "host": "blr-esx-34",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "dev-sandbox",
+    "tier": 3,
+    "vcpu": 4,
+    "memoryGB": 16,
+    "powerState": "on"
+   },
+   {
+    "name": "ci-runner-112",
+    "host": "blr-esx-34",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "ci-runners",
+    "tier": 3,
+    "vcpu": 8,
+    "memoryGB": 16,
+    "powerState": "on"
+   },
+   {
+    "name": "inventory-86",
+    "host": "blr-esx-35",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "inventory",
+    "tier": 2,
+    "vcpu": 8,
+    "memoryGB": 32,
+    "powerState": "on"
+   },
+   {
+    "name": "analytics-89",
+    "host": "blr-esx-35",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "analytics",
+    "tier": 2,
+    "vcpu": 16,
+    "memoryGB": 64,
+    "powerState": "on"
+   },
+   {
+    "name": "inventory-87",
+    "host": "blr-esx-35",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "inventory",
+    "tier": 2,
+    "vcpu": 8,
+    "memoryGB": 32,
+    "powerState": "on"
+   },
+   {
+    "name": "ci-runner-113",
+    "host": "blr-esx-35",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "ci-runners",
+    "tier": 3,
+    "vcpu": 8,
+    "memoryGB": 16,
+    "powerState": "on"
+   },
+   {
+    "name": "analytics-90",
+    "host": "blr-esx-35",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "analytics",
+    "tier": 2,
+    "vcpu": 16,
+    "memoryGB": 64,
+    "powerState": "on"
+   },
+   {
+    "name": "analytics-91",
+    "host": "blr-esx-35",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "analytics",
+    "tier": 2,
+    "vcpu": 16,
+    "memoryGB": 64,
+    "powerState": "on"
+   },
+   {
+    "name": "ci-runner-114",
+    "host": "blr-esx-35",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "ci-runners",
+    "tier": 3,
+    "vcpu": 8,
+    "memoryGB": 32,
+    "powerState": "on"
+   },
+   {
+    "name": "dev-sandbox-118",
+    "host": "blr-esx-35",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "dev-sandbox",
+    "tier": 3,
+    "vcpu": 4,
+    "memoryGB": 16,
+    "powerState": "on"
+   },
+   {
+    "name": "ci-runner-115",
+    "host": "blr-esx-35",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "ci-runners",
+    "tier": 3,
+    "vcpu": 8,
+    "memoryGB": 32,
+    "powerState": "on"
+   },
+   {
+    "name": "inventory-88",
+    "host": "blr-esx-35",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "inventory",
+    "tier": 2,
+    "vcpu": 8,
+    "memoryGB": 64,
+    "powerState": "on"
+   },
+   {
+    "name": "dev-sandbox-119",
+    "host": "blr-esx-35",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "dev-sandbox",
+    "tier": 3,
+    "vcpu": 4,
+    "memoryGB": 16,
+    "powerState": "on"
+   },
+   {
+    "name": "inventory-89",
+    "host": "blr-esx-35",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "inventory",
+    "tier": 2,
+    "vcpu": 8,
+    "memoryGB": 64,
+    "powerState": "on"
+   },
+   {
+    "name": "ci-runner-116",
+    "host": "blr-esx-35",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "ci-runners",
+    "tier": 3,
+    "vcpu": 8,
+    "memoryGB": 32,
+    "powerState": "on"
+   },
+   {
+    "name": "portal-web-04",
+    "host": "blr-esx-36",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "customer-portal",
+    "tier": 1,
+    "vcpu": 4,
+    "memoryGB": 32,
+    "powerState": "on"
+   },
+   {
+    "name": "portal-web-05",
+    "host": "blr-esx-36",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "customer-portal",
+    "tier": 1,
+    "vcpu": 4,
+    "memoryGB": 32,
+    "powerState": "on"
+   },
+   {
+    "name": "analytics-92",
+    "host": "blr-esx-36",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "analytics",
+    "tier": 2,
+    "vcpu": 16,
+    "memoryGB": 64,
+    "powerState": "on"
+   },
+   {
+    "name": "inventory-90",
+    "host": "blr-esx-36",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "inventory",
+    "tier": 2,
+    "vcpu": 8,
+    "memoryGB": 32,
+    "powerState": "on"
+   },
+   {
+    "name": "dev-sandbox-120",
+    "host": "blr-esx-36",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "dev-sandbox",
+    "tier": 3,
+    "vcpu": 4,
+    "memoryGB": 32,
+    "powerState": "on"
+   },
+   {
+    "name": "ci-runner-117",
+    "host": "blr-esx-36",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "ci-runners",
+    "tier": 3,
+    "vcpu": 8,
+    "memoryGB": 16,
+    "powerState": "on"
+   },
+   {
+    "name": "inventory-91",
+    "host": "blr-esx-36",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "inventory",
+    "tier": 2,
+    "vcpu": 8,
+    "memoryGB": 32,
+    "powerState": "on"
+   },
+   {
+    "name": "dev-sandbox-121",
+    "host": "blr-esx-36",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "dev-sandbox",
+    "tier": 3,
+    "vcpu": 4,
+    "memoryGB": 32,
+    "powerState": "on"
+   },
+   {
+    "name": "dev-sandbox-122",
+    "host": "blr-esx-36",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "dev-sandbox",
+    "tier": 3,
+    "vcpu": 4,
+    "memoryGB": 32,
+    "powerState": "on"
+   },
+   {
+    "name": "dev-sandbox-123",
+    "host": "blr-esx-36",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "dev-sandbox",
+    "tier": 3,
+    "vcpu": 4,
+    "memoryGB": 32,
+    "powerState": "on"
+   },
+   {
+    "name": "dev-sandbox-124",
+    "host": "blr-esx-36",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "dev-sandbox",
+    "tier": 3,
+    "vcpu": 4,
+    "memoryGB": 32,
+    "powerState": "on"
+   },
+   {
+    "name": "analytics-93",
+    "host": "blr-esx-36",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "analytics",
+    "tier": 2,
+    "vcpu": 16,
+    "memoryGB": 128,
+    "powerState": "on"
+   },
+   {
+    "name": "analytics-94",
+    "host": "blr-esx-37",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "analytics",
+    "tier": 2,
+    "vcpu": 16,
+    "memoryGB": 64,
+    "powerState": "on"
+   },
+   {
+    "name": "inventory-92",
+    "host": "blr-esx-37",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "inventory",
+    "tier": 2,
+    "vcpu": 8,
+    "memoryGB": 32,
+    "powerState": "on"
+   },
+   {
+    "name": "ci-runner-118",
+    "host": "blr-esx-37",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "ci-runners",
+    "tier": 3,
+    "vcpu": 8,
+    "memoryGB": 32,
+    "powerState": "on"
+   },
+   {
+    "name": "analytics-95",
+    "host": "blr-esx-37",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "analytics",
+    "tier": 2,
+    "vcpu": 16,
+    "memoryGB": 64,
+    "powerState": "on"
+   },
+   {
+    "name": "inventory-93",
+    "host": "blr-esx-37",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "inventory",
+    "tier": 2,
+    "vcpu": 8,
+    "memoryGB": 64,
+    "powerState": "on"
+   },
+   {
+    "name": "analytics-96",
+    "host": "blr-esx-37",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "analytics",
+    "tier": 2,
+    "vcpu": 16,
+    "memoryGB": 128,
+    "powerState": "on"
+   },
+   {
+    "name": "ci-runner-119",
+    "host": "blr-esx-37",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "ci-runners",
+    "tier": 3,
+    "vcpu": 8,
+    "memoryGB": 32,
+    "powerState": "on"
+   },
+   {
+    "name": "ci-runner-120",
+    "host": "blr-esx-37",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "ci-runners",
+    "tier": 3,
+    "vcpu": 8,
+    "memoryGB": 32,
+    "powerState": "on"
+   },
+   {
+    "name": "dev-sandbox-125",
+    "host": "blr-esx-37",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "dev-sandbox",
+    "tier": 3,
+    "vcpu": 4,
+    "memoryGB": 32,
+    "powerState": "on"
+   },
+   {
+    "name": "analytics-97",
+    "host": "blr-esx-37",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "analytics",
+    "tier": 2,
+    "vcpu": 16,
+    "memoryGB": 128,
+    "powerState": "on"
+   },
+   {
+    "name": "ci-runner-121",
+    "host": "blr-esx-38",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "ci-runners",
+    "tier": 3,
+    "vcpu": 8,
+    "memoryGB": 32,
+    "powerState": "on"
+   },
+   {
+    "name": "dev-sandbox-126",
+    "host": "blr-esx-38",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "dev-sandbox",
+    "tier": 3,
+    "vcpu": 4,
+    "memoryGB": 32,
+    "powerState": "on"
+   },
+   {
+    "name": "ci-runner-122",
+    "host": "blr-esx-38",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "ci-runners",
+    "tier": 3,
+    "vcpu": 8,
+    "memoryGB": 32,
+    "powerState": "on"
+   },
+   {
+    "name": "dev-sandbox-127",
+    "host": "blr-esx-38",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "dev-sandbox",
+    "tier": 3,
+    "vcpu": 4,
+    "memoryGB": 16,
+    "powerState": "on"
+   },
+   {
+    "name": "ci-runner-123",
+    "host": "blr-esx-38",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "ci-runners",
+    "tier": 3,
+    "vcpu": 8,
+    "memoryGB": 16,
+    "powerState": "on"
+   },
+   {
+    "name": "ci-runner-124",
+    "host": "blr-esx-38",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "ci-runners",
+    "tier": 3,
+    "vcpu": 8,
+    "memoryGB": 16,
+    "powerState": "on"
+   },
+   {
+    "name": "dev-sandbox-128",
+    "host": "blr-esx-38",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "dev-sandbox",
+    "tier": 3,
+    "vcpu": 4,
+    "memoryGB": 32,
+    "powerState": "on"
+   },
+   {
+    "name": "ci-runner-125",
+    "host": "blr-esx-38",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "ci-runners",
+    "tier": 3,
+    "vcpu": 8,
+    "memoryGB": 16,
+    "powerState": "on"
+   },
+   {
+    "name": "dev-sandbox-129",
+    "host": "blr-esx-38",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "dev-sandbox",
+    "tier": 3,
+    "vcpu": 4,
+    "memoryGB": 16,
+    "powerState": "on"
+   },
+   {
+    "name": "dev-sandbox-130",
+    "host": "blr-esx-38",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "dev-sandbox",
+    "tier": 3,
+    "vcpu": 4,
+    "memoryGB": 32,
+    "powerState": "on"
+   },
+   {
+    "name": "dev-sandbox-131",
+    "host": "blr-esx-38",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "dev-sandbox",
+    "tier": 3,
+    "vcpu": 4,
+    "memoryGB": 32,
+    "powerState": "on"
+   },
+   {
+    "name": "dev-sandbox-132",
+    "host": "blr-esx-38",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "dev-sandbox",
+    "tier": 3,
+    "vcpu": 4,
+    "memoryGB": 32,
+    "powerState": "on"
+   },
+   {
+    "name": "dev-sandbox-133",
+    "host": "blr-esx-38",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "dev-sandbox",
+    "tier": 3,
+    "vcpu": 4,
+    "memoryGB": 32,
+    "powerState": "on"
+   },
+   {
+    "name": "ci-runner-126",
+    "host": "blr-esx-38",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "ci-runners",
+    "tier": 3,
+    "vcpu": 8,
+    "memoryGB": 16,
+    "powerState": "on"
+   },
+   {
+    "name": "ci-runner-127",
+    "host": "blr-esx-38",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "ci-runners",
+    "tier": 3,
+    "vcpu": 8,
+    "memoryGB": 16,
+    "powerState": "on"
+   },
+   {
+    "name": "ci-runner-128",
+    "host": "blr-esx-38",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "ci-runners",
+    "tier": 3,
+    "vcpu": 8,
+    "memoryGB": 32,
+    "powerState": "on"
+   },
+   {
+    "name": "dev-sandbox-134",
+    "host": "blr-esx-38",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "dev-sandbox",
+    "tier": 3,
+    "vcpu": 4,
+    "memoryGB": 32,
+    "powerState": "on"
+   },
+   {
+    "name": "ci-runner-129",
+    "host": "blr-esx-38",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "ci-runners",
+    "tier": 3,
+    "vcpu": 8,
+    "memoryGB": 16,
+    "powerState": "on"
+   },
+   {
+    "name": "dev-sandbox-135",
+    "host": "blr-esx-38",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "dev-sandbox",
+    "tier": 3,
+    "vcpu": 4,
+    "memoryGB": 16,
+    "powerState": "on"
+   },
+   {
+    "name": "dev-sandbox-136",
+    "host": "blr-esx-38",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "dev-sandbox",
+    "tier": 3,
+    "vcpu": 4,
+    "memoryGB": 32,
+    "powerState": "on"
+   },
+   {
+    "name": "ci-runner-130",
+    "host": "blr-esx-38",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "ci-runners",
+    "tier": 3,
+    "vcpu": 8,
+    "memoryGB": 32,
+    "powerState": "on"
+   },
+   {
+    "name": "ci-runner-131",
+    "host": "blr-esx-38",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "ci-runners",
+    "tier": 3,
+    "vcpu": 8,
+    "memoryGB": 16,
+    "powerState": "on"
+   },
+   {
+    "name": "ci-runner-132",
+    "host": "blr-esx-38",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "ci-runners",
+    "tier": 3,
+    "vcpu": 8,
+    "memoryGB": 16,
+    "powerState": "on"
+   },
+   {
+    "name": "dev-sandbox-137",
+    "host": "blr-esx-39",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "dev-sandbox",
+    "tier": 3,
+    "vcpu": 4,
+    "memoryGB": 16,
+    "powerState": "on"
+   },
+   {
+    "name": "dev-sandbox-138",
+    "host": "blr-esx-39",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "dev-sandbox",
+    "tier": 3,
+    "vcpu": 4,
+    "memoryGB": 16,
+    "powerState": "on"
+   },
+   {
+    "name": "ci-runner-133",
+    "host": "blr-esx-39",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "ci-runners",
+    "tier": 3,
+    "vcpu": 8,
+    "memoryGB": 16,
+    "powerState": "on"
+   },
+   {
+    "name": "ci-runner-134",
+    "host": "blr-esx-39",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "ci-runners",
+    "tier": 3,
+    "vcpu": 8,
+    "memoryGB": 16,
+    "powerState": "on"
+   },
+   {
+    "name": "dev-sandbox-139",
+    "host": "blr-esx-39",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "dev-sandbox",
+    "tier": 3,
+    "vcpu": 4,
+    "memoryGB": 32,
+    "powerState": "on"
+   },
+   {
+    "name": "ci-runner-135",
+    "host": "blr-esx-39",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "ci-runners",
+    "tier": 3,
+    "vcpu": 8,
+    "memoryGB": 16,
+    "powerState": "on"
+   },
+   {
+    "name": "analytics-98",
+    "host": "blr-esx-39",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "analytics",
+    "tier": 2,
+    "vcpu": 16,
+    "memoryGB": 64,
+    "powerState": "on"
+   },
+   {
+    "name": "dev-sandbox-140",
+    "host": "blr-esx-39",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "dev-sandbox",
+    "tier": 3,
+    "vcpu": 4,
+    "memoryGB": 32,
+    "powerState": "on"
+   },
+   {
+    "name": "analytics-99",
+    "host": "blr-esx-39",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "analytics",
+    "tier": 2,
+    "vcpu": 16,
+    "memoryGB": 128,
+    "powerState": "on"
+   },
+   {
+    "name": "inventory-94",
+    "host": "blr-esx-39",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "inventory",
+    "tier": 2,
+    "vcpu": 8,
+    "memoryGB": 64,
+    "powerState": "on"
+   },
+   {
+    "name": "ci-runner-136",
+    "host": "blr-esx-39",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "ci-runners",
+    "tier": 3,
+    "vcpu": 8,
+    "memoryGB": 32,
+    "powerState": "on"
+   },
+   {
+    "name": "dev-sandbox-141",
+    "host": "blr-esx-39",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "dev-sandbox",
+    "tier": 3,
+    "vcpu": 4,
+    "memoryGB": 32,
+    "powerState": "on"
+   },
+   {
+    "name": "dev-sandbox-142",
+    "host": "blr-esx-39",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "dev-sandbox",
+    "tier": 3,
+    "vcpu": 4,
+    "memoryGB": 16,
+    "powerState": "on"
+   },
+   {
+    "name": "inventory-95",
+    "host": "blr-esx-39",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "inventory",
+    "tier": 2,
+    "vcpu": 8,
+    "memoryGB": 64,
+    "powerState": "on"
+   },
+   {
+    "name": "analytics-100",
+    "host": "blr-esx-40",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "analytics",
+    "tier": 2,
+    "vcpu": 16,
+    "memoryGB": 64,
+    "powerState": "on"
+   },
+   {
+    "name": "ci-runner-137",
+    "host": "blr-esx-40",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "ci-runners",
+    "tier": 3,
+    "vcpu": 8,
+    "memoryGB": 32,
+    "powerState": "on"
+   },
+   {
+    "name": "dev-sandbox-143",
+    "host": "blr-esx-40",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "dev-sandbox",
+    "tier": 3,
+    "vcpu": 4,
+    "memoryGB": 16,
+    "powerState": "on"
+   },
+   {
+    "name": "analytics-101",
+    "host": "blr-esx-40",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "analytics",
+    "tier": 2,
+    "vcpu": 16,
+    "memoryGB": 64,
+    "powerState": "on"
+   },
+   {
+    "name": "ci-runner-138",
+    "host": "blr-esx-40",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "ci-runners",
+    "tier": 3,
+    "vcpu": 8,
+    "memoryGB": 16,
+    "powerState": "on"
+   },
+   {
+    "name": "dev-sandbox-144",
+    "host": "blr-esx-40",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "dev-sandbox",
+    "tier": 3,
+    "vcpu": 4,
+    "memoryGB": 32,
+    "powerState": "on"
+   },
+   {
+    "name": "ci-runner-139",
+    "host": "blr-esx-40",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "ci-runners",
+    "tier": 3,
+    "vcpu": 8,
+    "memoryGB": 16,
+    "powerState": "on"
+   },
+   {
+    "name": "dev-sandbox-145",
+    "host": "blr-esx-40",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "dev-sandbox",
+    "tier": 3,
+    "vcpu": 4,
+    "memoryGB": 16,
+    "powerState": "on"
+   },
+   {
+    "name": "analytics-102",
+    "host": "blr-esx-40",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "analytics",
+    "tier": 2,
+    "vcpu": 16,
+    "memoryGB": 128,
+    "powerState": "on"
+   },
+   {
+    "name": "inventory-96",
+    "host": "blr-esx-40",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "inventory",
+    "tier": 2,
+    "vcpu": 8,
+    "memoryGB": 32,
+    "powerState": "on"
+   },
+   {
+    "name": "analytics-103",
+    "host": "blr-esx-40",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "analytics",
+    "tier": 2,
+    "vcpu": 16,
+    "memoryGB": 64,
+    "powerState": "on"
+   },
+   {
+    "name": "ci-runner-140",
+    "host": "blr-esx-40",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "ci-runners",
+    "tier": 3,
+    "vcpu": 8,
+    "memoryGB": 16,
+    "powerState": "on"
+   },
+   {
+    "name": "dev-sandbox-146",
+    "host": "blr-esx-40",
+    "cluster": "PROD-BLR-08",
+    "datastore": "ds-blr08-gold",
+    "service": "dev-sandbox",
+    "tier": 3,
+    "vcpu": 4,
+    "memoryGB": 32,
+    "powerState": "on"
+   }
+  ]
+ },
+ "storage": {
+  "arrays": [
+   {
+    "name": "alletra-mp-blr-01",
+    "model": "HPE Alletra Storage MP B10000",
+    "firmware": "10.4.2 (synthetic)",
+    "ports": [
+     {
+      "name": "ctrl-a:p1",
+      "switch": "tor-r1-a"
+     },
+     {
+      "name": "ctrl-b:p1",
+      "switch": "tor-r1-b"
+     }
+    ]
+   }
+  ]
+ }
+}

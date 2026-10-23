@@ -1,0 +1,105 @@
+# BlastRadius governance policy.
+# Every key in this file is read by code: the rules by blastradius/policy.py,
+# constraints.py, workflow.py and the agents; business: only by the cost replay
+# (business.py); planning.high_risk_threshold only by the UI. The LLM never
+# decides whether a rule applies.
+
+version: 1
+
+planning:
+  max_plan_attempts: 2          # planner retries before escalating (or solver fallback)
+  solver_fallback: true         # use the deterministic wave solver if the LLM keeps failing
+  canary_max_assets: 3           # also the canary budget for configuration cohorts
+  canary_cohort_coverage: true  # canary must include a host from each configuration cohort (model + untouched firmware)
+  canary_max_tier: 2            # canary hosts may not run tier-0 or tier-1 workloads
+  max_parallel_per_cluster: 5   # hosts in maintenance at once, per cluster
+  max_assets_per_wave: 12
+  defer_known_regressions: true # hosts matching a learned/known regression are left out of the plan
+  high_risk_threshold: 70       # risk scores at or above this are red in the UI risk heat map (display only)
+
+verification:
+  trust_threshold: 80           # minimum Trust Score to reach the approval gate
+  block_on_contradiction: true  # any Contradicted claim blocks execution
+  contradiction_penalty: 15     # points removed per contradicted claim
+  label_values: {Supported: 1.0, Unverifiable: 0.5, Contradicted: 0.0}
+  claim_weights: {safety: 3, factual: 2, informational: 1}
+
+approval:
+  canary: {approvers: 1}        # plan + canary wave
+  fleet: {approvers: 2}         # every wave after the canary: two distinct approvers
+
+execution:
+  allowed_write_tools:
+    - virt.enter_maintenance
+    - virt.exit_maintenance
+    - compute.apply_firmware
+    - network.upgrade_switch_os
+  max_actions_per_wave: 120
+  kill_switch_env: BR_KILL_SWITCH
+  durations_min:
+    evacuate: 5
+    "iLO 6": 4
+    "System ROM": 14
+    "Switch OS": 20
+    soak: 10
+  component_order: ["iLO 6", "System ROM", "NIC BCM57414"]
+  canary_component_probe: true  # canary only: probe golden signals after each component, so a regression is pinned to one
+  rollback_scope: wave          # wave: roll back every asset in the failing wave; asset: only the assets that regressed
+
+golden_signals:                 # post-check thresholds (post vs. pre)
+  nic_latency_ratio_max: 2.0
+  rx_drop_rate_max: 0.001
+  crc_errors_per_min_max: 5
+  vm_heartbeat_loss_max: 0
+  switch_ports_down_delta_max: 0
+  require_health: OK
+
+optimizer:                      # risk-aware wave optimizer (simulated annealing under the same hard constraints)
+  enabled: true
+  seed: 5
+  iterations: 2500              # the stopping rule (about 1 s on the demo scenario): same inputs, same plan
+  time_budget_s: 60.0           # safety cap only; if it ever stops the search, the card and the CLI say so
+  w_brs: 1.0                    # J = minutes + w_brs * sum(per-wave BRS) + w_exposure * exposure + w_waves * waves
+  w_exposure: 30.0              # progressive exposure: risky and tier-0-carrying assets should run after more of the plan is proven
+  w_waves: 10.0                 # minutes-equivalent cost per wave (hand-off, soak, approval)
+  tier0_weight: 1.0
+
+canary_stats:                   # peer comparison: canary hosts vs un-upgraded hosts of the same cohort, same minutes
+  enabled: true
+  all_waves: false              # fleet waves run out of un-upgraded controls; judge the canary only
+  alpha: 0.01                   # one-sided Mann-Whitney U significance level
+  min_effect: 1.15              # minimum difference-in-differences ratio for FAIL (smaller significant shifts are MARGINAL)
+  metrics: [nic_latency_ms, rx_drop_rate]
+  pre_minutes: 15
+  min_controls: 3               # fewer cohort peers widens to the same model; still fewer is reported as insufficient
+  widen_to_model: true
+  min_samples: 5
+  exact_max_n: 250              # exact permutation p-value up to this many samples (and whenever ties dominate)
+
+impact:
+  tier_weights: {0: 10, 1: 4, 2: 2, 3: 1}
+  migrated_vm_weight: 0.02      # live migration is not free; small exposure weight
+  brs_scale: 30                 # BRS = 100 * (1 - exp(-weighted_impact / scale))
+
+business:                       # cost replay (business.py) only; every value is shown with its source in the UI and report
+  degraded_cost_per_vm_hour_usd: {0: 20000, 1: 2500, 2: 150, 3: 10}  # illustrative: lost revenue/productivity per degraded VM-hour, by tier
+  sev1_tier_max: 0                     # illustrative: a degraded VM at or below this tier opens a Sev-1
+  sev1_response_engineer_hours: 30     # illustrative: incident bridge, communications, post-incident review
+  sev1_sla_credits_usd: 50000          # illustrative: SLA credits and penalties for a tier-0 degradation
+  engineer_rate_usd_per_hour: 150      # illustrative: loaded engineering cost
+  diagnosis_engineer_hours: {manual: 24, automated: 1}  # illustrative: manual when a fleet wave surfaces it (no per-component probe)
+  detection_delay_min: 0               # illustrative: counterfactual fleet post-check detects at the end of the soak
+  missed_detection_delay_min: 240      # illustrative: used when only the statistical canary judge saw the regression
+  rebalance_delay_min: 0               # illustrative: DRS returns a host's VMs this long after exit-maintenance
+  sensitivity_detection_delays_min: [0, 60, 240]  # illustrative: detection delays shown in the sensitivity rows
+
+redaction:
+  patterns:
+    # A pattern's 'keep' group (the key and its quotes) is kept, so a redacted JSON prompt stays valid JSON:
+    # "password": "x" -> "password": "[REDACTED]". Keys cover password, pwd, secret, secret_key, client_secret,
+    # private_key, aws_secret_access_key, api keys and tokens; values may be quoted, escaped-quoted or bare.
+    - '(?i)(?P<keep>\b[\w-]*?(?:api[_-]?key|passw(?:or)?d|pwd|secret|token|private[_-]?key|access[_-]?key)[\w-]*(?:\\?["''])?\s*(?:[:=]|\bis\b)\s*(?P<q>\\?["''])?)(?(q)[^"''\\]*|[^\s"''\\,;}\]]+)'
+    - '(?i)(?P<keep>\b[\w-]*?(?:api[_-]?key|passw(?:or)?d|pwd|secret|token|private[_-]?key|access[_-]?key)[\w-]*(?:\\?["''])?\s+\\?["''])[^"''\\]*'
+    - '(?i)(?P<keep>\bbearer\s+)[A-Za-z0-9._~+/-]+=*'
+    - '-----BEGIN (?:[A-Z]+ )*PRIVATE KEY-----[\s\S]*?-----END (?:[A-Z]+ )*PRIVATE KEY-----'
+    - '[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}'
