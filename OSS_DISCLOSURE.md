@@ -15,13 +15,11 @@ All BlastRadius source code in this repository was written for the HPE Agentic A
 | pandas | 3.0 | BSD-3-Clause | UI tables and charts |
 | Vega-Altair | 6.0 (installed with Streamlit) | BSD-3-Clause | Statistical-judge band chart in the UI |
 
-## Development and documentation tooling
+## Development tooling
 
 | Component | License | Used for |
 |---|---|---|
 | pytest | MIT | Test suite |
-| python-docx | MIT | `scripts/build_abstract.py` fills the official abstract template |
-| Playwright for Python | Apache-2.0 | `scripts/capture_screenshots.py` |
 
 ## Standard library only
 
@@ -30,6 +28,6 @@ The OpenAI-compatible and Azure OpenAI LLM client (`blastradius/llm.py`, includi
 ## External services and data
 
 - **LLM endpoints:** none are bundled. Configure an HPE-approved endpoint (see README). The default offline mode makes no network calls.
-- **HPE GreenLake MCP servers (`HewlettPackard/gl-mcp`, Apache-2.0):** optional, read-only, not bundled and not vendored. BlastRadius calls only the devices server's `getdevicesv1` tool (or `invoke_dynamic_tool` for it when the server runs in dynamic mode), and only if `BR_GL_MCP_URL` or `BR_GL_MCP_CMD` is set (see docs/GREENLAKE_MCP.md).
+- **HPE GreenLake MCP servers (`HewlettPackard/gl-mcp`, Apache-2.0):** optional, read-only, not bundled and not vendored. BlastRadius calls only the devices server's `getdevicesv1` tool (or `invoke_dynamic_tool` for it when the server runs in dynamic mode), and only if `BR_GL_MCP_URL` or `BR_GL_MCP_CMD` is set (see README).
 - **Agent2Agent (A2A) protocol:** `blastradius/a2a_server.py` implements the JSON-RPC methods and agent card from the public specification; no A2A SDK is used.
 - **Data:** all twin, release-note, advisory and incident data in `data/` is synthetic and was created for this project.

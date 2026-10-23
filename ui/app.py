@@ -144,7 +144,7 @@ with st.sidebar:
             st.caption(f"{k}: {v}")
         for prob in rep.get("problems", [])[:4]:
             st.caption(f"• {prob}")
-        st.caption("Read-only device inventory from HPE's devices MCP server. See docs/GREENLAKE_MCP.md.")
+        st.caption("Read-only device inventory from HPE's devices MCP server. See the README for setup.")
     st.divider()
     st.caption("Synthetic lab digital twin (BLR-POD-1). Firmware, CVE and advisory IDs are fictitious. No customer data.")
 
