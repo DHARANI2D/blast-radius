@@ -91,19 +91,17 @@ def test_costs_actual_and_avoided(canon):
     assert sum(r["counterfactual_usd"] for r in rows[:-1]) == pytest.approx(cf["total_usd"])
 
 
-def test_itic_is_a_labelled_cross_check_and_assumptions_are_sourced(canon):
+def test_no_company_wide_rate_and_assumptions_are_sourced(canon):
     _, _, _, imp = canon
-    itic = imp["itic_reference"]
-    assert itic["flat_usd"] == 1_200_000 and itic["source"] == "ITIC 2024" and "not used" in itic["label"]
-    assert imp["headline"]["counterfactual_usd"] != itic["flat_usd"]
-    assert all(a["source"] for a in imp["assumptions"])
-    assert {"illustrative (policy.yaml)", "ITIC 2024"} <= {a["source"] for a in imp["assumptions"]}
+    # ITIC's hourly cost is for a whole business outage; it is never applied to one pod's degraded VMs
+    assert "itic_reference" not in imp and "ITIC" not in imp["explanation"]
+    assert all(a["source"] for a in imp["assumptions"]) and "ITIC 2024" not in {a["source"] for a in imp["assumptions"]}
     # every rate in the totals is listed in policy.yaml, not only defaulted in code
-    biz = [a for a in imp["assumptions"] if a["key"].startswith("business.") and " x " not in a["key"]]
+    biz = [a for a in imp["assumptions"] if a["key"].startswith("business.")]
     assert len(biz) >= 8 and all(a["source"] == "illustrative (policy.yaml)" for a in biz)
     assert business._rates(canon[0].policy) == business._rates(Policy({}))  # the code fallbacks match: no number changed
     md = business.markdown(imp)
-    assert "Cross-check only" in md and "payments-db-01" in md and imp["explanation"] in md
+    assert "ITIC" not in md and "payments-db-01" in md and imp["explanation"] in md
     assert business.summary_lines(imp)[0] == imp["headline"]["text"]
 
 

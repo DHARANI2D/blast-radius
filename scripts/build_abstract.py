@@ -32,34 +32,35 @@ REPO = "https://github.com/DHARANI2D/blast-radius"
 TITLE = "BlastRadius: Agentic Change-Safety Mesh for HPE Hybrid Infrastructure"
 
 ABSTRACT = (
-    "Configuration and change-management failures cause 41% of major network-related outages and 51% of major IT "
-    "system/software outages (Uptime Institute 2026), and over 90% of mid-size and large enterprises put one hour of "
-    "downtime above $300,000 (ITIC 2024). BlastRadius is a LangGraph multi-agent system, connected through the Model "
-    "Context Protocol (MCP), that turns any firmware or configuration upgrade into a verified, staged and reversible "
-    "operation. Agents build a live dependency graph across HPE compute, network, virtualization and storage, score risk "
-    "from release notes, advisories, incidents and simulated downstream exposure, and propose canary waves that a "
-    "risk-aware optimiser re-orders. Deterministic constraints and an independent Verifier, measured on a red-team "
-    "benchmark, check every wave and every factual claim against tool evidence, so plans built on hallucinations never "
-    "execute. After human sign-off, waves roll out with pre/during/post checks against fixed thresholds and un-upgraded "
-    "peers, automatic rollback and learning, all recorded in a hash-chained ledger, as a governed agent for HPE GreenLake Intelligence."
+    "Network issues are the most common cause of IT service outages, led by configuration and change-management "
+    "failures (Uptime Institute 2026), and over 90% of mid-size and large enterprises put an hour of downtime above "
+    "$300,000 (ITIC 2024). BlastRadius is a LangGraph multi-agent system, connected through the Model Context Protocol "
+    "(MCP), that plans firmware and configuration upgrades as verified, staged canary waves. Agents map dependencies "
+    "across HPE compute, network, virtualization and storage from MCP tool calls, score risk from release notes, "
+    "advisories, incidents and simulated downstream exposure, and propose waves that a risk-aware optimiser re-orders. "
+    "Code constraints and an independent Verifier check every wave and claim against tool evidence; a plan with a "
+    "contradicted claim or an unverifiable safety claim cannot reach approval. After human sign-off, waves roll out with "
+    "pre/during/post checks against thresholds and un-upgraded peers, automatic halt, rollback and learning, all in a "
+    "hash-chained ledger: a governed agent for HPE GreenLake Intelligence, proven end to end on a digital twin."
 )
 
 CONTEXT = [
     "A ProLiant host runs a Morpheus or VMware cluster, hangs off a pair of Aruba CX or Juniper QFX top-of-rack switches "
     "and reaches an Alletra array over the same fabric, yet firmware, iLO, BIOS, switch OS and hypervisor upgrades are "
     "planned per tool and per team. HPE tools validate their own domain well (Compute Ops Management, Marvis Actions, "
-    "Apstra), while OpsRamp RCA and Zerto rewind act after the fact. No agent "
-    "answers the operator's real question before the change: *\"If I push this firmware to 40 servers and two ToR switches "
+    "Apstra), while OpsRamp RCA and Zerto rewind act after the fact. None of them answers the operator's real question "
+    "across domains before the change: *\"If I push this firmware to 40 servers and two ToR switches "
     "tonight, what else breaks, and can I trust the AI's answer?\"* As agentic AI starts to execute changes, an ungrounded "
     "plan can push a correlated failure faster than a human can stop it.",
 ]
 
 WHY = [
-    "**Top outage cause:** change/configuration failure drives 41% of major network and 51% of major IT system/software "
-    "outages (Uptime Institute 2026); 87% of operators say better process or configuration would have prevented theirs (Uptime 2025).",
+    "**Top outage cause:** network issues cause the most IT service outages, led by configuration and change-management "
+    "failures (Uptime Institute 2026); 87% of operators with a major outage say better management or processes would have "
+    "prevented it (Uptime 2025).",
     "**Expensive:** over 90% of mid-size and large enterprises put hourly downtime above $300K, 41% at $1M-$5M+ (ITIC 2024).",
     "**Agentic risk:** Gartner predicts that by 2029 at least 70% of organizations with production agentic AI in I&O will "
-    "have a material incident linked partly to insufficient runtime controls. BlastRadius *is* that runtime control.",
+    "have a material incident linked partly to insufficient runtime controls. BlastRadius is built as one such runtime control.",
 ]
 
 OVERVIEW_INTRO = (
@@ -68,7 +69,7 @@ OVERVIEW_INTRO = (
     "baseline this Saturday 10pm\"*). BlastRadius **discovers** the cross-domain dependency graph, **assesses** per-asset "
     "risk and downstream exposure, **plans, optimises and verifies** canary waves (code rejects unsafe waves; the Verifier "
     "rejects unsupported claims), asks a human to **approve** a one-page go/no-go card, then **executes and validates** "
-    "wave by wave, rolling back automatically on regression and learning from it."
+    "wave by wave, halting and rolling back on regression and learning from it."
 )
 OVERVIEW: list[str] = []
 
@@ -76,38 +77,38 @@ INNOVATION = [
     "**Cross-domain, before the change:** one graph joins compute, network, virtualization and storage. In the PoC the "
     "storage array hangs only off the rack-R1 ToR pair, so rebooting both R1 switches would also cut the *other* cluster's datastores.",
     "**Verifier-gated autonomy, measured:** each planner sentence becomes an atomic claim checked by code that fetches its "
-    "own MCP evidence (release notes, LLDP, capacity, re-simulation); other claims go to an LLM judge (ideally a separate "
-    "model) that may only cite retrieved evidence. A contradiction or an unverifiable *safety* claim blocks the plan. Red-team benchmark (166 "
-    "labelled claims, 22 mutation operators): 93/97 false claims contradicted, the rest flagged, 0 dangerous misses, "
-    "0 false blocks; 21/21 unsafe plan mutations rejected.",
+    "own MCP evidence; other claims go to an LLM judge that may "
+    "only cite retrieved evidence. A contradiction or an unverifiable *safety* claim blocks the plan. On a "
+    "red-team benchmark we built from the twin (166 labelled claims, 22 mutation operators): 93/97 false claims "
+    "contradicted, 4 Unverifiable, none Supported (95% upper bound 4%), 0/69 false blocks; 21/21 unsafe plan mutations "
+    "rejected (miss-rate bound 16%): our corpus, not real-world recall.",
     "**LLM proposes, code disposes:** redundancy, capacity, canary, window and deferral rules are code, with a deterministic "
     "solver as fallback. A simulated-annealing optimiser moves the riskiest assets (ToR switches, the single-homed host) "
     "to the last waves, the result is re-verified, and the human signs that exact plan hash. A Monte Carlo pre-mortem puts "
-    "P(tier-0 outage) per wave on the go/no-go card.",
-    "**Cohort canary, statistical judge, provable diagnosis:** the canary holds one host per configuration cohort (model + "
-    "untouched firmware), not the lowest-risk hosts, which here would miss the fault. A Mann-Whitney test against "
-    "un-upgraded peers catches a 1.3x regression the 2x rule misses and ignores a fleet-wide backup slowdown; "
-    "per-component probes and same-model controls pin the culprit.",
+    "an assumption-driven P(tier-0 outage) per wave on the go/no-go card.",
+    "**Cohort canary, statistical judge, evidence-backed diagnosis:** the canary holds one host per configuration cohort "
+    "(same model and same untouched firmware, here NIC 229.x vs 230.x), not the lowest-risk hosts, which here would miss "
+    "the fault. A Mann-Whitney test against un-upgraded peers catches a 1.36x regression the 2x rule misses and ignores a "
+    "fleet-wide backup slowdown; per-component probes and same-model controls point to the culprit.",
     "**Learns from both kinds of failure:** rollback lessons defer exactly the affected hosts; rejected plans become "
     "planner-memory rules retrieved for the next similar change.",
 ]
 
 BUSINESS = [
-    "**Avoided cost, replayed on the twin:** a risk-ranked canary passes the fault and wave 2 degrades payments-db until "
-    "minute 66: about **$64K** (13.2 degraded VM-hours, a tier-0 Sev-1) vs $458 with BlastRadius, at illustrative "
-    "rates (policy.yaml). Cross-check: one avoided 4-hour Sev-1 at ITIC's $300K/hour floor is $1.2M.",
-    "**Operator time:** hours of cross-team impact analysis become a verified 42-asset plan in about 3 s of compute "
-    "offline (target under 5 minutes end to end with a hosted LLM).",
-    "**HPE levers:** stickier GreenLake Intelligence, a reason to run compute, network and virtualization on HPE, a \"safe "
-    "autonomy\" answer to Gartner, fewer support escalations.",
-    "**Roadmap:** P1 twin -> P2 Q1 2027 HPE IT pilot (read-only COM/Central/Mist) -> P3 GreenLake Intelligence agent "
-    "with ServiceNow CAB, Zerto, Apstra -> P4 AI factories.",
+    "**Avoided cost, replayed on the twin (illustrative):** with a conventional risk-ranked canary the fault passes and "
+    "wave 2 degrades payments-db until minute 66: about **$64K** (13.2 degraded VM-hours, a tier-0 Sev-1) vs $458 with "
+    "BlastRadius, at illustrative rates we set (policy.yaml).",
+    "**Operator time:** hours of cross-team analysis become a verified 42-asset plan in about 3 s with offline LLM "
+    "stand-ins; hosted-LLM time is not yet measured (target under 5 minutes).",
+    "**HPE levers:** stickier GreenLake Intelligence, a reason to run the whole stack on HPE, fewer support escalations.",
+    "**Roadmap:** P1 twin -> P2 Q1 2027 HPE IT pilot (read-only COM/Central/Mist, rollback-feasibility checks) -> P3 "
+    "GreenLake Intelligence agent with ServiceNow CAB, Zerto, Apstra -> P4 AI factories.",
 ]
 
 ARCH_TEXT = ("A checkpointed LangGraph state machine orchestrates ten agents. Agents see the estate only through five MCP "
-             "servers shaped like Compute Ops Management, Aruba Central/Mist, Morpheus and OpsRamp; every tool call is stored "
-             "as citable evidence. HPE's GreenLake devices MCP server (gl-mcp) attaches read-only; an A2A endpoint and "
-             "\"Ask BlastRadius\" answer questions from read-only tools.")
+             "servers that mimic Compute Ops Management, Aruba Central/Mist, Morpheus and OpsRamp over the digital twin; "
+             "every tool call is stored as citable evidence. An adapter for HPE's GreenLake devices MCP server (gl-mcp, "
+             "read-only) is built but not yet run live. An A2A endpoint and \"Ask BlastRadius\" answer from read-only tools.")
 
 HOW = [
     "**Intake:** the LLM turns the intent into a typed change request (unknown names dropped).",
@@ -117,9 +118,10 @@ HOW = [
     "**Plan and optimise:** the Planner, given memory rules from past rejections, proposes waves and a cohort-covering "
     "canary; constraints, VM-by-VM evacuation and per-wave Blast-Radius Scores are computed in code; the optimiser re-orders "
     "within the same constraints.",
-    "**Verify:** Trust = 100 x evidence-weighted support - 15 per contradiction; under 80 or any contradiction means re-plan "
-    "with feedback, then solver fallback, then escalation.",
-    "**Approve:** LangGraph interrupt; HMAC-signed approval (1 signer canary, 2 distinct signers fleet) grants scoped write tokens.",
+    "**Verify:** Trust = evidence-weighted support (0-100, safety claims weigh most); under 80, a contradiction or an "
+    "unverifiable safety claim means re-plan with feedback, then solver fallback, then escalation.",
+    "**Approve:** LangGraph interrupt; HMAC-signed approval (1 approver for the canary, 2 distinct approvers for the fleet) grants "
+    "scoped write tokens.",
     "**Execute:** evacuate hosts, start switch upgrades, check dependents *during* the reboot, flash iLO then ROM (canary: "
     "probe after each component), soak.",
     "**Post-validate, learn:** thresholds (latency, drops, CRC, health, reachability, VM heartbeats) plus the peer test; "
@@ -128,34 +130,38 @@ HOW = [
 
 STACK = [
     "**LLMs (HPE-approved only):** OpenAI-compatible endpoint (NVIDIA NIM on HPE Private Cloud AI or the ChatHPE/GenAI Hub "
-    "gateway) or Azure OpenAI with function calling; Verifier at temperature 0, ideally on a "
-    "separate model; offline stand-ins for a reproducible demo.",
+    "gateway) or Azure OpenAI; Verifier at temperature 0, ideally a separate model; offline stand-ins for the demo.",
     "**Frameworks:** LangGraph 1.x, MCP Python SDK 2.x (5 servers, 26 tools), A2A JSON-RPC, NetworkX, BM25 retrieval, "
     "pure-Python statistics, annealing and Monte Carlo, Pydantic, YAML policy, SQLite ledger, Streamlit, Docker; 203 pytest tests.",
 ]
 
 RAI = (
-    "**Responsible AI and governance:** one signer for the canary and two distinct signers for the fleet, nothing written "
-    "unsigned; every claim links to evidence or defaults to Unverifiable, contradictions block; write allow-list, approved "
-    "scope, rate limit and kill switch in code; tamper-evident hash-chained ledger; synthetic data, secrets redacted before "
-    "prompts; the A2A endpoint and Ask BlastRadius are read-only."
+    "**Responsible AI and governance:** no write without approval; contradictions block; claims cite evidence or "
+    "default to Unverifiable; allow-list, scope, rate limit and kill switch in code; HMAC-keyed hash-chained ledger; "
+    "synthetic data, secrets redacted; A2A and Ask are read-only. Production needs SSO approver identities (the PoC "
+    "signs names with one service key) and an off-host ledger anchor."
 )
 
 DEMO = [
     f"**Code:** {REPO} · **Video:** [Brightidea link]",
-    "**PoC (twin of one Bangalore pod: 40 ProLiant Gen11, 504 VMs, 2 ToR pairs, Alletra):** the naive plan puts both VSX "
-    "members in wave 1 (504 VMs incl. payments-db lose service; Trust 0 vs. self-reported 91; a false CVE claim contradicted); "
-    "the optimised re-plan scores Trust 98, covers all 3 configuration cohorts, pre-mortem tier-0 risk 0.75% (naive: 100%). "
-    "A 3.9x NIC-latency regression on a NIC-229.x host (Mann-Whitney p = 4.4e-16 vs 15 peers) auto-halts and rolls back; the "
-    "next run defers exactly the 16 affected hosts and its first draft passes. Execution is simulated; twin IDs are fictitious.",
+    "**PoC (twin of one Bangalore pod: 40 ProLiant Gen11, 504 VMs, 2 ToR pairs, Alletra):** the naive plan puts both "
+    "members of the R1 Aruba VSX switch pair in wave 1 (504 VMs incl. payments-db lose service; Trust 0 vs. self-reported "
+    "91); the optimised re-plan scores Trust 98, covers all 3 cohorts, pre-mortem tier-0 "
+    "risk 0.75% (naive: 100%). After the ROM flash a canary host on NIC firmware 229.x shows 3.9x NIC latency "
+    "(Mann-Whitney p < 0.001 vs 15 peers): auto-halt and rollback; the next run defers exactly the 16 hosts still on NIC 229.x.",
+    "**Limits:** execution and rollback are simulated on fictitious twin data. Real rollback needs unbuilt checks: iLO's "
+    "downgrade policy can require extra privilege or forbid downgrades, and iLO and ROM versions depend on each other. "
+    "Offline, learning gains are by construction; hosted-LLM and gl-mcp paths are untested live; p-values pool "
+    "autocorrelated samples (evidence strength, not error rates).",
 ]
 
 REFERENCES = [
-    "HPE press releases: unified agentic IT operations with GreenLake and Morpheus (June 17, 2026); self-driving networks (June 16, 2026).",
-    "HPE Compute Ops Management; HewlettPackard/gl-mcp; MCP specification; Linux Foundation A2A (April 9, 2026).",
-    "Uptime Institute outage analysis 2026 and survey 2025; ITIC 2024 hourly cost of downtime.",
+    "HPE press releases, June 2026: agentic IT operations; self-driving networks.",
+    "HPE Compute Ops Management; HewlettPackard/gl-mcp; HPE iLO 6 user guide (downgrade policy); MCP specification; "
+    "A2A protocol (Linux Foundation, June 2025).",
+    "Uptime Institute Outage Analysis 2026 and Survey 2025; ITIC 2024 Hourly Cost of Downtime.",
     "Gartner, \"Agentic AI Fails Where Governance Stops\" (Sept 2026); AI in I&O Hype Cycle 2026.",
-    "Open source (OSS_DISCLOSURE.md): LangGraph, MCP SDK, Pydantic, PyYAML (MIT); NetworkX, pandas, Altair (BSD-3); Streamlit (Apache-2.0).",
+    "Open source: LangGraph, MCP SDK, Pydantic, NetworkX, Streamlit (OSS_DISCLOSURE.md).",
 ]
 
 
@@ -321,7 +327,7 @@ def build() -> Path:
     pic = _new_par_after(p, "Normal")
     pic.alignment = WD_ALIGN_PARAGRAPH.CENTER
     pic.paragraph_format.space_after = Pt(2)
-    pic.add_run().add_picture(str(ROOT / "docs" / "img" / "architecture.png"), width=Inches(5.5))
+    pic.add_run().add_picture(str(ROOT / "docs" / "img" / "architecture.png"), width=Inches(5.1))
     cap = _new_par_after(pic, "Normal")
     cap.alignment = WD_ALIGN_PARAGRAPH.CENTER
     r = cap.add_run("Figure 1. BlastRadius architecture: LangGraph supervisor, agents, MCP tool layer and governance controls.")

@@ -92,8 +92,6 @@ business:                       # cost replay (business.py) only; every value is
   missed_detection_delay_min: 240      # illustrative: used when only the statistical canary judge saw the regression
   rebalance_delay_min: 0               # illustrative: DRS returns a host's VMs this long after exit-maintenance
   sensitivity_detection_delays_min: [0, 60, 240]  # illustrative: detection delays shown in the sensitivity rows
-  downtime_cost_per_hour_usd: 300000   # sourced: ITIC 2024 floor for mid-size/large enterprises (cross-check only, not in any total)
-  assumed_outage_hours: 4              # illustrative: outage length for the ITIC cross-check
 
 redaction:
   patterns:

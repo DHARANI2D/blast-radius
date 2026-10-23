@@ -3,13 +3,13 @@
 **Know what breaks before you break it.**
 HPE Agentic AI Hackathon India 2026 · Track 3: Autonomous Infrastructure Optimization (pre/during/post upgrade validation)
 
-BlastRadius is a LangGraph multi-agent system, connected to infrastructure through the Model Context Protocol (MCP), that turns a firmware or configuration upgrade into a verified, staged and reversible operation:
+BlastRadius is a LangGraph multi-agent system, connected to infrastructure through the Model Context Protocol (MCP), that plans a firmware or configuration upgrade as verified, staged canary waves with automatic halt and rollback:
 
-1. **Discover** a live dependency graph across compute, network, virtualization and storage.
+1. **Discover** a dependency graph across compute, network, virtualization and storage from MCP tool calls.
 2. **Assess** every asset from release notes, advisories, incidents (including lessons it learned itself) and the *simulated* impact on everything downstream of it.
 3. **Plan, optimise and verify.** An LLM proposes canary waves, helped by rules it learned from earlier rejected plans. A risk-aware optimiser re-sequences them under the same hard constraints. Code rejects unsafe waves, and an independent **Verifier** checks every claim against tool evidence it gathers itself and computes a **Trust Score**. A Monte Carlo **pre-mortem** estimates the chance of a tier-0 outage.
 4. **Approve.** A human signs a one-page go/no-go card (two signers for fleet-wide waves).
-5. **Execute and validate.** A canary covering every configuration cohort runs first. Golden signals are judged against fixed thresholds *and* statistically against un-upgraded peers over the same minutes. Any regression auto-halts and rolls back. A probe after each flashed component pins the culprit, and the failure becomes a lesson that protects the next change.
+5. **Execute and validate.** A canary covering every configuration cohort runs first. Golden signals are judged against fixed thresholds *and* statistically against un-upgraded peers over the same minutes. Any regression auto-halts and rolls back. A probe after each flashed component points to the culprit, and the failure becomes a lesson that protects the next change.
 
 Every step lands in a hash-chained audit ledger. A red-team benchmark measures how well the Verifier and the constraint checker catch false claims and unsafe plans.
 
@@ -43,12 +43,12 @@ Intent: *"Upgrade iLO 6 and System ROM on clusters PROD-BLR-07 and PROD-BLR-08 a
 | Hallucination caught | The Verifier contradicts *"System ROM U54 v2.32 remediates SYN-CVE-2026-1105"* (the release notes list other CVEs; an advisory says the fix is iLO 6 v1.66) and 4 other claims. **Trust Score 0 against a self-reported 91.** The rejection becomes **15 planner-memory rules**. |
 | Re-plan, optimise, verify | Staggered VSX members, the single-homed host scheduled with its switch, at most 5 hosts per cluster per wave, and a **cohort-coverage canary** (one host from each of 3 configuration cohorts). The **optimiser** moves `tor-r1-a` and its single-homed payments host from wave 2 to wave 5, after 81% of the plan has been validated (objective -16%). The planner re-explains the final waves: **Trust Score 98**. |
 | Go / no-go | Canary covers 3/3 cohorts (a risk-ranked canary would cover 2/3). **Pre-mortem** (assumption-driven): P(tier-0 outage) **0.75%** for the accepted plan vs **100%** for the first draft. HMAC-signed approval, scoped write tokens. |
-| Canary regression | ROM U54 v2.32 with NIC firmware 229.x raises NIC latency **3.9x** on `blr-esx-01`. Fixed thresholds and the **statistical judge** agree (4.17x vs 15 cohort peers over the same minutes, Mann-Whitney p = 4.4e-16, the smallest p an exact rank test of 10 vs 150 samples can give). Auto-halt, write access revoked, rollback, signals recover. |
+| Canary regression | ROM U54 v2.32 with NIC firmware 229.x raises NIC latency **3.9x** on `blr-esx-01`. Fixed thresholds and the **statistical judge** agree (4.17x vs 15 cohort peers over the same minutes, Mann-Whitney p < 0.001; the exact test bottoms out at 4.4e-16 for 10 vs 150 samples, and minute samples from one host are autocorrelated, so read p as evidence strength). Auto-halt, write access revoked, rollback, signals recover. |
 | Diagnosis and counterfactual | A probe after each component shows `blr-esx-01` was normal after iLO and broke right after the ROM. Control `blr-esx-03` (same model, NIC 230.x) stayed healthy, so the lesson is scoped to **NIC 229.x**, with the fix. A conventional risk-ranked canary would have passed: wave 2 would have flashed 5 affected hosts, including the one running `payments-db-01`, and waves 3-5 another 11 had its post-check missed it (16 hosts, 176 VMs). |
-| Business impact | Replayed on the twin: **~$64K avoided** against the conventional process (risk-ranked canary on the greedy ordering: Sev-1, 13 degraded VM-hours incl. tier-0), versus $458 for what actually happened. With the optimiser's ordering alone it would have been ~$4.6K. If the fleet post-check had missed it for 4 h: ~$409K. All rates are illustrative rates (policy.yaml); only the ITIC cross-check is sourced. |
+| Business impact | Replayed on the twin: **~$64K avoided** against the conventional process (risk-ranked canary on the greedy ordering: Sev-1, 13 degraded VM-hours incl. tier-0), versus $458 for what actually happened. With the optimiser's ordering alone it would have been ~$4.6K. If the fleet post-check had missed it for 4 h: ~$409K. All rates are illustrative (policy.yaml), not measured costs. |
 | Learning | Press **New run**: memory gives the planner 12 rules and **attempt 1 passes first time**. Exactly the **16 hosts still on NIC 229.x are deferred**. The optimiser cuts the remaining plan from 7 waves to 5 (231 → 165 min), and all 26 assets complete. |
-| Analysis time | Intake to go/no-go card (two plan attempts, 2,500 optimiser iterations, verification, pre-mortem) takes **about 3 s** of compute with the offline stand-ins: 2.8 s in-process, 3.4 s over MCP (98 tool calls; the optimiser alone about 1 s). A hosted model adds its own latency. |
-| Red team | 93/97 false claims contradicted, 0 dangerous misses, 0/69 false blocks, 21/21 unsafe plan mutations rejected, 8/8 injected hallucinations caught. |
+| Analysis time | Intake to go/no-go card (two plan attempts, 2,500 optimiser iterations, verification, pre-mortem) takes **about 3 s** of compute with the offline stand-ins: 2.8 s in-process, 3.4 s over MCP (98 tool calls; the optimiser alone about 1 s). End-to-end time with a hosted model has not been measured yet (target: under 5 minutes). |
+| Red team | On a corpus generated from the twin: 93/97 false claims contradicted, 0 dangerous misses, 0/69 false blocks, 21/21 unsafe plan mutations rejected, 8/8 injected hallucinations caught. It measures the gate, not real-world recall. |
 | Ask BlastRadius | *"Why is tor-r1-a the riskiest asset?"* is answered from MCP tool calls only, every sentence cited, and the answer re-verified. |
 
 | Plan & Verifier | Canary rollback |
@@ -95,7 +95,7 @@ Intent: *"Upgrade iLO 6 and System ROM on clusters PROD-BLR-07 and PROD-BLR-08 a
 | False typed claims contradicted (22 mutation operators) | **93/97** (96%, 95% CI 90-98%); the other 4 flagged Unverifiable |
 | Dangerous misses (false claim labelled Supported) | **0** (95% CI 0-4%) |
 | False blocks on true claims | **0/69** (95% CI 0-5%) |
-| Unsafe plan mutations rejected by the hard constraints | **21/21** |
+| Unsafe plan mutations rejected by the hard constraints | **21/21** (95% CI 84-100%) |
 | Injected hallucinations caught / plans blocked | **8/8** / 8/8 |
 | Offline claim-extractor paraphrase coverage (canonical / dev / held-out) | 100% / 100% / 11% |
 | False sentences that still pass the gate, labelled Unverifiable (canonical / dev / held-out) | 4/97 / 8/194 / 111/194 |
@@ -112,17 +112,17 @@ Ground truth is read from the raw twin and knowledge records, not through the ch
 
 | Scenario | Fixed 2x rule | Fixed 1.3x rule | Statistical judge |
 |---|---|---|---|
-| Demo regression (~4x) | catches | catches | catches (p = 4.4e-16, the exact-test minimum) |
-| Subtle regression (1.36x) | **misses** | misses | **catches** (p = 5e-8) |
+| Demo regression (~4x) | catches | catches | catches (p < 0.001) |
+| Subtle regression (1.36x) | **misses** | misses | **catches** (p < 0.001) |
 | Backup job slows every host | passes | **false alarm on all 3 canary hosts** | passes (peers slowed down too) |
 
-- **Per-component probe and controls.** A probe after each flashed component pins the culprit on the regressed host itself. Healthy canary hosts that got the same version act as controls that scope the lesson.
+- **Per-component probe and controls.** A probe after each flashed component points to the culprit on the regressed host itself. Healthy canary hosts that got the same version act as controls that scope the lesson.
 
 ### Optimiser, pre-mortem, business impact, memory
 
 - **Optimiser** (`optimizer.py`). Simulated annealing over move, swap, merge, split and reorder moves, under the same per-wave rules as the constraint checker, with a final full check. The objective is J = minutes + Σ Blast-Radius Score + w·progressive exposure + w·waves; exposure penalises risky or tier-0-carrying assets in early waves. On the first run it reorders (-16%); on the learning re-run it cuts 7 waves to 5. The canary is never changed.
 - **Pre-mortem** (`premortem.py`). Per wave, assets fail to come back and other infrastructure fails in the background, at **assumed** rates scaled by the risk score. Single failures are counted exactly and multi-failure worlds are sampled. It reports P(tier-0 outage), the share attributable to the change, expected and P95 VMs lost, and the most likely and most severe scenarios. All of it is assumption-driven and labelled so.
-- **Business impact** (`business.py`). Replays the conventional process on the twin (risk-ranked canary, greedy ordering): when affected hosts return to service, when a post-check would detect the regression, and how many degraded VM-hours each tier accumulates. Cost uses per-tier rates, a Sev-1 and diagnosis hours: illustrative rates (policy.yaml, `business:`). ITIC's $300K/h, the only sourced figure, appears only as a labelled cross-check.
+- **Business impact** (`business.py`). Replays the conventional process on the twin (risk-ranked canary, greedy ordering): when affected hosts return to service, when a post-check would detect the regression, and how many degraded VM-hours each tier accumulates. Cost uses per-tier rates, a Sev-1 and diagnosis hours: illustrative rates (policy.yaml, `business:`). No company-wide downtime rate (such as ITIC's $300K/h) is applied: those describe a whole business outage, not one pod's degraded VMs.
 - **Planner memory** (`memory.py`). Every rejected attempt becomes normalised, evidence-backed rules, such as *"Never put tor-r1-a and tor-r1-b in the same wave..."* and *"Do not claim ROM U54 v2.32 fixes SYN-CVE-2026-1105..."*. Rules relevant to the next change are retrieved into the planner's prompt, and the first-attempt pass rate is tracked with and without memory.
 
 ### Interoperability
@@ -133,11 +133,11 @@ Ground truth is read from the raw twin and knowledge records, not through the ch
 
 ## Responsible AI and governance
 
-- **Human in the loop:** analysis is automatic; the canary needs 1 signer; fleet waves need 2 *distinct* signers. Every write tool checks an HMAC token scoped to `(run, asset, action, version)` on the MCP server side: the canary approval grants only wave 1, the fleet approval the remaining waves, firmware writes only at the approved target version (or the captured previous version for a rollback), and every grant is revoked when the run ends. Recording a learned incident is a token-gated write too: the Reporter gets a token for that run and incident only after a rollback, and an incident recorded by another run is never overwritten. The A2A endpoint and the Investigator are read-only.
+- **Human in the loop:** analysis is automatic; the canary needs 1 signer; fleet waves need 2 *distinct* approver names. The PoC signs those names with one service key, so it cannot prove two different people approved; production needs per-user (SSO) identities. Every write tool checks an HMAC token scoped to `(run, asset, action, version)` on the MCP server side: the canary approval grants only wave 1, the fleet approval the remaining waves, firmware writes only at the approved target version (or the captured previous version for a rollback), and every grant is revoked when the run ends. Recording a learned incident is a token-gated write too: the Reporter gets a token for that run and incident only after a rollback, and an incident recorded by another run is never overwritten. The A2A endpoint and the Investigator are read-only.
 - **Grounding and evaluation:** every claim links to evidence; Unverifiable is the default; contradictions and unverifiable safety claims block. The red-team benchmark measures the gate.
 - **Deterministic guardrails:** redundancy, capacity, cohort coverage, deferral and window rules are code, never prompt text. A write allow-list, approved scope only, a per-wave rate limit and a kill switch back them up.
 - **Honest numbers:** probabilities and dollars are labelled assumption-driven or illustrative wherever they appear, with the assumptions listed.
-- **Auditability:** the ledger stores prompt hashes, model IDs, tool calls, claims, scores, pre-mortem assumptions, approvals, actions and outcomes. `python -m blastradius ledger verify` recomputes the chain, which is keyed with `BR_SIGNING_KEY` (HMAC-SHA256) and checked against a signed head anchor beside the database, so edited, re-chained or deleted newest entries all fail verification.
+- **Auditability:** the ledger stores prompt hashes, model IDs, tool calls, claims, scores, pre-mortem assumptions, approvals, actions and outcomes. `python -m blastradius ledger verify` recomputes the chain, which is keyed with `BR_SIGNING_KEY` (HMAC-SHA256) and checked against a signed head anchor beside the database, so edited, re-chained or deleted newest entries all fail verification for anyone without the key. The anchor sits beside the database, so a production deployment should also keep it off-host (e.g. WORM storage).
 - **Data protection:** synthetic data only. Secrets and e-mail addresses are redacted before any prompt. Configure only HPE-approved LLM endpoints.
 
 ## Using an HPE-approved LLM
@@ -158,8 +158,9 @@ Prompts are in `blastradius/prompts/`. LLM outputs are validated against Pydanti
 ## Honest scope
 
 - **Execution is simulated.** Write tools act on a digital twin with injected faults. Real COM, Central or Mist writes would need lab hardware and change approvals.
+- **Rollback feasibility is not checked yet.** On the twin, rollback re-flashes the captured previous version. On real ProLiant servers, iLO's downgrade policy can require an extra privilege or forbid downgrades outright, and iLO and System ROM versions depend on each other, so a production version must check both before approval.
 - **Offline mode is a stand-in, and says so.** Its first planner draft is scripted to make the mistakes an ungrounded model makes, and is labelled *"scripted ungrounded draft"* on screen. Its memory-conditioned first draft switches to the corrected wording when retrieved rules cover those mistakes, so the memory gain in offline mode is by construction. With a live model, rules reach the model only through the prompt, and the gain has to be measured. The Investigator's offline router and the judge's offline lexical-grounding check are stand-ins too. Record the demo with an HPE-approved model.
-- **Numbers are model outputs.** Pre-mortem probabilities come from assumed failure rates. Dollar figures use illustrative rates (policy.yaml), listed with their source in the UI and the report; only the ITIC cross-check is sourced. Statistical p-values pool samples from control hosts, so read them as evidence strength, not exact error rates.
+- **Numbers are model outputs.** Pre-mortem probabilities come from assumed failure rates. Dollar figures use illustrative rates (policy.yaml), listed with their source in the UI and the report. Statistical p-values pool samples from control hosts, and minute samples from one host are autocorrelated, so read them as evidence strength, not exact error rates.
 - **Not yet run live:** the GreenLake adapter (no credentials here) and the live-model path end to end (no approved endpoint here; it is tested against fake OpenAI-compatible servers).
 - **Synthetic data.** Firmware versions, CVE IDs (`SYN-CVE-…`), advisories (`ADV-SYN-…`) and incidents are fictitious.
 - Retrieval is BM25 (no vector DB); Chroma/pgvector is planned for Phase 2.

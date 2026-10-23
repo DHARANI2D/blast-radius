@@ -639,8 +639,7 @@ def build_graph(sv):
                                                "detected_wave": opt["counterfactual"]["detected_wave"]}
             upd["business_impact"] = biz
             upd["avoided_cost_usd"] = biz["avoided"]["usd"]
-            log(state, "agent:reporter", "business_impact", {k: biz.get(k) for k in ("headline", "avoided", "assumptions", "itic_reference",
-                                                                                     "with_optimised_order")})
+            log(state, "agent:reporter", "business_impact", {k: biz.get(k) for k in ("headline", "avoided", "assumptions", "with_optimised_order")})
             tl += _t("reporter", "business_impact", biz["headline"]["text"], "warn")
         upd["timeline"] = tl
         return upd

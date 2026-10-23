@@ -168,8 +168,8 @@ if b1.button("Analyse change", type="primary", width="stretch"):
 b2.caption("Example: *Upgrade iLO 6 and System ROM on clusters PROD-BLR-07 and PROD-BLR-08 and the ToR switch pair to the latest baseline this Saturday 10pm*")
 
 if not run:
-    st.info("Enter a change intent and press **Analyse change**. BlastRadius builds a live dependency graph across compute, "
-            "network, virtualization and storage, plans canary waves, verifies every claim against tool evidence, and "
+    st.info("Enter a change intent and press **Analyse change**. BlastRadius builds a dependency graph from MCP tool calls "
+            "across compute, network, virtualization and storage, plans canary waves, verifies every claim against tool evidence, and "
             "only executes after a human approves.")
     st.stop()
 
@@ -596,8 +596,6 @@ with main:
                         st.dataframe(pd.DataFrame(biz["sensitivity"]), hide_index=True, width="stretch")
                         st.dataframe(pd.DataFrame([{**a, "value": str(a["value"])} for a in biz["assumptions"]]),
                                      hide_index=True, width="stretch")
-                        itic = biz["itic_reference"]
-                        st.caption(f"Cross-check only (ITIC 2024): flat ${itic['flat_usd']:,.0f}; not used in any total.")
                 if state.get("lesson"):
                     les = state["lesson"]
                     st.markdown(f"<div class='br-banner-amber'><b>Learned {les['id']}:</b> {les['symptom']} {les['lesson']} "

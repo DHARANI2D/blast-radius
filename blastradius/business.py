@@ -26,9 +26,9 @@ counterfactual on the twin and price what the replay shows:
    culprit, manual otherwise). The same replay on the approved plan gives what
    actually happened, and avoided = counterfactual - actual.
 
-Every rate is returned with its value and source. The ITIC figure
-(``downtime_cost_per_hour_usd`` x ``assumed_outage_hours``) is kept only as a
-labelled cross-check and never enters the totals.
+Every rate is returned with its value and source. Company-wide downtime figures
+(such as ITIC's hourly cost) describe a whole business outage, not one pod's
+degraded VMs, so none is applied here.
 """
 
 from __future__ import annotations
@@ -62,8 +62,6 @@ def _rates(policy: Policy) -> dict:
         "missed_delay": int(g("business.missed_detection_delay_min", 240)),
         "rebalance_delay": int(g("business.rebalance_delay_min", 0)),
         "sensitivity": [int(x) for x in g("business.sensitivity_detection_delays_min", [0, 60, 240])],
-        "itic_rate": float(g("business.downtime_cost_per_hour_usd", 300000)),
-        "itic_hours": float(g("business.assumed_outage_hours", 4)),
     }
 
 
@@ -75,17 +73,6 @@ def _role(vm: str) -> str:
     """'payments-db-01' -> 'payments-db': instances of one role can stand in for each other."""
     stem, _, num = vm.rpartition("-")
     return stem if stem and num.isdigit() else vm
-
-
-def _union_minutes(intervals: list[tuple[int, int]]) -> int:
-    total, cur = 0, None
-    for s, e in sorted(i for i in intervals if i[1] > i[0]):
-        if cur and s <= cur[1]:
-            cur = (cur[0], max(cur[1], e))
-        else:
-            total += (cur[1] - cur[0]) if cur else 0
-            cur = (s, e)
-    return total + ((cur[1] - cur[0]) if cur else 0)
 
 
 # ------------------------------------------------------------------ replay
@@ -364,15 +351,6 @@ def counterfactual_impact(lesson: dict, plan: dict, topo: Topology, policy: Poli
                             "vm_hours": s["vm_hours"], "tier0_vms": s["tier0_vms"], "counterfactual_usd": s["cost"]["total_usd"],
                             "avoided_usd": _usd(earned * (s["cost"]["total_usd"] - act["cost"]["total_usd"]))})
 
-    t0_window = _union_minutes([(h["back_in_service_min"] + rates["rebalance_delay"], h["evacuated_min"])
-                                for h in cf["hosts"] if h["exposed_min"] and h["tier0_vms"]])
-    itic = {"label": "Cross-check only, not used in the totals", "source": "ITIC 2024",
-            "downtime_cost_per_hour_usd": rates["itic_rate"], "assumed_outage_hours": rates["itic_hours"],
-            "flat_usd": _usd(rates["itic_rate"] * rates["itic_hours"]),
-            "tier0_window_min": t0_window,
-            "tier0_window_at_itic_rate_usd": _usd(rates["itic_rate"] * t0_window / 60),
-            "note": "the ITIC rate is for a full business outage; applying it to a degraded tier-0 window is an upper bound"}
-
     twin_check = None
     if actual_exec is not None:
         idx = actual_exec.get("index", 0)
@@ -404,7 +382,6 @@ def counterfactual_impact(lesson: dict, plan: dict, topo: Topology, policy: Poli
         "avoided": avoided,
         "fleet_detection": fleet,
         "sensitivity": sensitivity,
-        "itic_reference": itic,
         "twin_check": twin_check,
         "assumptions": assumptions(policy, rates),
     }
@@ -449,9 +426,6 @@ def assumptions(policy: Policy, rates: dict) -> list[dict]:
          "note": "loaded engineering cost"},
         {"key": "business.diagnosis_engineer_hours", "value": f"manual {dh['manual']:g} h, automated {dh['automated']:g} h",
          "source": illus("business.diagnosis_engineer_hours"), "note": "manual when the regression surfaces in a fleet wave (no per-component probe)"},
-        {"key": "business.downtime_cost_per_hour_usd x business.assumed_outage_hours",
-         "value": f"${rates['itic_rate']:,.0f}/h x {rates['itic_hours']:g} h", "source": "ITIC 2024",
-         "note": "cross-check only; not used in any total"},
     ]
 
 
@@ -519,8 +493,7 @@ def explain(impact: dict) -> str:
         f"({act['vm_hours']:.1f} degraded VM-hours at most, {'a Sev-1' if ac['sev1'] else 'no Sev-1'}, automated diagnosis): "
         f"${ac['total_usd']:,.0f}. Avoided: ${av['usd']:,.0f}. Had the post-check missed it, all "
         f"{len(cf['if_undetected']['hosts'])} affected fleet hosts ({cf['if_undetected']['vms']} VMs) would be flashed wave by "
-        f"wave (see the sensitivity rows). Dollar rates are illustrative policy assumptions; the ITIC figure "
-        f"(${impact['itic_reference']['flat_usd']:,.0f}) is a cross-check only."
+        f"wave (see the sensitivity rows). Dollar rates are illustrative policy assumptions, not measured costs."
     )
 
 
@@ -548,7 +521,7 @@ def cost_table(impact: dict) -> list[dict]:
 
 def markdown(impact: dict) -> str:
     """Report section (signed post-change report)."""
-    cf, itic = impact["counterfactual"], impact["itic_reference"]
+    cf = impact["counterfactual"]
     lines = ["## Business impact (derived from the twin)", "", f"**{impact['headline']['text']}**", "", impact["explanation"], "",
              "| Item | Counterfactual | Actual | Avoided |", "|---|---:|---:|---:|"]
     for r in cost_table(impact):
@@ -560,22 +533,17 @@ def markdown(impact: dict) -> str:
         lines += ["", "Sensitivity (detection delay after the first affected fleet wave's soak):"]
         lines += [f"- +{s['detection_delay_min']} min: {s['hosts_exposed']} hosts, {s['vm_hours']:.1f} VM-hours, "
                   f"{len(s['tier0_vms'])} tier-0 VMs, avoided ${s['avoided_usd']:,.0f}" for s in impact["sensitivity"]]
-    lines += ["", f"Cross-check only ({itic['source']}): ${itic['downtime_cost_per_hour_usd']:,.0f}/h x "
-              f"{itic['assumed_outage_hours']:g} h = ${itic['flat_usd']:,.0f}; the simulated tier-0 window "
-              f"({itic['tier0_window_min']} min) at that rate is ${itic['tier0_window_at_itic_rate_usd']:,.0f} ({itic['note']}).", "",
-              "Assumptions:"]
+    lines += ["", "Assumptions:"]
     lines += [f"- `{a['key']}` = {a['value']} ({a['source']}): {a['note']}" for a in impact["assumptions"]]
     return "\n".join(lines)
 
 
 def summary_lines(impact: dict) -> list[str]:
     """Short form for the CLI demo summary."""
-    h, cf, act, itic = impact["headline"], impact["counterfactual"], impact["actual"], impact["itic_reference"]
+    h, cf, act = impact["headline"], impact["counterfactual"], impact["actual"]
     return [
         h["text"],
         f"  counterfactual ${h['counterfactual_usd']:,.0f} ({cf['vm_hours']:.1f} degraded VM-hours, "
         f"{'Sev-1' if cf['cost']['sev1'] else 'no Sev-1'}, {cf['cost']['diagnosis_engineer_hours']:g} h diagnosis) vs actual "
         f"${h['actual_usd']:,.0f} ({act['vm_hours']:.1f} VM-hours, {'Sev-1' if act['cost']['sev1'] else 'no Sev-1'})",
-        f"  cross-check only (ITIC 2024): ${itic['flat_usd']:,.0f} flat; simulated tier-0 window {itic['tier0_window_min']} min "
-        f"= ${itic['tier0_window_at_itic_rate_usd']:,.0f}",
     ]
