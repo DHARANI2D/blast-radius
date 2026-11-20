@@ -86,6 +86,9 @@ def servers() -> list[dict]:
             "memoryGB": HOST_MEM_GB,
             "cpuCores": HOST_CORES,
             "state": {"health": "OK", "power": "ON"},
+            # iLO firmware downgrade policy: AllowDowngrade, RecoveryDowngrade (needs the Recovery Set
+            # privilege) or NoDowngrade (permanently disallowed). It decides whether a rollback can work.
+            "ilo": {"downgradePolicy": "AllowDowngrade"},
             "firmware": {
                 "iLO 6": ilo,
                 "System ROM": f"{rom_family} v2.16",

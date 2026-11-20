@@ -56,10 +56,12 @@ def build(servers: list[str], server_info: dict[str, dict], changed: list[str]) 
 
 
 def eligible(host: str, topo: Topology, policy: Policy, single: set[str] | None = None) -> bool:
-    """A host may be a canary if it is dual-homed and runs no tier-0/1 workloads."""
+    """A host may be a canary if it is dual-homed, runs no tier-0/1 workloads and can be rolled back: the canary is
+    the wave that is expected to fail, so its firmware must be revertible (iLO downgrade policy)."""
     single = {s["server"] for s in topo.single_homed()} if single is None else single
     tier = topo.most_critical_tier(host)
-    return host not in single and (tier is None or tier >= int(policy.get("planning.canary_max_tier", 2)))
+    return (host not in single and topo.reversible(host)
+            and (tier is None or tier >= int(policy.get("planning.canary_max_tier", 2))))
 
 
 def required(cohorts: list[dict], topo: Topology, policy: Policy) -> list[dict]:

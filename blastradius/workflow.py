@@ -361,6 +361,19 @@ def build_graph(sv):
                          "captured at execution time (" + "; ".join(f"{c} -> {'/'.join(sorted(v))}" for c, v in sorted(prev.items()))
                          + "), re-check signals, record the lesson.")
         top = sorted(risk["assets"].values(), key=lambda r: -r["score"])[:6]
+        # Rollback feasibility, from inventory: a host whose iLO refuses downgrades cannot be reverted automatically.
+        topo = topo_of(state)
+        hosts = sorted({a for w in p["waves"] for a in w["assets"] if a in topo.servers})
+        policies = {h: topo.downgrade_policy(h) for h in hosts}
+        fixed = [{"host": h, "policy": policies[h]} for h in hosts if not topo.reversible(h)]
+        unknown = [h for h in hosts if policies[h] == "unknown"]
+        feasibility = {"hosts": len(hosts), "allow": len(hosts) - len(fixed) - len(unknown), "blocked": fixed, "unknown": unknown}
+        feasibility_warnings = (
+            ([f"{len(fixed)} host(s) cannot be rolled back automatically (iLO downgrade policy): "
+              + ", ".join(f"{x['host']} ({x['policy']})" for x in fixed[:6])
+              + "; a regression there needs a privileged downgrade or a fix-forward"] if fixed else [])
+            + ([f"rollback feasibility not verified for {len(unknown)} host(s): inventory reports no iLO downgrade policy"]
+               if unknown else []))
         c = {
             "scope": scope,
             "run_id": state["run_id"],
@@ -378,12 +391,14 @@ def build_graph(sv):
             "deferred": risk["deferred"],
             "top_risks": [{"asset": r["asset"], "score": r["score"], "reasons": r["reasons"][:2]} for r in top],
             "rollback_plan": rollback_plan,
+            "rollback_feasibility": feasibility,
             "canary_coverage": cons.get("canary_coverage"),
             "premortem": state.get("premortem"),
             "premortem_compare": state.get("premortem_compare"),
             "risk_ranked_coverage": _risk_ranked_coverage(state),
             "warnings": list(state.get("intake_warnings") or [])
-            + ([f"no eligible low-tier canary; canary is {cons['canary_fallback']}"] if cons.get("canary_fallback") else []),
+            + ([f"no eligible low-tier canary; canary is {cons['canary_fallback']}"] if cons.get("canary_fallback") else [])
+            + feasibility_warnings,
             "optimizer_stopped_by": (next((a for a in reversed(state["attempts"]) if a.get("passed")), {})
                                      .get("optimization") or {}).get("stats", {}).get("stopped_by"),
         }

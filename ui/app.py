@@ -22,6 +22,7 @@ sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from blastradius.agents.investigator import InvestigatorAgent  # noqa: E402
+from blastradius.canary_stats import fmt_p  # noqa: E402
 from blastradius.cli import DEFAULT_INTENT  # noqa: E402
 from blastradius.config import Settings  # noqa: E402
 from blastradius.constraints import wave_impact  # noqa: E402
@@ -32,6 +33,11 @@ from blastradius.workflow import Engine  # noqa: E402
 from graph_view import build_dot  # noqa: E402
 
 st.set_page_config(page_title="BlastRadius Control Tower", page_icon="💥", layout="wide")
+
+def md(text: str) -> str:
+    """Text for st.markdown: Streamlit reads a pair of '$' as a LaTeX formula, so dollar amounts are escaped."""
+    return text.replace("$", "\\$")
+
 
 LABEL_ICON = {"Supported": "✅", "Contradicted": "❌", "Unverifiable": "❔"}
 LEVEL_ICON = {"info": "🔹", "warn": "🟠", "error": "🔴", "success": "🟢"}
@@ -118,6 +124,8 @@ with st.sidebar:
     st.markdown(f"**Planner:** `{sv.llm.model}`  \n**Verifier:** `{sv.verifier_llm.model}`")
     if sv.settings.offline:
         st.caption("Offline mode: deterministic LLM stand-ins. Set BR_LLM_MODE/BR_LLM_BASE_URL for an HPE-approved endpoint.")
+    if sv.settings.signing_key_source == "generated":
+        st.caption("Signing key: generated for this installation (runtime/signing.key). Set BR_SIGNING_KEY from a secret store in production.")
     st.divider()
     lessons = len(sv.kb.learned)
     st.markdown(f"**Learned incidents:** {lessons}")
@@ -203,7 +211,7 @@ with side:
     st.markdown("#### Agent timeline")
     box = st.container(height=640)
     for e in state.get("timeline", []):
-        box.markdown(f"{LEVEL_ICON.get(e['level'], '🔹')} **{e['agent']}** · {e['detail']}")
+        box.markdown(f"{LEVEL_ICON.get(e['level'], '🔹')} **{e['agent']}** · {md(e['detail'])}")
 
 topo = sv.runs.get(run["run_id"], {}).get("topo")
 risk = state.get("risk", {})
@@ -289,7 +297,7 @@ with main:
                     if c["ok"]:
                         st.markdown("<div class='br-banner-green'>All hard constraints satisfied.</div>", unsafe_allow_html=True)
                     for x in c["violations"][:8]:
-                        st.markdown(f"🚫 `{x['code']}` {x['message']}")
+                        st.markdown(f"🚫 `{x['code']}` {md(x['message'])}")
                     if len(c["violations"]) > 8:
                         st.caption(f"... and {len(c['violations']) - 8} more")
                     wdf = pd.DataFrame([{"wave": i["name"], "assets": len(w["assets"]), "BRS": i["brs"], "VMs lost": len(i["impacted_vms"]),
@@ -310,7 +318,7 @@ with main:
                         st.caption(f"Planner's draft rationale (before optimisation): Trust Score {vd['trust_score']:.0f}"
                                    + (f"; blocked: {'; '.join(vd['blocked_by'])}" if vd["blocked_by"] else ""))
                         for x in [x for x in vd["claims"] if x["label"] == "Contradicted"][:4]:
-                            st.markdown(f"{LABEL_ICON[x['label']]} {x['text']} - {x['explanation']}")
+                            st.markdown(f"{LABEL_ICON[x['label']]} {md(x['text'])} - {md(x['explanation'])}")
                 st.markdown("**Claims extracted from the planner's rationale**")
                 cdf = pd.DataFrame([{"": LABEL_ICON[x["label"]], "claim": x["text"], "verdict": x["label"], "why": x["explanation"],
                                      "evidence": ", ".join(x["evidence"])} for x in v["claims"]])
@@ -337,7 +345,7 @@ with main:
             st.caption(f"With memory: {ms['with_memory']['first_attempt_pass_rate']} · without: {ms['without_memory']['first_attempt_pass_rate']}. "
                        "Reset lab forgets these rules; New run keeps them.")
             for r in sorted(sv.memory.rules(), key=lambda r: -r["hits"])[:15]:
-                st.markdown(f"- `{r['hits']}x` **{r['key']}**: {r['guidance']}")
+                st.markdown(f"- `{r['hits']}x` **{r['key']}**: {md(r['guidance'])}")
         with st.expander("Red-team benchmark: how do we know the Trust Score works?"):
             extractor = "offline"
             if not sv.settings.offline:  # live mode: the deployed extractor can be benchmarked too, at a price
@@ -381,7 +389,7 @@ with main:
                 if inj and "error" in inj:
                     st.warning(inj["error"])
                 elif inj:
-                    st.markdown(f"🧪 **Injected (red-team test, not planner output):** \"{inj['sentence']}\"  \n"
+                    st.markdown(f"🧪 **Injected (red-team test, not planner output):** \"{md(inj['sentence'])}\"  \n"
                                 f"Verifier: **{inj['label']}** · plan {'blocked' if inj['plan_blocked'] else 'NOT blocked'} · "
                                 f"Trust {inj['trust']:.0f}")
         with st.expander("Evidence viewer (every tool call is citable)"):
@@ -417,6 +425,13 @@ with main:
                 st.markdown(f"<div class='{'br-banner-green' if cov['ok'] else 'br-banner-red'}'><b>Canary coverage:</b> "
                             f"{', '.join(canary)} covers <b>{cov['covered']}/{cov['total']}</b> configuration cohorts "
                             f"({cov['hosts_represented']}/{cov['hosts_total']} hosts represented).{cmp}</div>", unsafe_allow_html=True)
+                rf = card.get("rollback_feasibility")
+                if rf and rf["hosts"]:
+                    ok = not rf["blocked"] and not rf["unknown"]
+                    st.markdown(f"<div class='{'br-banner-green' if ok else 'br-banner-amber'}'><b>Rollback feasibility:</b> "
+                                f"{rf['allow']}/{rf['hosts']} hosts in this plan allow a firmware downgrade (iLO downgrade policy, "
+                                "read from compute inventory)" + ("" if ok else "; see the warning above") + ".</div>",
+                                unsafe_allow_html=True)
                 with st.expander("Configuration cohorts (model + firmware the change does not touch)"):
                     st.dataframe(pd.DataFrame([{"cohort": c["label"], "hosts": c["size"], "canary host": ", ".join(c["canary"]) or "-"}
                                                for c in cov["cohorts"]]), hide_index=True, width="stretch")
@@ -454,7 +469,8 @@ with main:
             if state.get("approval_error"):
                 st.error(f"Not signed: {state['approval_error']}")
             with st.form(f"approve_{card['scope']}"):
-                names = [st.text_input(f"Approver {i + 1}", value=["asha.ops", "ravi.net"][i] if i < 2 else "")
+                # Never pre-filled: an approval is a person signing in their own name, not a click on someone else's.
+                names = [st.text_input(f"Approver {i + 1}", placeholder="your name" if i == 0 else "a second, different person")
                          for i in range(card["required_approvers"])]
                 comment = st.text_input("Comment", value="")
                 ca, cb = st.columns(2)
@@ -569,7 +585,7 @@ with main:
                                                 "effect (x)": round(c["effect"], 2) if c.get("effect") is not None else None,
                                                 "own change": round(c["canary_ratio"], 2) if c.get("canary_ratio") is not None else None,
                                                 "peers' change": round(c["control_ratio"], 2) if c.get("control_ratio") is not None else None,
-                                                "p": f"{c['p_value']:.1e}" if c.get("p_value") is not None else "",
+                                                "p": fmt_p(c["p_value"]) if c.get("p_value") is not None else "",
                                                 "controls": f"{c.get('n_control_hosts', 0)} ({c.get('basis')})"}
                                                for c in cs["checks"]]), hide_index=True, width="stretch")
                 biz = state.get("business_impact")
@@ -588,10 +604,10 @@ with main:
                     k[3].metric("Optimised order alone", f"${opt['counterfactual_usd']:,.0f}" if missed else "-",
                                 help="If the canary had missed it but the risk-aware ordering had been used."
                                      + ("" if missed else " Not applicable: a risk-ranked canary would also have caught it."))
-                    st.caption(h["text"])
+                    st.caption(md(h["text"]))
                     st.dataframe(pd.DataFrame(cost_table(biz)), hide_index=True, width="stretch")
                     with st.expander("Timeline, exposure, sensitivity and assumptions"):
-                        st.write(biz["explanation"])
+                        st.markdown(md(biz["explanation"]))
                         st.dataframe(pd.DataFrame(biz["counterfactual"]["waves"]), hide_index=True, width="stretch")
                         st.dataframe(pd.DataFrame(biz["sensitivity"]), hide_index=True, width="stretch")
                         st.dataframe(pd.DataFrame([{**a, "value": str(a["value"])} for a in biz["assumptions"]]),
@@ -612,7 +628,7 @@ with main:
         if rep:
             st.markdown("##### Signed post-change report")
             text = Path(rep["path"]).read_text() if Path(rep["path"]).exists() else json.dumps(rep, indent=1, default=str)
-            st.markdown(text)
+            st.markdown(md(text))
             st.download_button("Download report (JSON)", json.dumps({k: v for k, v in rep.items() if k != "path"}, indent=1, default=str),
                                file_name=f"blastradius-{run['run_id']}.json")
         st.markdown("##### Hash-chained audit ledger")
@@ -628,8 +644,8 @@ with main:
             if src.exists() and entries:
                 tmp = Path(tempfile.mkdtemp()) / "ledger-copy.sqlite"
                 shutil.copy(src, tmp)
-                if Path(f"{src}.anchor").exists():
-                    shutil.copy(f"{src}.anchor", f"{tmp}.anchor")
+                if sv.ledger.anchor_path and sv.ledger.anchor_path.exists():
+                    shutil.copy(sv.ledger.anchor_path, f"{tmp}.anchor")
                 led = Ledger(tmp, sv.settings.signing_key)
                 victim = next((e for e in entries if e["event"] == "approval"), entries[0])
                 led.tamper(victim["seq"], {**victim["payload"], "approver": "mallory"})
@@ -661,8 +677,8 @@ with main:
         for qa in st.session_state.get("qa", [])[:5]:
             v = qa["verification"]
             with st.container(border=True):
-                st.markdown(f"**Q:** {qa['q']}")
-                st.markdown(f"**A:** {qa['answer']}")
+                st.markdown(f"**Q:** {md(qa['q'])}")
+                st.markdown(f"**A:** {md(qa['answer'])}")
                 k = st.columns(3)
                 k[0].metric("Answer Trust Score", f"{v['trust_score']:.0f}")
                 k[1].metric("Tool calls", len(qa["steps"]))

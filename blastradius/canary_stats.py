@@ -165,6 +165,12 @@ def did_ratio(canary_pre: Sequence[float], canary_post: Sequence[float],
     return canary / max(control, _EPS)
 
 
+def fmt_p(p_value: float) -> str:
+    """A p-value for people to read. Minute samples from one host are autocorrelated, so a tiny p is evidence
+    strength, not an exact error rate: below 0.001 it is shown as '<0.001' rather than as false precision."""
+    return "<0.001" if p_value < 0.001 else f"{p_value:.2g}"
+
+
 def classify(p_value: float, effect: float, alpha: float = 0.01, min_effect: float = 1.15) -> str:
     significant, large = p_value < alpha, effect >= min_effect
     if significant and large:
@@ -398,7 +404,8 @@ def analyse_wave(sv, wave_exec: dict, topo, components: list[str], exclude: Iter
         if c["verdict"] == INCONCLUSIVE:
             return f"{what}: {c['reason']}"
         return (f"{what} {c['effect']:.2f}x vs {c['n_control_hosts']} {c['basis']} peers over the same minutes "
-                f"(own change {c['canary_ratio']:.2f}x, peers {c['control_ratio']:.2f}x; Mann-Whitney p={c['p_value']:.2g})")
+                f"(own change {c['canary_ratio']:.2f}x, peers {c['control_ratio']:.2f}x; Mann-Whitney "
+                + (f"p{fmt_p(c['p_value'])})" if c["p_value"] < 0.001 else f"p={fmt_p(c['p_value'])})"))
 
     for c in res["checks"]:
         c["message"] = describe(c)

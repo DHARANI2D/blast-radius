@@ -35,6 +35,13 @@ def click(at, label):
     return at
 
 
+def approve(at, *names):
+    """Sign the open approval form; the approver fields are never pre-filled."""
+    for i, name in enumerate(names or ("asha.ops",)):
+        widget(at.text_input, f"Approver {i + 1}").set_value(name)
+    return click(at, "Approve and sign")
+
+
 def analyse(at, intent=None):
     if intent:
         at.text_area[0].set_value(intent)
@@ -68,7 +75,7 @@ def test_empty_plan_and_runs_without_telemetry_render(ui):
     assert header(at)["Status"] == "escalated"
     # a wave with no sampled servers and a canary judge with no host to pick
     at = analyse(at, INTENT)
-    click(at, "Approve and sign")
+    approve(at)
     ex = at.session_state["run"]["state"]["executions"][0]
     ex["series"] = {}
     ex["canary_stats"].update(band={}, hosts={})
@@ -103,7 +110,7 @@ def test_verifier_label_animation_overlay_and_stale_injection(ui, monkeypatch):
     # approving animates the live-signal chart once, in a handful of frames
     sleeps, real_sleep = [], time.sleep
     monkeypatch.setattr(time, "sleep", lambda s: (sleeps.append(s) if s >= 0.01 else None, real_sleep(s))[1])  # skip AppTest's polls
-    click(at, "Approve and sign")
+    approve(at)
     assert header(at)["Status"] == "rolled back"
     assert 0 < len(sleeps) <= 20 and sum(sleeps) < 1
     sleeps.clear()
@@ -149,3 +156,18 @@ def test_risk_heat_uses_the_policy_high_risk_threshold(topo):
 
 def _node_line(dot, name):
     return next(line for line in dot.splitlines() if line.strip().startswith(f'"{name}"') and "fillcolor" in line)
+
+
+def test_approval_needs_a_typed_name_and_dollars_render_as_text(ui):
+    at = analyse(ui())
+    # nothing is pre-filled: clicking without a name signs nothing and runs nothing
+    assert widget(at.text_input, "Approver 1").value == ""
+    click(at, "Approve and sign")
+    state = at.session_state["run"]["state"]
+    assert not state.get("executions") and "named approver" in state["approval_error"]
+    assert any("Not signed" in e.value for e in at.error)
+    approve(at, "asha.ops")
+    assert header(at)["Status"] == "rolled back"
+    # dollar amounts are escaped, so Streamlit never reads "$64,210 ... $458" as a LaTeX formula
+    texts = [m.value for m in at.markdown] + [c.value for c in at.caption]
+    assert any("\\$" in t for t in texts) and not any("$" in t.replace("\\$", "") for t in texts if "VM-hours" in t)

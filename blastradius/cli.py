@@ -59,6 +59,9 @@ def _card(card: dict) -> None:
               + (f" vs {first['p_tier0_loss']:.0%} for attempt 1" if first else "")
               + f"; expected VMs lost {pm['expected_vms_lost']:.2f}")
     print(f"  │ Rollback: {card['rollback_plan'][:150]}...")
+    rf = card.get("rollback_feasibility")
+    if rf and rf["hosts"]:
+        print(f"  │ Rollback feasibility: {rf['allow']}/{rf['hosts']} hosts allow a firmware downgrade (iLO downgrade policy)")
     print(f"  └─ requires {card['required_approvers']} approver(s)")
 
 
@@ -120,7 +123,7 @@ def cmd_ledger(args) -> int:
     from .ledger import Ledger
 
     settings = Settings()
-    led = Ledger(settings.runtime_dir / "ledger.sqlite", settings.signing_key)
+    led = Ledger(settings.runtime_dir / "ledger.sqlite", settings.signing_key, anchor_path=settings.ledger_anchor or None)
     if args.action == "verify":
         print(json.dumps(led.verify(), indent=2))
     else:
@@ -149,7 +152,11 @@ def cmd_reset(args) -> int:
 
 def cmd_ui(args) -> int:
     app = ROOT / "ui" / "app.py"
-    return subprocess.call([sys.executable, "-m", "streamlit", "run", str(app), "--server.port", str(args.port)])
+    # The Control Tower can approve changes, and it has no login: it listens on this machine only unless --host
+    # says otherwise, sends Streamlit no usage statistics, and shows no developer toolbar.
+    return subprocess.call([sys.executable, "-m", "streamlit", "run", str(app), "--server.port", str(args.port),
+                            "--server.address", args.host, "--browser.gatherUsageStats", "false",
+                            "--client.toolbarMode", "minimal"])
 
 
 def cmd_mcp_serve(args) -> int:
@@ -246,6 +253,7 @@ def main(argv: list[str] | None = None) -> int:
     sub.add_parser("reset", help="reset the lab twin and forget learned incidents").set_defaults(fn=cmd_reset)
     u = sub.add_parser("ui", help="start the Streamlit Control Tower")
     u.add_argument("--port", type=int, default=8501)
+    u.add_argument("--host", default="127.0.0.1", help="address to listen on (default: this machine only; it has no login)")
     u.set_defaults(fn=cmd_ui)
     m = sub.add_parser("mcp-serve", help="run one domain MCP server over stdio")
     m.add_argument("domain", choices=["compute", "network", "virt", "telemetry", "knowledge"])

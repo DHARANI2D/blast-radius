@@ -1,3 +1,5 @@
+from pathlib import Path
+
 from blastradius.approval import ApprovalAuthority
 from blastradius.ledger import Ledger
 
@@ -48,3 +50,14 @@ def test_in_memory_ledger_keeps_its_anchor():
     led = Ledger(":memory:", "k")
     led.append("r", "a", "e", {})
     assert led.verify()["ok"] and led.read_anchor()["seq"] == 1
+
+
+def test_the_head_anchor_can_live_away_from_the_database(tmp_path):
+    db, anchor = tmp_path / "db" / "ledger.sqlite", tmp_path / "worm" / "head.anchor"
+    led = Ledger(db, "k", anchor_path=anchor)
+    for i in range(3):
+        led.append("r", "a", "e", {"i": i})
+    assert anchor.exists() and not Path(f"{db}.anchor").exists() and led.verify()["ok"]
+    led._db.execute("DELETE FROM ledger WHERE seq = (SELECT MAX(seq) FROM ledger)")
+    led._db.commit()
+    assert not Ledger(db, "k", anchor_path=anchor).verify()["ok"]  # the newest entry was removed

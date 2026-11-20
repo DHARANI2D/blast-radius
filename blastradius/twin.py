@@ -21,6 +21,7 @@ from __future__ import annotations
 import copy
 import hashlib
 import json
+import re
 import threading
 from pathlib import Path
 from typing import Any, Iterable
@@ -94,6 +95,11 @@ def parse_scenario(value: str | bool | Iterable[str] | None) -> frozenset[str]:
         elif tok not in _OFF:
             raise ValueError(f"unknown fault scenario {tok!r}; use on, off, subtle, backup or a '+' combination")
     return frozenset(out)
+
+
+def _version_key(version: str) -> tuple[int, ...]:
+    """'U54 v2.16' -> (54, 2, 16), '1.58' -> (1, 58): enough to tell an upgrade from a downgrade of one component."""
+    return tuple(int(x) for x in re.findall(r"\d+", version))
 
 
 class TwinError(RuntimeError):
@@ -250,6 +256,10 @@ class Twin:
             if component != "iLO 6" and server not in self.maintenance:
                 raise TwinError(f"{server} must be in maintenance mode before updating {component}")
             prev = srv["firmware"][component]
+            # Like iLO itself: a downgrade through iLO is refused unless its downgrade policy allows it.
+            policy = (srv.get("ilo") or {}).get("downgradePolicy", "AllowDowngrade")
+            if policy != "AllowDowngrade" and _version_key(version) < _version_key(prev):
+                raise TwinError(f"iLO downgrade policy {policy} on {server} refuses {component} {prev} -> {version}")
             srv["firmware"][component] = version
             self.firmware_history.append({"asset": server, "component": component, "from": prev, "to": version, "t": self.clock_min})
             self.advance(4 if component == "iLO 6" else 14)

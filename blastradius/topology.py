@@ -103,6 +103,15 @@ class Topology:
         tiers = [v["tier"] for v in self.vms_on(host)]
         return min(tiers) if tiers else None  # tier 0 is most critical
 
+    def downgrade_policy(self, host: str) -> str:
+        """The host's iLO firmware downgrade policy as inventory reports it (AllowDowngrade, RecoveryDowngrade or
+        NoDowngrade), or "unknown". Anything but AllowDowngrade means an automatic rollback cannot revert it."""
+        return ((self.servers.get(host) or {}).get("ilo") or {}).get("downgradePolicy") or "unknown"
+
+    def reversible(self, host: str) -> bool:
+        """False only when inventory says a firmware rollback on this host would be refused."""
+        return self.downgrade_policy(host) in ("AllowDowngrade", "unknown")
+
     def servers_depending_on(self, switch: str) -> list[str]:
         return sorted(v for _, v, d in self.g.edges(switch, data=True) if d["kind"] == "link" and v in self.servers)
 

@@ -37,6 +37,8 @@ class Services:
     def create(cls, settings: Settings | None = None, ledger_path: str | None = None, **overrides) -> "Services":
         settings = settings or Settings()
         if overrides:
+            if settings.signing_key_source == "generated" and "signing_key" not in overrides:
+                overrides = {**overrides, "signing_key": ""}  # a generated key belongs to its runtime directory
             settings = replace(settings, **overrides)
         policy = Policy.load(settings.policy_file)
         # An explicit faults_enabled override (tests, UI toggle) wins over the BR_FAULTS scenario.
@@ -45,7 +47,8 @@ class Services:
                     scenario=None if explicit_bool else settings.fault_scenario)
         kb = KnowledgeBase(settings.knowledge_dir, settings.runtime_dir)
         authority = ApprovalAuthority(settings.signing_key)
-        ledger = Ledger(ledger_path if ledger_path is not None else settings.runtime_dir / "ledger.sqlite", settings.signing_key)
+        ledger = Ledger(ledger_path if ledger_path is not None else settings.runtime_dir / "ledger.sqlite", settings.signing_key,
+                        anchor_path=settings.ledger_anchor or None)
         evidence = EvidenceStore()
         registry = build_registry(ToolContext(twin=twin, kb=kb, authority=authority))
         bus = ToolBus(registry, evidence, transport=settings.tool_transport)

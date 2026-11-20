@@ -31,7 +31,9 @@ def entry_hash(key: bytes, prev_hash: str, seq: int, ts: float, run_id: str, act
 
 
 class Ledger:
-    def __init__(self, path: Path | str = ":memory:", key: str | None = None):
+    def __init__(self, path: Path | str = ":memory:", key: str | None = None, anchor_path: Path | str | None = None):
+        """``anchor_path`` (BR_LEDGER_ANCHOR) keeps the signed head anchor away from the database, for example on another
+        volume or a write-once store, so whoever can edit the database cannot also move the anchor back."""
         if key is None:
             from .config import Settings
 
@@ -39,7 +41,9 @@ class Ledger:
         self._key = key.encode()
         self.path = str(path)
         self._anchor: dict | None = None  # in-memory ledgers keep their anchor here
-        self.anchor_path = None if self.path == ":memory:" else Path(self.path + ".anchor")
+        self.anchor_path = None if self.path == ":memory:" else Path(anchor_path) if anchor_path else Path(self.path + ".anchor")
+        if self.anchor_path is not None:
+            self.anchor_path.parent.mkdir(parents=True, exist_ok=True)
         if self.path != ":memory:":
             Path(self.path).parent.mkdir(parents=True, exist_ok=True)
         self._lock = threading.Lock()

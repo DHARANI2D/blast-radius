@@ -9,13 +9,14 @@ def tools(ctx: ToolContext) -> list[ToolSpec]:
     twin = ctx.twin
 
     def list_servers(cluster: str = "") -> list[dict]:
-        """List servers with model, rack, cluster, health and installed firmware."""
+        """List servers with model, rack, cluster, health, installed firmware and the iLO downgrade policy."""
         out = []
         for s in twin.servers.values():
             if cluster and s["cluster"] != cluster:
                 continue
             srv = twin.get_server(s["name"])
-            out.append({k: srv[k] for k in ("name", "serialNumber", "model", "rack", "cluster", "memoryGB", "state", "firmware")})
+            out.append({k: srv[k] for k in ("name", "serialNumber", "model", "rack", "cluster", "memoryGB", "state", "firmware", "ilo")
+                        if k in srv})
         return out
 
     def get_server(name: str) -> dict:

@@ -93,6 +93,10 @@ class RiskAgent:
         if srv["state"]["health"] != "OK":
             score += 15
             reasons.append(f"current health {srv['state']['health']}")
+        downgrade = (srv.get("ilo") or {}).get("downgradePolicy") or "unknown"
+        if downgrade not in ("AllowDowngrade", "unknown"):
+            score += 15
+            reasons.append(f"cannot be rolled back automatically: iLO downgrade policy {downgrade}")
         for comp, ver in versions.items():
             s, r, e, m = self._version_risk(comp, ver, srv["model"], srv["firmware"])
             score, reasons, evidence, match = score + s, reasons + r, evidence + e, match or m

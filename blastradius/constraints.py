@@ -134,6 +134,10 @@ def check_plan(plan: dict, topo: Topology, targets: list[str], components: list[
                 v("CANARY_FIRST", f"canary hosts {crit} run tier-{min(topo.most_critical_tier(h) for h in crit)} workloads", 1, crit)
             if sw:
                 v("CANARY_FIRST", f"canary wave includes network devices {sw}; canary with servers first", 1, sw)
+            fixed = [h for h in hosts if not topo.reversible(h)]
+            if fixed:
+                v("CANARY_FIRST", f"canary hosts {fixed} cannot be rolled back (iLO downgrade policy "
+                  f"{', '.join(sorted({topo.downgrade_policy(h) for h in fixed}))})", 1, fixed)
 
     cov = None
     if plan["waves"] and policy.get("planning.canary_cohort_coverage", True):
