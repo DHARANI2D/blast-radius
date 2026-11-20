@@ -3,6 +3,10 @@
 **Know what breaks before you break it.**
 HPE Agentic AI Hackathon India 2026 · Track 3: Autonomous Infrastructure Optimization (pre/during/post upgrade validation)
 
+<a href="media/BlastRadius_explainer_5min.mp4"><img src="media/explainer_preview.gif" alt="BlastRadius explainer: 20-second preview (click to watch the full 5-minute video with narration)" width="100%"></a>
+
+**▶ [Watch the 5-minute explainer video with narration](media/BlastRadius_explainer_5min.mp4)** (the preview above is a silent highlight reel; click it for the full video) · [download from the release](https://github.com/DHARANI2D/blast-radius/releases/download/demo-video/BlastRadius_explainer_5min.mp4)
+
 BlastRadius is a LangGraph multi-agent system, connected to infrastructure through the Model Context Protocol (MCP), that plans a firmware or configuration upgrade as verified, staged canary waves with automatic halt and rollback:
 
 1. **Discover** a dependency graph across compute, network, virtualization and storage from MCP tool calls.
